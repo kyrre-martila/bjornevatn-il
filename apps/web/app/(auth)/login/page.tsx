@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
-import { apiFetch, useCsrfToken } from "../../../lib/api";
+import { apiFetch } from "../../../lib/api";
+import { useCsrfToken } from "../../../lib/api.client";
 
 export default function LoginPage() {
   const [tab, setTab] = useState<"pw" | "ml">("pw");

@@ -1,5 +1,3 @@
-import { useCallback, useEffect, useState } from "react";
-
 const API_ORIGIN = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
 const API_BASE_PATH = process.env.NEXT_PUBLIC_API_BASE_PATH ?? "/api/v1";
 const CSRF_COOKIE_NAME =
@@ -88,47 +86,6 @@ export function getApiBaseUrl(): string {
   return `${API_ORIGIN}${normalizedBase}`;
 }
 
-export type CsrfHook = {
-  token: string | null;
-  refresh: () => Promise<void>;
-};
-
 export function createHealthProbeUrl(): string {
   return resolveApiUrl("/health");
-}
-
-export function canUseDom(): boolean {
-  return typeof window !== "undefined";
-}
-
-export function useCsrfToken(): CsrfHook {
-  const [token, setToken] = useState<string | null>(null);
-
-  const readToken = useCallback(() => {
-    const nextToken = readBrowserCsrfToken();
-    setToken(nextToken);
-    return nextToken;
-  }, []);
-
-  const refresh = useCallback(async () => {
-    if (!canUseDom()) {
-      setToken(null);
-      return;
-    }
-    try {
-      await fetch(createHealthProbeUrl(), { credentials: "include" });
-    } catch {
-      // Ignore network errors – token read happens regardless
-    } finally {
-      readToken();
-    }
-  }, [readToken]);
-
-  useEffect(() => {
-    if (canUseDom()) {
-      void refresh();
-    }
-  }, [refresh]);
-
-  return { token, refresh };
 }
