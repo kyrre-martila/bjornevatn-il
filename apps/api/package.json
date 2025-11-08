@@ -1,6 +1,7 @@
 {
   "name": "api",
   "private": true,
+  "license": "MIT",
   "scripts": {
     "prebuild": "pnpm --filter @org/domain build && pnpm --filter @org/domain-adapters-prisma build",
     "dev": "ts-node-dev --respawn --transpile-only src/main.ts",

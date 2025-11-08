@@ -1,6 +1,7 @@
 {
   "name": "@blueprint/db",
   "private": true,
+  "license": "MIT",
   "dependencies": {
     "@prisma/client": "^5.19.1"
   },

@@ -1,6 +1,7 @@
 {
   "name": "fullstack-app-blueprint",
   "private": true,
+  "license": "MIT",
   "scripts": {
     "dev": "turbo run dev --parallel",
     "dev:web": "pnpm --filter web dev",
