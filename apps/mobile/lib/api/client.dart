@@ -24,19 +24,20 @@ String _resolveBaseUrl() {
   final String basePath = _defaultApiBasePath.startsWith('/')
       ? _defaultApiBasePath
       : '/$_defaultApiBasePath';
-  final String normalizedBasePath =
-      basePath.endsWith('/') ? basePath.substring(0, basePath.length - 1) : basePath;
+  final String normalizedBasePath = basePath.endsWith('/')
+      ? basePath.substring(0, basePath.length - 1)
+      : basePath;
   final String baseUrl = '$origin$normalizedBasePath';
   return baseUrl;
 }
 
 class AuthExpiredException extends DioException {
   AuthExpiredException(RequestOptions requestOptions)
-      : super(
-          requestOptions: requestOptions,
-          message: 'Session expired, please log in again',
-          type: DioExceptionType.badResponse,
-        );
+    : super(
+        requestOptions: requestOptions,
+        message: 'Session expired, please log in again',
+        type: DioExceptionType.badResponse,
+      );
 
   @override
   String toString() => message ?? 'Session expired, please log in again';
@@ -54,31 +55,33 @@ class ApiClient {
   }
 
   ApiClient._internal({Dio? dio, SecureStorageService? secureStorage})
-      : _dio = dio ?? Dio(BaseOptions(baseUrl: _resolveBaseUrl())),
-        _secureStorage = secureStorage ?? SecureStorageService() {
-    _dio.interceptors.add(InterceptorsWrapper(
-      onRequest: (options, handler) {
-        if (options.extra[_skipAuthKey] == true) {
-          return handler.next(options);
-        }
-        if (_accessToken != null && _accessToken!.isNotEmpty) {
-          options.headers['Authorization'] = 'Bearer $_accessToken';
-        }
-        handler.next(options);
-      },
-      onError: (error, handler) async {
-        if (_shouldAttemptRefresh(error)) {
-          try {
-            await _refreshToken();
-            final response = await _retry(error.requestOptions);
-            return handler.resolve(response);
-          } on AuthExpiredException catch (authError) {
-            return handler.reject(authError);
+    : _dio = dio ?? Dio(BaseOptions(baseUrl: _resolveBaseUrl())),
+      _secureStorage = secureStorage ?? SecureStorageService() {
+    _dio.interceptors.add(
+      InterceptorsWrapper(
+        onRequest: (options, handler) {
+          if (options.extra[_skipAuthKey] == true) {
+            return handler.next(options);
           }
-        }
-        return handler.next(error);
-      },
-    ));
+          if (_accessToken != null && _accessToken!.isNotEmpty) {
+            options.headers['Authorization'] = 'Bearer $_accessToken';
+          }
+          handler.next(options);
+        },
+        onError: (error, handler) async {
+          if (_shouldAttemptRefresh(error)) {
+            try {
+              await _refreshToken();
+              final response = await _retry(error.requestOptions);
+              return handler.resolve(response);
+            } on AuthExpiredException catch (authError) {
+              return handler.reject(authError);
+            }
+          }
+          return handler.next(error);
+        },
+      ),
+    );
   }
 
   static const String _refreshEndpoint = String.fromEnvironment(
@@ -95,13 +98,22 @@ class ApiClient {
   void Function()? onAuthExpired;
 
   Future<String> requestMagicLink(String email) async {
-    final r = await _dio.post('/auth/request-magic-link', data: {'email': email});
+    final r = await _dio.post(
+      '/auth/request-magic-link',
+      data: {'email': email},
+    );
     final data = r.data as Map<String, dynamic>;
     return (data['devToken'] as String?) ?? '';
   }
 
-  Future<void> verifyMagicLink({required String email, required String token}) async {
-    final r = await _dio.post('/auth/verify-magic-link', data: {'email': email, 'token': token});
+  Future<void> verifyMagicLink({
+    required String email,
+    required String token,
+  }) async {
+    final r = await _dio.post(
+      '/auth/verify-magic-link',
+      data: {'email': email, 'token': token},
+    );
     final data = r.data as Map<String, dynamic>;
     await _persistTokens(
       accessToken: data['accessToken'] as String,
@@ -118,15 +130,18 @@ class ApiClient {
     required String password,
     required bool acceptedTerms,
   }) async {
-    final r = await _dio.post('/auth/register', data: {
-      'firstName': firstName,
-      'lastName': lastName,
-      'email': email,
-      if (phone != null) 'phone': phone,
-      if (birthDate != null) 'birthDate': birthDate,
-      'password': password,
-      'acceptedTerms': acceptedTerms,
-    });
+    final r = await _dio.post(
+      '/auth/register',
+      data: {
+        'firstName': firstName,
+        'lastName': lastName,
+        'email': email,
+        if (phone != null) 'phone': phone,
+        if (birthDate != null) 'birthDate': birthDate,
+        'password': password,
+        'acceptedTerms': acceptedTerms,
+      },
+    );
     final data = r.data as Map<String, dynamic>;
     await _persistTokens(
       accessToken: data['accessToken'] as String,
@@ -154,11 +169,14 @@ class ApiClient {
     );
   }
 
-  Future<void> login({required String identifier, required String password}) async {
-    final r = await _dio.post('/auth/login', data: {
-      'identifier': identifier,
-      'password': password,
-    });
+  Future<void> login({
+    required String identifier,
+    required String password,
+  }) async {
+    final r = await _dio.post(
+      '/auth/login',
+      data: {'identifier': identifier, 'password': password},
+    );
     final data = r.data as Map<String, dynamic>;
     await _persistTokens(
       accessToken: data['accessToken'] as String,
@@ -213,7 +231,10 @@ class ApiClient {
     );
   }
 
-  Future<void> _persistTokens({required String accessToken, required String refreshToken}) async {
+  Future<void> _persistTokens({
+    required String accessToken,
+    required String refreshToken,
+  }) async {
     _accessToken = accessToken;
     await _secureStorage.saveRefreshToken(refreshToken);
   }
@@ -255,10 +276,7 @@ class ApiClient {
         _refreshEndpoint,
         options: Options(
           headers: {'Authorization': 'Bearer $refreshToken'},
-          extra: const {
-            _skipAuthKey: true,
-            _refreshCallKey: true,
-          },
+          extra: const {_skipAuthKey: true, _refreshCallKey: true},
         ),
       );
       final data = response.data ?? <String, dynamic>{};
@@ -269,7 +287,10 @@ class ApiClient {
         _notifyAuthExpired();
         throw AuthExpiredException(response.requestOptions);
       }
-      await _persistTokens(accessToken: accessToken, refreshToken: newRefreshToken);
+      await _persistTokens(
+        accessToken: accessToken,
+        refreshToken: newRefreshToken,
+      );
     } on DioException {
       await _clearTokens();
       _notifyAuthExpired();

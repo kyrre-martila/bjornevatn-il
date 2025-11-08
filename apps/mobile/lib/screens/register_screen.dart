@@ -88,13 +88,17 @@ class _RegisterScreenState extends State<RegisterScreen> {
             ),
             TextField(
               controller: _phone,
-              decoration: const InputDecoration(labelText: 'Telefon (valgfritt)'),
+              decoration: const InputDecoration(
+                labelText: 'Telefon (valgfritt)',
+              ),
               keyboardType: TextInputType.phone,
               textInputAction: TextInputAction.next,
             ),
             TextField(
               controller: _birth,
-              decoration: const InputDecoration(labelText: 'Fødselsdato (YYYY-MM-DD)'),
+              decoration: const InputDecoration(
+                labelText: 'Fødselsdato (YYYY-MM-DD)',
+              ),
               keyboardType: TextInputType.datetime,
               textInputAction: TextInputAction.next,
             ),

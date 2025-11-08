@@ -3,9 +3,11 @@ import 'package:flutter/material.dart';
 import '../api/client.dart';
 
 class AuthService {
-  AuthService({required GlobalKey<NavigatorState> navigatorKey, ApiClient? apiClient})
-      : _navigatorKey = navigatorKey,
-        _api = apiClient ?? ApiClient() {
+  AuthService({
+    required GlobalKey<NavigatorState> navigatorKey,
+    ApiClient? apiClient,
+  }) : _navigatorKey = navigatorKey,
+       _api = apiClient ?? ApiClient() {
     _api.onAuthExpired = _handleSessionExpired;
   }
 
@@ -18,7 +20,10 @@ class AuthService {
     } catch (_) {
       // Ignore network failures during logout but still clear local state and navigate.
     } finally {
-      _navigatorKey.currentState?.pushNamedAndRemoveUntil('/login', (_) => false);
+      _navigatorKey.currentState?.pushNamedAndRemoveUntil(
+        '/login',
+        (_) => false,
+      );
     }
   }
 

@@ -10,31 +10,49 @@ abstract class SecureKeyValueStore {
 
 class FlutterSecureKeyValueStore implements SecureKeyValueStore {
   FlutterSecureKeyValueStore({FlutterSecureStorage? storage})
-      : _storage = storage ?? const FlutterSecureStorage();
+    : _storage = storage ?? const FlutterSecureStorage();
 
   final FlutterSecureStorage _storage;
 
-  static const _androidOptions = AndroidOptions(encryptedSharedPreferences: true);
-  static const _iosOptions = IOSOptions(accessibility: KeychainAccessibility.first_unlock_this_device);
+  static const _androidOptions = AndroidOptions(
+    encryptedSharedPreferences: true,
+  );
+  static const _iosOptions = IOSOptions(
+    accessibility: KeychainAccessibility.first_unlock_this_device,
+  );
 
   @override
   Future<void> write({required String key, String? value}) {
-    return _storage.write(key: key, value: value, aOptions: _androidOptions, iOptions: _iosOptions);
+    return _storage.write(
+      key: key,
+      value: value,
+      aOptions: _androidOptions,
+      iOptions: _iosOptions,
+    );
   }
 
   @override
   Future<String?> read({required String key}) {
-    return _storage.read(key: key, aOptions: _androidOptions, iOptions: _iosOptions);
+    return _storage.read(
+      key: key,
+      aOptions: _androidOptions,
+      iOptions: _iosOptions,
+    );
   }
 
   @override
   Future<void> delete({required String key}) {
-    return _storage.delete(key: key, aOptions: _androidOptions, iOptions: _iosOptions);
+    return _storage.delete(
+      key: key,
+      aOptions: _androidOptions,
+      iOptions: _iosOptions,
+    );
   }
 }
 
 class SecureStorageService {
-  SecureStorageService({SecureKeyValueStore? store}) : _store = store ?? FlutterSecureKeyValueStore();
+  SecureStorageService({SecureKeyValueStore? store})
+    : _store = store ?? FlutterSecureKeyValueStore();
 
   final SecureKeyValueStore _store;
 

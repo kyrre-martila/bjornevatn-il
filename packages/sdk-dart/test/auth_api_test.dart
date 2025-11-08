@@ -1,7 +1,6 @@
 import 'package:test/test.dart';
 import 'package:blueprint_sdk/blueprint_sdk.dart';
 
-
 /// tests for AuthApi
 void main() {
   final instance = BlueprintSdk().getAuthApi();
@@ -26,6 +25,5 @@ void main() {
     test('test authControllerVerifyMagicLink', () async {
       // TODO
     });
-
   });
 }

@@ -8,9 +8,7 @@ import 'package:built_value/json_object.dart';
 import 'package:built_value/serializer.dart';
 import 'package:dio/dio.dart';
 
-
 class MeApi {
-
   final Dio _dio;
 
   final Serializers _serializers;
@@ -18,7 +16,7 @@ class MeApi {
   const MeApi(this._dio, this._serializers);
 
   /// usersControllerMe
-  /// 
+  ///
   ///
   /// Parameters:
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
@@ -30,7 +28,7 @@ class MeApi {
   ///
   /// Returns a [Future]
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<void>> usersControllerMe({ 
+  Future<Response<void>> usersControllerMe({
     CancelToken? cancelToken,
     Map<String, dynamic>? headers,
     Map<String, dynamic>? extra,
@@ -41,21 +39,11 @@ class MeApi {
     final _path = r'/me';
     final _options = Options(
       method: r'GET',
-      headers: <String, dynamic>{
-        ...?headers,
-      },
+      headers: <String, dynamic>{...?headers},
       extra: <String, dynamic>{
         'secure': <Map<String, String>>[
-          {
-            'type': 'apiKey',
-            'name': 'cookie',
-            'keyName': 'sid',
-            'where': '',
-          },{
-            'type': 'http',
-            'scheme': 'bearer',
-            'name': 'bearer',
-          },
+          {'type': 'apiKey', 'name': 'cookie', 'keyName': 'sid', 'where': ''},
+          {'type': 'http', 'scheme': 'bearer', 'name': 'bearer'},
         ],
         ...?extra,
       },
@@ -72,5 +60,4 @@ class MeApi {
 
     return _response;
   }
-
 }

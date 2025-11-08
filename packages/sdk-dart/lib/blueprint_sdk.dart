@@ -12,5 +12,3 @@ export 'package:blueprint_sdk/src/model/date.dart';
 
 export 'package:blueprint_sdk/src/api/auth_api.dart';
 export 'package:blueprint_sdk/src/api/me_api.dart';
-
-

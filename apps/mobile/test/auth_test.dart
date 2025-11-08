@@ -44,9 +44,13 @@ class _FakeAdapter implements HttpClientAdapter {
       return _handler!(options);
     }
 
-    return ResponseBody.fromString('ok', 200, headers: {
-      Headers.contentTypeHeader: [Headers.jsonContentType],
-    });
+    return ResponseBody.fromString(
+      'ok',
+      200,
+      headers: {
+        Headers.contentTypeHeader: [Headers.jsonContentType],
+      },
+    );
   }
 }
 
@@ -54,7 +58,9 @@ ResponseBody _jsonResponse(Object data, int statusCode) {
   return ResponseBody.fromString(
     jsonEncode(data),
     statusCode,
-    headers: {Headers.contentTypeHeader: [Headers.jsonContentType]},
+    headers: {
+      Headers.contentTypeHeader: [Headers.jsonContentType],
+    },
   );
 }
 
@@ -63,7 +69,9 @@ void main() {
     ApiClient.resetInstance();
   });
 
-  testWidgets('Login flow requests credentials and navigates on success', (tester) async {
+  testWidgets('Login flow requests credentials and navigates on success', (
+    tester,
+  ) async {
     final store = _FakeStore();
     final secureStorage = SecureStorageService(store: store);
     final dio = Dio(BaseOptions(baseUrl: 'https://api.example.com'))
@@ -79,12 +87,15 @@ void main() {
 
     final client = ApiClient(dio: dio, secureStorage: secureStorage);
 
-    await tester.pumpWidget(MaterialApp(
-      routes: {
-        '/profile': (_) => const Scaffold(body: Center(child: Text('Profile'))),
-      },
-      home: LoginScreen(api: client),
-    ));
+    await tester.pumpWidget(
+      MaterialApp(
+        routes: {
+          '/profile': (_) =>
+              const Scaffold(body: Center(child: Text('Profile'))),
+        },
+        home: LoginScreen(api: client),
+      ),
+    );
 
     await tester.enterText(
       find.widgetWithText(TextField, 'Username or email'),
@@ -102,41 +113,56 @@ void main() {
     expect(store.storage['refresh_token'], equals('refresh-1'));
   });
 
-  test('Refresh flow retries the protected request after renewing tokens', () async {
-    final store = _FakeStore();
-    final secureStorage = SecureStorageService(store: store);
-    var protectedCalls = 0;
+  test(
+    'Refresh flow retries the protected request after renewing tokens',
+    () async {
+      final store = _FakeStore();
+      final secureStorage = SecureStorageService(store: store);
+      var protectedCalls = 0;
 
-    final dio = Dio(BaseOptions(baseUrl: 'https://api.example.com'))
-      ..httpClientAdapter = _FakeAdapter((options) {
-        if (options.path.endsWith('/auth/login')) {
-          return _jsonResponse({'accessToken': 'access-1', 'refreshToken': 'refresh-1'}, 200);
-        }
-        if (options.path.endsWith('/auth/refresh')) {
-          expect(options.headers['Authorization'], equals('Bearer refresh-1'));
-          return _jsonResponse({'accessToken': 'access-2', 'refreshToken': 'refresh-2'}, 200);
-        }
-        if (options.path.endsWith('/protected')) {
-          protectedCalls += 1;
-          if (protectedCalls == 1) {
-            expect(options.headers['Authorization'], equals('Bearer access-1'));
-            return _jsonResponse({'error': 'expired'}, 401);
+      final dio = Dio(BaseOptions(baseUrl: 'https://api.example.com'))
+        ..httpClientAdapter = _FakeAdapter((options) {
+          if (options.path.endsWith('/auth/login')) {
+            return _jsonResponse({
+              'accessToken': 'access-1',
+              'refreshToken': 'refresh-1',
+            }, 200);
           }
-          expect(options.headers['Authorization'], equals('Bearer access-2'));
-          return _jsonResponse({'ok': true}, 200);
-        }
-        throw UnimplementedError('Unhandled path: ${options.path}');
-      });
+          if (options.path.endsWith('/auth/refresh')) {
+            expect(
+              options.headers['Authorization'],
+              equals('Bearer refresh-1'),
+            );
+            return _jsonResponse({
+              'accessToken': 'access-2',
+              'refreshToken': 'refresh-2',
+            }, 200);
+          }
+          if (options.path.endsWith('/protected')) {
+            protectedCalls += 1;
+            if (protectedCalls == 1) {
+              expect(
+                options.headers['Authorization'],
+                equals('Bearer access-1'),
+              );
+              return _jsonResponse({'error': 'expired'}, 401);
+            }
+            expect(options.headers['Authorization'], equals('Bearer access-2'));
+            return _jsonResponse({'ok': true}, 200);
+          }
+          throw UnimplementedError('Unhandled path: ${options.path}');
+        });
 
-    final client = ApiClient(dio: dio, secureStorage: secureStorage);
+      final client = ApiClient(dio: dio, secureStorage: secureStorage);
 
-    await client.login(identifier: 'user', password: 'pw');
-    final response = await client.get<Map<String, dynamic>>('/protected');
+      await client.login(identifier: 'user', password: 'pw');
+      final response = await client.get<Map<String, dynamic>>('/protected');
 
-    expect(response.data?['ok'], isTrue);
-    expect(store.storage['refresh_token'], equals('refresh-2'));
-    expect(protectedCalls, equals(2));
-  });
+      expect(response.data?['ok'], isTrue);
+      expect(store.storage['refresh_token'], equals('refresh-2'));
+      expect(protectedCalls, equals(2));
+    },
+  );
 
   test('Refresh failure clears tokens and notifies listeners', () async {
     final store = _FakeStore();
@@ -147,7 +173,10 @@ void main() {
     final dio = Dio(BaseOptions(baseUrl: 'https://api.example.com'))
       ..httpClientAdapter = _FakeAdapter((options) {
         if (options.path.endsWith('/auth/login')) {
-          return _jsonResponse({'accessToken': 'access-1', 'refreshToken': 'refresh-1'}, 200);
+          return _jsonResponse({
+            'accessToken': 'access-1',
+            'refreshToken': 'refresh-1',
+          }, 200);
         }
         if (options.path.endsWith('/auth/refresh')) {
           return _jsonResponse({'error': 'invalid'}, 401);

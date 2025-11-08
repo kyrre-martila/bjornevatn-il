@@ -9,9 +9,13 @@ void main() => runApp(const App());
 
 class App extends StatelessWidget {
   const App({super.key});
-  static final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
+  static final GlobalKey<NavigatorState> _navigatorKey =
+      GlobalKey<NavigatorState>();
   static final ApiClient _api = ApiClient();
-  static final AuthService _auth = AuthService(navigatorKey: _navigatorKey, apiClient: _api);
+  static final AuthService _auth = AuthService(
+    navigatorKey: _navigatorKey,
+    apiClient: _api,
+  );
 
   @override
   Widget build(BuildContext context) {

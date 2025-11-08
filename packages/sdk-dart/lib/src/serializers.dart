@@ -14,17 +14,16 @@ import 'package:built_value/iso_8601_date_time_serializer.dart';
 import 'package:blueprint_sdk/src/date_serializer.dart';
 import 'package:blueprint_sdk/src/model/date.dart';
 
-
 part 'serializers.g.dart';
 
-@SerializersFor([
-])
-Serializers serializers = (_$serializers.toBuilder()
-      ..add(const OneOfSerializer())
-      ..add(const AnyOfSerializer())
-      ..add(const DateSerializer())
-      ..add(Iso8601DateTimeSerializer())
-    ).build();
+@SerializersFor([])
+Serializers serializers =
+    (_$serializers.toBuilder()
+          ..add(const OneOfSerializer())
+          ..add(const AnyOfSerializer())
+          ..add(const DateSerializer())
+          ..add(Iso8601DateTimeSerializer()))
+        .build();
 
 Serializers standardSerializers =
     (serializers.toBuilder()..addPlugin(StandardJsonPlugin())).build();
