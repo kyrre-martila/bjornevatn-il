@@ -17,7 +17,10 @@ function ensureAbsoluteUrl(path: string): string {
   return `${API_ORIGIN}${joined}`;
 }
 
-export function parseCookieValue(cookieHeader: string | null | undefined, name: string): string | null {
+export function parseCookieValue(
+  cookieHeader: string | null | undefined,
+  name: string
+): string | null {
   if (!cookieHeader) {
     return null;
   }
@@ -48,7 +51,10 @@ export function resolveApiUrl(path: string): string {
   return ensureAbsoluteUrl(path);
 }
 
-export async function apiFetch(path: string, init: RequestInit = {}): Promise<Response> {
+export async function apiFetch(
+  path: string,
+  init: RequestInit = {}
+): Promise<Response> {
   const url = ensureAbsoluteUrl(path);
   const requestInit: RequestInit = { ...init };
   requestInit.credentials = init.credentials ?? "include";
@@ -68,12 +74,16 @@ export async function apiFetch(path: string, init: RequestInit = {}): Promise<Re
   return fetch(url, requestInit);
 }
 
-export function getCsrfTokenFromCookieHeader(cookieHeader: string | null | undefined): string | null {
+export function getCsrfTokenFromCookieHeader(
+  cookieHeader: string | null | undefined
+): string | null {
   return parseCookieValue(cookieHeader, CSRF_COOKIE_NAME);
 }
 
 export function getApiBaseUrl(): string {
-  const normalizedBase = API_BASE_PATH.endsWith("/") ? API_BASE_PATH.slice(0, -1) : API_BASE_PATH;
+  const normalizedBase = API_BASE_PATH.endsWith("/")
+    ? API_BASE_PATH.slice(0, -1)
+    : API_BASE_PATH;
   return `${API_ORIGIN}${normalizedBase}`;
 }
 
@@ -91,7 +101,7 @@ export function canUseDom(): boolean {
 }
 
 export function useCsrfToken(): CsrfHook {
-  const [token, setToken] = useState<string | null>(() => readBrowserCsrfToken());
+  const [token, setToken] = useState<string | null>(null);
 
   const readToken = useCallback(() => {
     const nextToken = readBrowserCsrfToken();
@@ -121,3 +131,4 @@ export function useCsrfToken(): CsrfHook {
 
   return { token, refresh };
 }
+
