@@ -1,5 +1,23 @@
 # Fullstack App Blueprint
 
+An opinionated monorepo that combines a NestJS API, Next.js web client, Flutter mobile app, Prisma ORM, and Turborepo tooling for modern product teams.
+
+## Who is this for?
+Developers who want a ready-made blueprint for SaaS, analytics dashboards, or similar web applications built with NestJS + Next.js + Prisma + Turborepo. It trades flexibility for conventions so you can start from a production-inspired foundation instead of wiring everything from scratch.
+
+## Status
+This repository is a blueprint, not a finished product. The patterns are production-inspired, but every project should review and adapt configuration, security, and deployment choices to match its own requirements.
+
+## Quick start
+```bash
+pnpm install
+pnpm prisma migrate deploy
+pnpm prisma db seed
+pnpm dev
+```
+
+Set up environment variables (see [docs/OPERATIONS.md](docs/OPERATIONS.md#local-development)) before running commands.
+
 ## Overview
 - Stack: NestJS API, Next.js web, Flutter mobile, Prisma ORM, Turborepo monorepo.
 - Contracts: OpenAPI under `packages/contracts`.
@@ -21,3 +39,6 @@
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
 - [docs/RUNBOOKS](docs/RUNBOOKS)
 - [docs/ADRS](docs/ADRS)
+
+## License
+Licensed under the [MIT License](LICENSE). © 2025 Kyrre Martila.
