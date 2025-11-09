@@ -1,8 +1,10 @@
-const API_ORIGIN = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
-const API_BASE_PATH = process.env.NEXT_PUBLIC_API_BASE_PATH ?? "/api/v1";
-const CSRF_COOKIE_NAME =
+export const API_ORIGIN =
+  process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
+export const API_BASE_PATH =
+  process.env.NEXT_PUBLIC_API_BASE_PATH ?? "/api/v1";
+export const CSRF_COOKIE_NAME =
   process.env.NEXT_PUBLIC_CSRF_COOKIE_NAME ?? "XSRF-TOKEN";
-const STATEFUL_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
+export const STATEFUL_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 
 function ensureAbsoluteUrl(path: string): string {
   if (/^https?:/i.test(path)) {
