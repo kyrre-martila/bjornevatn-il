@@ -7,13 +7,15 @@ const config: Config = {
   rootDir: "./",
   testMatch: ["<rootDir>/test/unit/**/*.spec.ts"],
   transform: {
-    "^.+\\.(t|j)s$": [
-      "ts-jest",
-      {
-        tsconfig: resolve(__dirname, "tsconfig.spec.json"),
-        isolatedModules: false,
-      },
-    ],
+    "^.+\\.(ts|tsx)$": ["ts-jest", { useESM: true }],
+  },
+  extensionsToTreatAsEsm: [".ts"],
+  globals: {
+    "ts-jest": {
+      useESM: true,
+      tsconfig: resolve(__dirname, "tsconfig.spec.json"),
+      isolatedModules: false,
+    },
   },
   moduleNameMapper: {
     "^@org/domain$": resolve(__dirname, "../../packages/domain/src/index.ts"),
