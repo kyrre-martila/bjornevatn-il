@@ -30,20 +30,22 @@ jobs:
         run: pnpm --filter ./apps/web build
       - name: Build Domain Packages
         run: pnpm --filter ./packages/domain build
-      - uses: subosito/flutter-action@v2
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
         with:
-          channel: stable
-      - uses: actions/cache@v4
-        with:
-          path: |
-            ~/.pub-cache
-          key: ${{ runner.os }}-flutter-${{ hashFiles('**/pubspec.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-flutter-
-      - name: Install Flutter dependencies
+          flutter-version: "3.24.3"
+          channel: "stable"
+      - name: Install dependencies
         run: flutter pub get
         working-directory: apps/mobile
-      - name: Build Mobile
+      - name: Validate Android Gradle wrapper
+        run: |
+          cd apps/mobile
+          flutter clean
+          flutter pub get
+          flutter create . --platforms=android --overwrite
+          flutter pub get
+      - name: Build release APK
         run: flutter build apk --release
         working-directory: apps/mobile
       - name: Upload Build Artifacts
