@@ -1,0 +1,21 @@
+name: Pull Request CI
+
+on:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  lint-and-format:
+    name: Lint & Format
+    uses: ./.github/workflows/lint.yml
+
+  build:
+    name: Build Verification
+    needs: lint-and-format
+    uses: ./.github/workflows/build.yml
+
+  tests:
+    name: Test Suite
+    needs: build
+    uses: ./.github/workflows/test-all.yml
