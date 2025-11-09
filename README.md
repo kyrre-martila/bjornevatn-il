@@ -49,4 +49,6 @@ Set up environment variables (see [docs/OPERATIONS.md](docs/OPERATIONS.md#local-
 
 ## License
 
-Licensed under the [MIT License](LICENSE). © 2025 Kyrre Arne Martila.
+Licensed under the [MIT License](LICENSE).
+
+© 2025 Kyrre Arne Martila.

@@ -24,6 +24,17 @@ export default function RootLayout({
           </nav>
         </header>
         <main style={{ padding: 24 }}>{children}</main>
+        <footer
+          style={{
+            padding: "16px",
+            borderTop: "1px solid #ddd",
+            textAlign: "center",
+            fontSize: "0.875rem",
+            color: "#555",
+          }}
+        >
+          © 2025 Kyrre Arne Martila
+        </footer>
       </body>
     </html>
   );
