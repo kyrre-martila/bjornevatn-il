@@ -4,7 +4,7 @@ import { AppModule } from "./modules/app.module";
 import helmet from "helmet";
 import cookieParser from "cookie-parser";
 import rateLimit from "express-rate-limit";
-import { ValidationPipe, type INestApplication } from "@nestjs/common";
+import { ValidationPipe, RequestMethod, type INestApplication } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { validateSecurityConfig } from "./config/security.config";
 import type { Request, Response, NextFunction } from "express";
@@ -145,7 +145,9 @@ async function bootstrap() {
     app.useGlobalGuards(metricsGuard);
   }
 
-  app.setGlobalPrefix(API_PREFIX, { exclude: [] });
+  app.setGlobalPrefix(API_PREFIX, {
+    exclude: [{ path: "health", method: RequestMethod.GET }],
+  });
 
   app.use("/api", (req: Request, res: Response, next: NextFunction) => {
     if (req.url === "/v1" || req.url.startsWith("/v1/")) {
