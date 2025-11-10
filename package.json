@@ -25,7 +25,7 @@
     "db:push": "pnpm --filter @blueprint/db exec prisma db push",
     "db:seed": "ts-node --transpile-only scripts/seed.ts",
     "api:start:prod": "pnpm --filter api build && node apps/api/dist/main.js",
-    "start:api:ci": "node ./apps/api/dist/main.js"
+    "start:api:ci": "node ./apps/api/dist/src/main.js"
   },
   "devDependencies": {
     "@eslint/js": "^9.37.0",
