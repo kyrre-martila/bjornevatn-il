@@ -10,6 +10,7 @@ import {
 import {
   ApiBearerAuth,
   ApiCookieAuth,
+  ApiCreatedResponse,
   ApiHideProperty,
   ApiOkResponse,
   ApiProperty,
@@ -105,7 +106,7 @@ export class AuthController {
   @Post("refresh")
   @ApiBearerAuth()
   @ApiCookieAuth()
-  @ApiOkResponse({ type: TokenPairResponseDto })
+  @ApiCreatedResponse({ type: TokenPairResponseDto })
   async refresh(
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
@@ -152,7 +153,7 @@ export class AuthController {
   }
 
   @Post("login")
-  @ApiOkResponse({ type: TokenPairResponseDto })
+  @ApiCreatedResponse({ type: TokenPairResponseDto })
   async login(
     @Body() body: unknown,
     @Res({ passthrough: true }) res: Response,

@@ -16,25 +16,25 @@ class UserProfileDto {
   @ApiProperty()
   email!: string;
 
-  @ApiProperty({ nullable: true })
+  @ApiProperty({ nullable: true, type: String })
   phone!: string | null;
 
-  @ApiProperty({ nullable: true })
+  @ApiProperty({ nullable: true, type: String })
   firstName!: string | null;
 
-  @ApiProperty({ nullable: true })
+  @ApiProperty({ nullable: true, type: String })
   lastName!: string | null;
 
-  @ApiProperty({ nullable: true })
+  @ApiProperty({ nullable: true, type: String })
   birthDate!: string | null;
 
-  @ApiProperty({ nullable: true })
+  @ApiProperty({ nullable: true, type: String })
   displayName!: string | null;
 
-  @ApiProperty()
+  @ApiProperty({ type: String, format: "date-time" })
   createdAt!: string;
 
-  @ApiProperty()
+  @ApiProperty({ type: String })
   role!: string;
 }
 
