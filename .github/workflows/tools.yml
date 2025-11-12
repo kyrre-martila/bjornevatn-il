@@ -1,0 +1,126 @@
+name: Tools
+
+on:
+  workflow_call:
+  # Uncomment later if you want it to run automatically:
+  # pull_request:
+  #   paths:
+  #     - "apps/**"
+  #     - "packages/**"
+  #     - "pnpm-lock.yaml"
+  #     - ".github/workflows/tools.yml"
+  # push:
+  #   branches: [ main ]
+  #   paths:
+  #     - "apps/**"
+  #     - "packages/**"
+  #     - "pnpm-lock.yaml"
+  #     - ".github/workflows/tools.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: tools-${{ github.ref }}-${{ github.run_id }}
+  cancel-in-progress: false
+
+jobs:
+  setup:
+    name: Setup monorepo
+    runs-on: ubuntu-latest
+    outputs:
+      has_dart: ${{ steps.detect-dart.outputs.has_dart }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Install deps
+        run: pnpm install --frozen-lockfile
+
+      # Deteksjon av Dart/Flutter-kode i repoet
+      - id: detect-dart
+        run: |
+          if git ls-files | grep -E '\.dart$' >/dev/null; then
+            echo "has_dart=true" >> $GITHUB_OUTPUT
+          else
+            echo "has_dart=false" >> $GITHUB_OUTPUT
+          fi
+
+  lint:
+    name: Lint (ESLint)
+    needs: setup
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20, cache: pnpm }
+      - uses: pnpm/action-setup@v4
+        with: { version: 9 }
+      - run: pnpm install --frozen-lockfile
+      - name: Lint
+        run: pnpm -r run lint
+
+  typecheck:
+    name: Typecheck (TS)
+    needs: setup
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20, cache: pnpm }
+      - uses: pnpm/action-setup@v4
+        with: { version: 9 }
+      - run: pnpm install --frozen-lockfile
+      - name: Typecheck
+        run: pnpm -r run typecheck
+
+  unit:
+    name: Unit tests
+    needs: setup
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20, cache: pnpm }
+      - uses: pnpm/action-setup@v4
+        with: { version: 9 }
+      - run: pnpm install --frozen-lockfile
+      - name: Test (unit)
+        run: pnpm -r run test:unit -- --ci --reporter=default
+
+  prettier:
+    name: Prettier check
+    needs: setup
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20, cache: pnpm }
+      - uses: pnpm/action-setup@v4
+        with: { version: 9 }
+      - run: pnpm install --frozen-lockfile
+      - name: Prettier
+        run: |
+          if pnpm -s -w exec -- which prettier >/dev/null 2>&1; then
+            pnpm -r run prettier:check || npx prettier --check .
+          else
+            npx prettier --check .
+          fi
+
+  dart_format:
+    name: Dart format check
+    needs: setup
+    if: needs.setup.outputs.has_dart == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dart-lang/setup-dart@v1
+      - name: dart format --set-exit-if-changed
+        run: dart format --output=none --set-exit-if-changed .
