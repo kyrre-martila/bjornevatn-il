@@ -36,9 +36,15 @@ jobs:
           node-version: 20
           cache: pnpm
 
+      - name: Enable Corepack
+        run: corepack enable
+
       - uses: pnpm/action-setup@v4
         with:
-          version: 9
+          version: 10.5.2
+
+      - name: Verify pnpm
+        run: pnpm -v
 
       - name: Install deps
         run: pnpm install --frozen-lockfile
@@ -58,11 +64,24 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-node@v4
-        with: { node-version: 20, cache: pnpm }
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Enable Corepack
+        run: corepack enable
+
       - uses: pnpm/action-setup@v4
-        with: { version: 9 }
-      - run: pnpm install --frozen-lockfile
+        with:
+          version: 10.5.2
+
+      - run: pnpm -v
+
+      - name: Install deps
+        run: pnpm install --frozen-lockfile
+
       - name: Lint
         run: pnpm -r run lint
 
@@ -72,11 +91,24 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-node@v4
-        with: { node-version: 20, cache: pnpm }
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Enable Corepack
+        run: corepack enable
+
       - uses: pnpm/action-setup@v4
-        with: { version: 9 }
-      - run: pnpm install --frozen-lockfile
+        with:
+          version: 10.5.2
+
+      - run: pnpm -v
+
+      - name: Install deps
+        run: pnpm install --frozen-lockfile
+
       - name: Typecheck
         run: pnpm -r run typecheck
 
@@ -87,11 +119,24 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-node@v4
-        with: { node-version: 20, cache: pnpm }
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Enable Corepack
+        run: corepack enable
+
       - uses: pnpm/action-setup@v4
-        with: { version: 9 }
-      - run: pnpm install --frozen-lockfile
+        with:
+          version: 10.5.2
+
+      - run: pnpm -v
+
+      - name: Install deps
+        run: pnpm install --frozen-lockfile
+
       - name: Test (unit)
         run: pnpm -r run test:unit -- --ci --reporter=default
 
@@ -101,11 +146,24 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-node@v4
-        with: { node-version: 20, cache: pnpm }
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Enable Corepack
+        run: corepack enable
+
       - uses: pnpm/action-setup@v4
-        with: { version: 9 }
-      - run: pnpm install --frozen-lockfile
+        with:
+          version: 10.5.2
+
+      - run: pnpm -v
+
+      - name: Install deps
+        run: pnpm install --frozen-lockfile
+
       - name: Prettier
         run: |
           if pnpm -s -w exec -- which prettier >/dev/null 2>&1; then
