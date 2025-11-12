@@ -1,4 +1,4 @@
-name: CI - PR (manual)
+name: CI - PR
 
 on:
   # Re-enable later by uncommenting:
@@ -17,11 +17,9 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # Kjør "Tools" først (lint, typecheck, unit, prettier, ev. dart format)
   tools:
     uses: ./.github/workflows/tools.yml
 
-  # E2E for web – kjører KUN når du manuelt starter workflowen
   e2e_web:
     name: E2E (web)
     needs: tools
@@ -51,14 +49,10 @@ jobs:
         working-directory: apps/web
         run: pnpm exec playwright install --with-deps
 
-      - name: Run dev and wait
+      # Viktig: ikke start dev-server her – la Playwright gjøre det via webServer-config
+      - name: Run Playwright tests
         working-directory: apps/web
         env:
           CI: true
-          # Sett NEXT_TELEMETRY_DISABLED dersom Next.js spyr logging:
-          # NEXT_TELEMETRY_DISABLED: "1"
-        run: |
-          pnpm dev & DEV_PID=$!
-          npx wait-on http://localhost:3000
-          pnpm test:e2e --reporter=line
-          kill $DEV_PID || true
+          NEXT_TELEMETRY_DISABLED: "1"
+        run: pnpm test:e2e --reporter=line
