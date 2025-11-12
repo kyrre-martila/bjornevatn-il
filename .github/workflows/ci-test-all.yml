@@ -256,7 +256,9 @@ jobs:
         shell: bash
       - run: echo "✅ Web responded on expected port"
       - run: npx playwright install --with-deps
-      - run: pnpm --filter ./apps/web test:e2e
+      - env:
+          PLAYWRIGHT: "true"
+        run: pnpm --filter ./apps/web test:e2e
       - name: Print API logs on failure
         if: failure()
         run: |
