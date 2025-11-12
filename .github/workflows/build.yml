@@ -84,7 +84,7 @@ jobs:
       - name: Copy Prisma schema into adapter package
         run: |
           mkdir -p packages/domain-adapters-prisma/prisma
-          cp apps/api/prisma/schema.prisma packages/domain-adapters-prisma/prisma/schema.prisma
+          cp packages/db/prisma/schema.prisma packages/domain-adapters-prisma/prisma/schema.prisma
 
       # 2) Kjør prisma generate via npx mot adapterens schema
       - name: Generate Prisma Client in adapter (using API schema)
