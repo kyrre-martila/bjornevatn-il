@@ -33,11 +33,16 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: pnpm
+
+      - name: Enable Corepack
+        run: corepack enable
 
       - uses: pnpm/action-setup@v4
         with:
-          version: 9
+          version: 10.5.2
+
+      - name: Verify pnpm
+        run: pnpm -v
 
       - name: Install deps
         run: pnpm install --frozen-lockfile
@@ -50,6 +55,8 @@ jobs:
         working-directory: apps/web
         env:
           CI: true
+          # Sett NEXT_TELEMETRY_DISABLED dersom Next.js spyr logging:
+          # NEXT_TELEMETRY_DISABLED: "1"
         run: |
           pnpm dev & DEV_PID=$!
           npx wait-on http://localhost:3000
