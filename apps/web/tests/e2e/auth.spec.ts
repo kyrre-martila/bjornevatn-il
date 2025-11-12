@@ -41,6 +41,7 @@ test.describe("Authentication and CSRF protection", () => {
         headers: {
           "content-type": "application/json",
           location: "/dashboard",
+          "access-control-expose-headers": "location",
         },
       });
     });
