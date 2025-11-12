@@ -79,11 +79,40 @@ jobs:
       - name: Install deps
         run: pnpm install --frozen-lockfile
 
-      - name: Build api
-        working-directory: apps/api
-        run: pnpm build
+      # 🔑 Generer Prisma Client i adapter-pakken mot API-skjemaet
+      - name: Generate Prisma Client for domain-adapters-prisma
+        run: |
+          if [ -f apps/api/prisma/schema.prisma ]; then
+            pnpm --filter @org/domain-adapters-prisma exec prisma generate --schema ../../apps/api/prisma/schema.prisma
+          fi
 
-      - name: Upload api artifact
+      # (Valgfritt) Generer også for API-prosjektet om det bruker @prisma/client direkte
+      - name: Generate Prisma Client for API (optional)
+        run: |
+          if [ -f apps/api/prisma/schema.prisma ]; then
+            pnpm --filter ./apps/api exec prisma generate --schema prisma/schema.prisma
+          fi
+
+      # Bygg API og last opp logg ved feil
+      - name: Build api
+        id: build_api
+        working-directory: apps/api
+        shell: bash
+        run: |
+          set -o pipefail
+          pnpm build 2>&1 | tee ../../api-build.log
+          echo "exit_code=${PIPESTATUS[0]}" >> $GITHUB_OUTPUT
+
+      - name: Upload API build log (on failure)
+        if: steps.build_api.outputs.exit_code != '0'
+        uses: actions/upload-artifact@v4
+        with:
+          name: api-build-log
+          path: api-build.log
+          if-no-files-found: ignore
+
+      - name: Upload api artifact (on success)
+        if: steps.build_api.outputs.exit_code == '0'
         uses: actions/upload-artifact@v4
         with:
           name: api-dist
