@@ -255,7 +255,8 @@ jobs:
           npx wait-on -t 120000 http://localhost:3001
         shell: bash
       - run: echo "✅ Web responded on expected port"
-      - run: npx playwright install --with-deps
+      - name: Install Playwright dependencies
+        run: npx playwright install --with-deps
       - env:
           PLAYWRIGHT: "true"
         run: pnpm --filter ./apps/web test:e2e
