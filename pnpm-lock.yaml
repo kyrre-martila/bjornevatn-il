@@ -182,6 +182,9 @@ importers:
       ajv:
         specifier: ^8.17.1
         version: 8.17.1
+      prisma:
+        specifier: ^5.22.0
+        version: 5.22.0
       cross-env:
         specifier: ^7.0.3
         version: 7.0.3
@@ -257,11 +260,11 @@ importers:
   packages/db:
     dependencies:
       "@prisma/client":
-        specifier: ^5.19.1
+        specifier: ^5.22.0
         version: 5.22.0(prisma@5.22.0)
     devDependencies:
       prisma:
-        specifier: ^5.19.1
+        specifier: ^5.22.0
         version: 5.22.0
 
   packages/domain:
@@ -291,6 +294,9 @@ importers:
       "@types/node":
         specifier: ^20.16.2
         version: 20.19.21
+      prisma:
+        specifier: ^5.22.0
+        version: 5.22.0
       rimraf:
         specifier: ^5.0.10
         version: 5.0.10
