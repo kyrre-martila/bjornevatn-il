@@ -12,8 +12,33 @@ const csp = [
   "style-src 'self'",
   `connect-src 'self' ${apiOrigin}`,
 ].join("; ");
-export function middleware(_req: NextRequest) {
+
+const isProduction = process.env.NODE_ENV === "production";
+const isCi = process.env.CI === "true" || process.env.PLAYWRIGHT === "true";
+
+export function middleware(req: NextRequest) {
   const res = NextResponse.next();
+
   res.headers.set("Content-Security-Policy", csp);
+
+  if (!isProduction) {
+    const existingValue = req.cookies.get("XSRF-TOKEN")?.value;
+    const fallbackValue = isCi || !isProduction ? "test-csrf-token" : undefined;
+    const value = existingValue ?? fallbackValue;
+
+    if (value) {
+      res.cookies.set("XSRF-TOKEN", value, {
+        httpOnly: false,
+        sameSite: "lax",
+        secure: false,
+        path: "/",
+      });
+    }
+  }
+
   return res;
 }
+
+export const config = {
+  matcher: ["/login", "/((?!api|_next/static|_next/image|favicon.ico).*)"],
+};
