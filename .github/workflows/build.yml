@@ -31,11 +31,16 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: pnpm
+
+      - name: Enable Corepack
+        run: corepack enable
 
       - uses: pnpm/action-setup@v4
         with:
-          version: 9
+          version: 10.5.2
+
+      - name: Verify pnpm
+        run: pnpm -v
 
       - name: Install deps
         run: pnpm install --frozen-lockfile
@@ -60,11 +65,16 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: pnpm
+
+      - name: Enable Corepack
+        run: corepack enable
 
       - uses: pnpm/action-setup@v4
         with:
-          version: 9
+          version: 10.5.2
+
+      - name: Verify pnpm
+        run: pnpm -v
 
       - name: Install deps
         run: pnpm install --frozen-lockfile
