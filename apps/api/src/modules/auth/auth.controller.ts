@@ -69,6 +69,9 @@ class TokenPairResponseDto {
 
   @ApiProperty()
   refreshToken!: string;
+
+  @ApiProperty({ example: "/dashboard", required: false })
+  redirect?: string;
 }
 
 @ApiTags("auth")
@@ -118,7 +121,8 @@ export class AuthController {
     if (!token) throw new UnauthorizedException("Refresh token required");
     const tokens = await this.auth.refresh(token);
     setAuthCookies(res, tokens);
-    return { ok: true, ...tokens };
+    res.setHeader("Location", "/dashboard");
+    return { ok: true, ...tokens, redirect: "/dashboard" };
   }
 
   @Post("logout")
@@ -164,6 +168,7 @@ export class AuthController {
       password,
     );
     setAuthCookies(res, { accessToken, refreshToken });
-    return { ok: true, accessToken, refreshToken };
+    res.setHeader("Location", "/dashboard");
+    return { ok: true, accessToken, refreshToken, redirect: "/dashboard" };
   }
 }
