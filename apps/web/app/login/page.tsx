@@ -1,17 +1,69 @@
-import React from 'react';
+"use client";
+
+import React, { useState, FormEvent } from "react";
+import { useRouter } from "next/navigation";
+import type { AuthResponse } from "../../lib/api/auth";
+import { login as loginRequest, AuthError } from "../../lib/api/auth";
 
 export default function LoginPage() {
+  const router = useRouter();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setError(null);
+
+    if (!email.trim() || !password) {
+      setError("Please enter both email and password.");
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const result: AuthResponse = await loginRequest({
+        email: email.trim(),
+        password,
+      });
+
+      if (typeof window !== "undefined") {
+        const payload = {
+          user: result.user,
+          accessToken: result.accessToken,
+        };
+        window.localStorage.setItem("bp_auth", JSON.stringify(payload));
+      }
+
+      router.push("/");
+    } catch (err) {
+      if (err instanceof AuthError) {
+        setError(
+          err.message || "Could not sign in. Please check your credentials.",
+        );
+      } else {
+        setError("Could not sign in. Please try again.");
+      }
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
   return (
     <section
       aria-labelledby="login-heading"
       className="auth auth--login"
     >
       <div className="auth__inner">
+        {/* Visual / hero side */}
         <div className="auth__visual" aria-hidden="true">
           <div className="auth__visual-overlay">
             <p className="auth__tagline">Blueprint</p>
             <h2 className="auth__visual-title">
-              Build once.<br />Deploy everywhere.
+              Build once.
+              <br />
+              Deploy everywhere.
             </h2>
             <p className="auth__visual-subtitle">
               A fullstack starter that gives you a solid foundation for web, API and mobile —
@@ -20,6 +72,7 @@ export default function LoginPage() {
           </div>
         </div>
 
+        {/* Login panel */}
         <div className="auth__panel">
           <div className="auth__panel-inner">
             <header className="auth__header">
@@ -32,7 +85,7 @@ export default function LoginPage() {
               </p>
             </header>
 
-            <form className="auth__form" noValidate>
+            <form className="auth__form" noValidate onSubmit={handleSubmit}>
               <div className="auth__field">
                 <label htmlFor="email" className="auth__label">
                   Email
@@ -44,6 +97,9 @@ export default function LoginPage() {
                   autoComplete="email"
                   required
                   className="auth__input"
+                  value={email}
+                  onChange={(event) => setEmail(event.target.value)}
+                  disabled={submitting}
                 />
               </div>
 
@@ -52,7 +108,10 @@ export default function LoginPage() {
                   <label htmlFor="password" className="auth__label">
                     Password
                   </label>
-                  <a className="auth__link auth__link--muted" href="/forgot-password">
+                  <a
+                    className="auth__link auth__link--muted"
+                    href="/forgot-password"
+                  >
                     Forgot password?
                   </a>
                 </div>
@@ -63,16 +122,29 @@ export default function LoginPage() {
                   autoComplete="current-password"
                   required
                   className="auth__input"
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                  disabled={submitting}
                 />
               </div>
 
-              <button type="submit" className="auth__submit">
-                Sign in
+              {error && (
+                <p className="auth__error" role="alert">
+                  {error}
+                </p>
+              )}
+
+              <button
+                type="submit"
+                className="auth__submit"
+                disabled={submitting}
+              >
+                {submitting ? "Signing in…" : "Sign in"}
               </button>
             </form>
 
             <p className="auth__footer-text">
-              Don&apos;t have an account?{' '}
+              Don&apos;t have an account?{" "}
               <a className="auth__link" href="/register">
                 Create one
               </a>
