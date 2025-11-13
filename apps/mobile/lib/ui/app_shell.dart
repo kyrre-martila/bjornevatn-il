@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
-import '../theme/app_tokens.dart';
+
+import 'package:blueprint_mobile/auth/auth_controller.dart';
+import 'package:blueprint_mobile/theme/app_tokens.dart';
 
 class AppShell extends StatefulWidget {
   const AppShell({super.key});
@@ -12,59 +14,11 @@ class _AppShellState extends State<AppShell> {
   int _currentIndex = 0;
 
   void _onNavTap(int index) {
-    setState(() {
-      _currentIndex = index;
-    });
+    setState(() => _currentIndex = index);
   }
 
-  void _openMenu() {
-    showModalBottomSheet<void>(
-      context: context,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.l)),
-      ),
-      builder: (ctx) {
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.all(AppSpacing.l),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Navigation',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
-                ),
-                const SizedBox(height: AppSpacing.m),
-                _MenuItem(
-                  icon: Icons.dashboard_outlined,
-                  label: 'Dashboard',
-                  onTap: () { Navigator.of(ctx).pop(); _onNavTap(0); },
-                ),
-                _MenuItem(
-                  icon: Icons.api_outlined,
-                  label: 'API',
-                  onTap: () { Navigator.of(ctx).pop(); _onNavTap(1); },
-                ),
-                _MenuItem(
-                  icon: Icons.phone_android_outlined,
-                  label: 'Mobile',
-                  onTap: () { Navigator.of(ctx).pop(); _onNavTap(2); },
-                ),
-                _MenuItem(
-                  icon: Icons.settings_outlined,
-                  label: 'Settings',
-                  onTap: () { Navigator.of(ctx).pop(); _onNavTap(3); },
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
+  Future<void> _logout(BuildContext context) async {
+    await context.auth.logout();
   }
 
   @override
@@ -76,39 +30,85 @@ class _AppShellState extends State<AppShell> {
       const _PlaceholderPage(title: 'Settings'),
     ];
 
+    final navItems = const [
+      _NavigationItem(icon: Icons.dashboard_outlined, label: 'Dashboard'),
+      _NavigationItem(icon: Icons.api_outlined, label: 'API'),
+      _NavigationItem(icon: Icons.phone_android_outlined, label: 'Mobile'),
+      _NavigationItem(icon: Icons.settings_outlined, label: 'Settings'),
+    ];
+
+    final isWide = MediaQuery.of(context).size.width >= 900;
+
     return Scaffold(
       appBar: AppBar(
         title: const _AppBarTitle(),
         actions: [
           IconButton(
-            onPressed: _openMenu,
-            icon: const Icon(Icons.menu),
-            tooltip: 'Open navigation',
+            onPressed: () => _logout(context),
+            icon: const Icon(Icons.logout),
+            tooltip: 'Log out',
           ),
         ],
       ),
       body: SafeArea(
-        child: IndexedStack(
-          index: _currentIndex,
-          children: pages,
-        ),
+        child: isWide
+            ? Row(
+                children: [
+                  NavigationRail(
+                    selectedIndex: _currentIndex,
+                    onDestinationSelected: _onNavTap,
+                    labelType: NavigationRailLabelType.all,
+                    destinations: navItems
+                        .map(
+                          (item) => NavigationRailDestination(
+                            icon: Icon(item.icon),
+                            selectedIcon: Icon(item.selectedIcon ?? item.icon),
+                            label: Text(item.label),
+                          ),
+                        )
+                        .toList(),
+                  ),
+                  const VerticalDivider(width: 1),
+                  Expanded(
+                    child: IndexedStack(
+                      index: _currentIndex,
+                      children: pages,
+                    ),
+                  ),
+                ],
+              )
+            : IndexedStack(
+                index: _currentIndex,
+                children: pages,
+              ),
       ),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _currentIndex,
-        onTap: _onNavTap,
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.dashboard_outlined), label: 'Dashboard'),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.api_outlined), label: 'API'),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.phone_android_outlined), label: 'Mobile'),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.settings_outlined), label: 'Settings'),
-        ],
-      ),
+      bottomNavigationBar: isWide
+          ? null
+          : BottomNavigationBar(
+              currentIndex: _currentIndex,
+              onTap: _onNavTap,
+              items: [
+                for (final item in navItems)
+                  BottomNavigationBarItem(
+                    icon: Icon(item.icon),
+                    label: item.label,
+                  ),
+              ],
+            ),
     );
   }
+}
+
+class _NavigationItem {
+  const _NavigationItem({
+    required this.icon,
+    required this.label,
+    this.selectedIcon,
+  });
+
+  final IconData icon;
+  final IconData? selectedIcon;
+  final String label;
 }
 
 class _AppBarTitle extends StatelessWidget {
@@ -148,7 +148,8 @@ class _HomePage extends StatelessWidget {
           ),
           const SizedBox(height: AppSpacing.l),
           Wrap(
-            spacing: AppSpacing.s, runSpacing: AppSpacing.s,
+            spacing: AppSpacing.s,
+            runSpacing: AppSpacing.s,
             children: [
               FilledButton(onPressed: () {}, child: const Text('Start building')),
               OutlinedButton(onPressed: () {}, child: const Text('Explore the code')),
@@ -167,30 +168,5 @@ class _PlaceholderPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Center(child: Text('$title page', style: Theme.of(context).textTheme.titleMedium));
-  }
-}
-
-class _MenuItem extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final VoidCallback onTap;
-  const _MenuItem({required this.icon, required this.label, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      borderRadius: BorderRadius.circular(AppRadius.m),
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: AppSpacing.s),
-        child: Row(
-          children: [
-            Icon(icon, size: 20, color: AppColors.base),
-            const SizedBox(width: AppSpacing.m),
-            Text(label, style: Theme.of(context).textTheme.bodyMedium),
-          ],
-        ),
-      ),
-    );
   }
 }

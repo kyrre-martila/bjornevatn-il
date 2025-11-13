@@ -24,6 +24,10 @@ class AppColors {
   static const neutral400 = Color(0xFFA3A3A3);
   static const neutral600 = Color(0xFF525252);
   static const neutral900 = Color(0xFF171717);
+
+  // Feedback
+  static const error = Color(0xFFB3261E);
+  static const errorSoft = Color(0xFFFFEDEA);
 }
 
 class AppSpacing {
