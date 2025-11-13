@@ -42,34 +42,22 @@ class _AppShellState extends State<AppShell> {
                 _MenuItem(
                   icon: Icons.dashboard_outlined,
                   label: 'Dashboard',
-                  onTap: () {
-                    Navigator.of(ctx).pop();
-                    _onNavTap(0);
-                  },
+                  onTap: () { Navigator.of(ctx).pop(); _onNavTap(0); },
                 ),
                 _MenuItem(
                   icon: Icons.api_outlined,
                   label: 'API',
-                  onTap: () {
-                    Navigator.of(ctx).pop();
-                    _onNavTap(1);
-                  },
+                  onTap: () { Navigator.of(ctx).pop(); _onNavTap(1); },
                 ),
                 _MenuItem(
                   icon: Icons.phone_android_outlined,
                   label: 'Mobile',
-                  onTap: () {
-                    Navigator.of(ctx).pop();
-                    _onNavTap(2);
-                  },
+                  onTap: () { Navigator.of(ctx).pop(); _onNavTap(2); },
                 ),
                 _MenuItem(
                   icon: Icons.settings_outlined,
                   label: 'Settings',
-                  onTap: () {
-                    Navigator.of(ctx).pop();
-                    _onNavTap(3);
-                  },
+                  onTap: () { Navigator.of(ctx).pop(); _onNavTap(3); },
                 ),
               ],
             ),
@@ -110,21 +98,13 @@ class _AppShellState extends State<AppShell> {
         onTap: _onNavTap,
         items: const [
           BottomNavigationBarItem(
-            icon: Icon(Icons.dashboard_outlined),
-            label: 'Dashboard',
-          ),
+            icon: Icon(Icons.dashboard_outlined), label: 'Dashboard'),
           BottomNavigationBarItem(
-            icon: Icon(Icons.api_outlined),
-            label: 'API',
-          ),
+            icon: Icon(Icons.api_outlined), label: 'API'),
           BottomNavigationBarItem(
-            icon: Icon(Icons.phone_android_outlined),
-            label: 'Mobile',
-          ),
+            icon: Icon(Icons.phone_android_outlined), label: 'Mobile'),
           BottomNavigationBarItem(
-            icon: Icon(Icons.settings_outlined),
-            label: 'Settings',
-          ),
+            icon: Icon(Icons.settings_outlined), label: 'Settings'),
         ],
       ),
     );
@@ -136,22 +116,12 @@ class _AppBarTitle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final textTheme = Theme.of(context).textTheme;
+    final t = Theme.of(context).textTheme;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'Blueprint',
-          style: textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        Text(
-          'Fullstack starter',
-          style: textTheme.bodySmall?.copyWith(
-            color: AppColors.baseMuted,
-          ),
-        ),
+        Text('Blueprint', style: t.titleMedium?.copyWith(fontWeight: FontWeight.w600)),
+        Text('Fullstack starter', style: t.bodySmall?.copyWith(color: AppColors.baseMuted)),
       ],
     );
   }
@@ -162,47 +132,26 @@ class _HomePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final textTheme = Theme.of(context).textTheme;
-
+    final t = Theme.of(context).textTheme;
     return Padding(
       padding: const EdgeInsets.all(AppSpacing.l),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Starter kit',
-            style: textTheme.bodySmall?.copyWith(
-              letterSpacing: 0.12,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
+          Text('Starter kit', style: t.bodySmall?.copyWith(letterSpacing: 0.12, fontWeight: FontWeight.w500)),
           const SizedBox(height: AppSpacing.s),
-          Text(
-            'Hello world.\nRelease your fantasy.',
-            style: textTheme.titleLarge?.copyWith(
-              fontWeight: FontWeight.w700,
-            ),
-          ),
+          Text('Hello world.\nRelease your fantasy.', style: t.titleLarge?.copyWith(fontWeight: FontWeight.w700)),
           const SizedBox(height: AppSpacing.m),
           Text(
             'This mobile app mirrors the web blueprint with shared design ideas and a clean shell for your features.',
-            style: textTheme.bodyMedium?.copyWith(
-              color: AppColors.baseMuted,
-            ),
+            style: t.bodyMedium?.copyWith(color: AppColors.baseMuted),
           ),
           const SizedBox(height: AppSpacing.l),
           Wrap(
-            spacing: AppSpacing.s,
-            runSpacing: AppSpacing.s,
+            spacing: AppSpacing.s, runSpacing: AppSpacing.s,
             children: [
-              FilledButton(
-                onPressed: () {},
-                child: const Text('Start building'),
-              ),
-              OutlinedButton(
-                onPressed: () {},
-                child: const Text('Explore the code'),
-              ),
+              FilledButton(onPressed: () {}, child: const Text('Start building')),
+              OutlinedButton(onPressed: () {}, child: const Text('Explore the code')),
             ],
           ),
         ],
@@ -213,18 +162,11 @@ class _HomePage extends StatelessWidget {
 
 class _PlaceholderPage extends StatelessWidget {
   final String title;
-
   const _PlaceholderPage({required this.title});
 
   @override
   Widget build(BuildContext context) {
-    final textTheme = Theme.of(context).textTheme;
-    return Center(
-      child: Text(
-        '$title page',
-        style: textTheme.titleMedium,
-      ),
-    );
+    return Center(child: Text('$title page', style: Theme.of(context).textTheme.titleMedium));
   }
 }
 
@@ -232,12 +174,7 @@ class _MenuItem extends StatelessWidget {
   final IconData icon;
   final String label;
   final VoidCallback onTap;
-
-  const _MenuItem({
-    required this.icon,
-    required this.label,
-    required this.onTap,
-  });
+  const _MenuItem({required this.icon, required this.label, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -245,9 +182,7 @@ class _MenuItem extends StatelessWidget {
       borderRadius: BorderRadius.circular(AppRadius.m),
       onTap: onTap,
       child: Padding(
-        padding: const EdgeInsets.symmetric(
-          vertical: AppSpacing.s,
-        ),
+        padding: const EdgeInsets.symmetric(vertical: AppSpacing.s),
         child: Row(
           children: [
             Icon(icon, size: 20, color: AppColors.base),

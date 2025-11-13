@@ -3,21 +3,18 @@ import 'app_tokens.dart';
 
 class AppTheme {
   static ThemeData get light {
-    final baseScheme = ColorScheme.fromSeed(
-      seedColor: AppColors.primary,
+    final colorScheme = ColorScheme(
       brightness: Brightness.light,
-    );
-
-    final colorScheme = baseScheme.copyWith(
       primary: AppColors.primary,
       onPrimary: Colors.white,
       secondary: AppColors.secondary,
       onSecondary: Colors.white,
+      error: Colors.red,
+      onError: Colors.white,
       background: AppColors.neutral,
       onBackground: AppColors.base,
       surface: AppColors.neutralSoft,
       onSurface: AppColors.base,
-      tertiary: AppColors.accent,
     );
 
     final baseTextTheme = Typography.material2021().black.apply(
@@ -44,6 +41,26 @@ class AppTheme {
         titleTextStyle: baseTextTheme.titleMedium?.copyWith(
           fontWeight: FontWeight.w600,
           color: colorScheme.onSurface,
+        ),
+      ),
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: AppColors.neutral0,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(AppRadius.m),
+          borderSide: const BorderSide(color: AppColors.neutral200),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(AppRadius.m),
+          borderSide: const BorderSide(color: AppColors.neutral200),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(AppRadius.m),
+          borderSide: const BorderSide(color: AppColors.primary, width: 2),
+        ),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.m,
+          vertical: AppSpacing.s,
         ),
       ),
       bottomNavigationBarTheme: BottomNavigationBarThemeData(
