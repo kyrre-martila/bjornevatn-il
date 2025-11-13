@@ -23,9 +23,7 @@ class ForgotPasswordScreen extends StatelessWidget {
             style: t.bodySmall?.copyWith(color: AppColors.baseMuted),
           ),
           const SizedBox(height: AppSpacing.l),
-          TextField(
-            decoration: const InputDecoration(labelText: 'Email'),
-          ),
+          TextField(decoration: const InputDecoration(labelText: 'Email')),
           const SizedBox(height: AppSpacing.l),
           SizedBox(
             width: double.infinity,

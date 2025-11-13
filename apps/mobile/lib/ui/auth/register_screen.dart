@@ -44,7 +44,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
       builder: (context, _) {
         final state = controller.state;
         final isLoading = state.status == AuthStatus.authenticating;
-        final error = state.status == AuthStatus.error ? state.errorMessage : null;
+        final error = state.status == AuthStatus.error
+            ? state.errorMessage
+            : null;
 
         return AuthFlowShell(
           child: Column(
@@ -60,7 +62,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     TextFormField(
                       controller: _nameCtrl,
                       enabled: !isLoading,
-                      decoration: const InputDecoration(labelText: 'Name (optional)'),
+                      decoration: const InputDecoration(
+                        labelText: 'Name (optional)',
+                      ),
                     ),
                     const SizedBox(height: AppSpacing.m),
                     TextFormField(
@@ -100,7 +104,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             ? const SizedBox(
                                 width: 20,
                                 height: 20,
-                                child: CircularProgressIndicator(strokeWidth: 2),
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
                               )
                             : const Text('Create account'),
                       ),
@@ -111,7 +117,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
               const SizedBox(height: AppSpacing.m),
               Center(
                 child: TextButton(
-                  onPressed: isLoading ? null : () => Navigator.of(context).pop(),
+                  onPressed: isLoading
+                      ? null
+                      : () => Navigator.of(context).pop(),
                   child: const Text('Back to sign in'),
                 ),
               ),

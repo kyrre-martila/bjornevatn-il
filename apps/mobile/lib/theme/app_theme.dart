@@ -18,9 +18,9 @@ class AppTheme {
     );
 
     final baseTextTheme = Typography.material2021().black.apply(
-          bodyColor: AppColors.base,
-          displayColor: AppColors.base,
-        );
+      bodyColor: AppColors.base,
+      displayColor: AppColors.base,
+    );
 
     return ThemeData(
       useMaterial3: true,

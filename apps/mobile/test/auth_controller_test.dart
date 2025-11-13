@@ -8,17 +8,39 @@ class _MemorySecureStorage extends FlutterSecureStorage {
   final Map<String, String?> _store = {};
 
   @override
-  Future<void> write({required String key, String? value, IOSOptions? iOptions, AndroidOptions? aOptions, LinuxOptions? lOptions, MacOsOptions? mOptions, WindowsOptions? wOptions}) async {
+  Future<void> write({
+    required String key,
+    String? value,
+    IOSOptions? iOptions,
+    AndroidOptions? aOptions,
+    LinuxOptions? lOptions,
+    MacOsOptions? mOptions,
+    WindowsOptions? wOptions,
+  }) async {
     _store[key] = value;
   }
 
   @override
-  Future<String?> read({required String key, IOSOptions? iOptions, AndroidOptions? aOptions, LinuxOptions? lOptions, MacOsOptions? mOptions, WindowsOptions? wOptions}) async {
+  Future<String?> read({
+    required String key,
+    IOSOptions? iOptions,
+    AndroidOptions? aOptions,
+    LinuxOptions? lOptions,
+    MacOsOptions? mOptions,
+    WindowsOptions? wOptions,
+  }) async {
     return _store[key];
   }
 
   @override
-  Future<void> delete({required String key, IOSOptions? iOptions, AndroidOptions? aOptions, LinuxOptions? lOptions, MacOsOptions? mOptions, WindowsOptions? wOptions}) async {
+  Future<void> delete({
+    required String key,
+    IOSOptions? iOptions,
+    AndroidOptions? aOptions,
+    LinuxOptions? lOptions,
+    MacOsOptions? mOptions,
+    WindowsOptions? wOptions,
+  }) async {
     _store.remove(key);
   }
 }
@@ -31,7 +53,10 @@ class _FakeAuthService extends AuthService {
   AuthException? registerError;
 
   @override
-  Future<AuthSession> login({required String email, required String password}) async {
+  Future<AuthSession> login({
+    required String email,
+    required String password,
+  }) async {
     if (loginError != null) throw loginError!;
     final session = AuthSession(
       user: AuthUser(id: '1', email: email),
@@ -42,7 +67,11 @@ class _FakeAuthService extends AuthService {
   }
 
   @override
-  Future<AuthSession> register({required String email, required String password, String? name}) async {
+  Future<AuthSession> register({
+    required String email,
+    required String password,
+    String? name,
+  }) async {
     if (registerError != null) throw registerError!;
     final session = AuthSession(
       user: AuthUser(id: '2', email: email, name: name),
@@ -71,10 +100,13 @@ void main() {
       controller = AuthController(service);
     });
 
-    test('restoreSession sets unauthenticated when no session stored', () async {
-      await controller.restoreSession();
-      expect(controller.state.status, AuthStatus.unauthenticated);
-    });
+    test(
+      'restoreSession sets unauthenticated when no session stored',
+      () async {
+        await controller.restoreSession();
+        expect(controller.state.status, AuthStatus.unauthenticated);
+      },
+    );
 
     test('login success updates state to authenticated', () async {
       await controller.login('user@example.com', 'password');

@@ -105,7 +105,10 @@ class _AuthVisualPanel extends StatelessWidget {
                 gradient: LinearGradient(
                   begin: Alignment.bottomLeft,
                   end: Alignment.topRight,
-                  colors: [Color.fromARGB(100, 0, 0, 0), Color.fromARGB(0, 0, 0, 0)],
+                  colors: [
+                    Color.fromARGB(100, 0, 0, 0),
+                    Color.fromARGB(0, 0, 0, 0),
+                  ],
                 ),
               ),
             ),

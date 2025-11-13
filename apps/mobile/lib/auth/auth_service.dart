@@ -13,11 +13,7 @@ class AuthUser {
   final String email;
   final String? name;
 
-  const AuthUser({
-    required this.id,
-    required this.email,
-    this.name,
-  });
+  const AuthUser({required this.id, required this.email, this.name});
 
   factory AuthUser.fromJson(Map<String, dynamic> json) {
     return AuthUser(
@@ -27,11 +23,7 @@ class AuthUser {
     );
   }
 
-  Map<String, dynamic> toJson() => {
-        'id': id,
-        'email': email,
-        'name': name,
-      };
+  Map<String, dynamic> toJson() => {'id': id, 'email': email, 'name': name};
 }
 
 class AuthSession {
@@ -48,9 +40,9 @@ class AuthSession {
   }
 
   Map<String, dynamic> toJson() => {
-        'user': user.toJson(),
-        'accessToken': accessToken,
-      };
+    'user': user.toJson(),
+    'accessToken': accessToken,
+  };
 }
 
 class AuthException implements Exception {
@@ -65,8 +57,8 @@ class AuthException implements Exception {
 
 class AuthService {
   AuthService({Dio? client, FlutterSecureStorage? storage})
-      : _client = client ?? Dio(BaseOptions(baseUrl: kApiBaseUrl)),
-        _storage = storage ?? const FlutterSecureStorage();
+    : _client = client ?? Dio(BaseOptions(baseUrl: kApiBaseUrl)),
+      _storage = storage ?? const FlutterSecureStorage();
 
   final Dio _client;
   final FlutterSecureStorage _storage;
@@ -170,9 +162,9 @@ class AuthService {
     try {
       final response = await _client.get<Map<String, dynamic>>(
         '/auth/me',
-        options: Options(headers: {
-          'Authorization': 'Bearer \${session.accessToken}',
-        }),
+        options: Options(
+          headers: {'Authorization': 'Bearer \${session.accessToken}'},
+        ),
       );
       final data = response.data;
       if (response.statusCode == 200 && data != null) {
@@ -196,7 +188,8 @@ class AuthService {
   AuthException _mapDioException(DioException error) {
     final statusCode = error.response?.statusCode;
     final data = error.response?.data;
-    final message = _readErrorMessage(data) ??
+    final message =
+        _readErrorMessage(data) ??
         error.message ??
         'Something went wrong. Please try again.';
     return AuthException(message, statusCode);

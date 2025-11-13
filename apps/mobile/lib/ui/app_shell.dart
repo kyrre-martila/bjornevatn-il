@@ -70,17 +70,11 @@ class _AppShellState extends State<AppShell> {
                   ),
                   const VerticalDivider(width: 1),
                   Expanded(
-                    child: IndexedStack(
-                      index: _currentIndex,
-                      children: pages,
-                    ),
+                    child: IndexedStack(index: _currentIndex, children: pages),
                   ),
                 ],
               )
-            : IndexedStack(
-                index: _currentIndex,
-                children: pages,
-              ),
+            : IndexedStack(index: _currentIndex, children: pages),
       ),
       bottomNavigationBar: isWide
           ? null
@@ -120,8 +114,14 @@ class _AppBarTitle extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Blueprint', style: t.titleMedium?.copyWith(fontWeight: FontWeight.w600)),
-        Text('Fullstack starter', style: t.bodySmall?.copyWith(color: AppColors.baseMuted)),
+        Text(
+          'Blueprint',
+          style: t.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+        ),
+        Text(
+          'Fullstack starter',
+          style: t.bodySmall?.copyWith(color: AppColors.baseMuted),
+        ),
       ],
     );
   }
@@ -138,9 +138,18 @@ class _HomePage extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Starter kit', style: t.bodySmall?.copyWith(letterSpacing: 0.12, fontWeight: FontWeight.w500)),
+          Text(
+            'Starter kit',
+            style: t.bodySmall?.copyWith(
+              letterSpacing: 0.12,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
           const SizedBox(height: AppSpacing.s),
-          Text('Hello world.\nRelease your fantasy.', style: t.titleLarge?.copyWith(fontWeight: FontWeight.w700)),
+          Text(
+            'Hello world.\nRelease your fantasy.',
+            style: t.titleLarge?.copyWith(fontWeight: FontWeight.w700),
+          ),
           const SizedBox(height: AppSpacing.m),
           Text(
             'This mobile app mirrors the web blueprint with shared design ideas and a clean shell for your features.',
@@ -151,8 +160,14 @@ class _HomePage extends StatelessWidget {
             spacing: AppSpacing.s,
             runSpacing: AppSpacing.s,
             children: [
-              FilledButton(onPressed: () {}, child: const Text('Start building')),
-              OutlinedButton(onPressed: () {}, child: const Text('Explore the code')),
+              FilledButton(
+                onPressed: () {},
+                child: const Text('Start building'),
+              ),
+              OutlinedButton(
+                onPressed: () {},
+                child: const Text('Explore the code'),
+              ),
             ],
           ),
         ],
@@ -167,6 +182,11 @@ class _PlaceholderPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Center(child: Text('$title page', style: Theme.of(context).textTheme.titleMedium));
+    return Center(
+      child: Text(
+        '$title page',
+        style: Theme.of(context).textTheme.titleMedium,
+      ),
+    );
   }
 }

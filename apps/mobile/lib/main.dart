@@ -74,7 +74,9 @@ class _AuthFlowNavigator extends StatelessWidget {
           case '/register':
             return MaterialPageRoute(builder: (_) => const RegisterScreen());
           case '/forgot-password':
-            return MaterialPageRoute(builder: (_) => const ForgotPasswordScreen());
+            return MaterialPageRoute(
+              builder: (_) => const ForgotPasswordScreen(),
+            );
           case '/login':
           case '/':
           default:

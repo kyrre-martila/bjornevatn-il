@@ -29,10 +29,7 @@ class _LoginScreenState extends State<LoginScreen> {
     if (!(_formKey.currentState?.validate() ?? false)) {
       return;
     }
-    await controller.login(
-      _emailCtrl.text.trim(),
-      _passwordCtrl.text,
-    );
+    await controller.login(_emailCtrl.text.trim(), _passwordCtrl.text);
   }
 
   @override
@@ -43,7 +40,9 @@ class _LoginScreenState extends State<LoginScreen> {
       builder: (context, _) {
         final state = controller.state;
         final isLoading = state.status == AuthStatus.authenticating;
-        final error = state.status == AuthStatus.error ? state.errorMessage : null;
+        final error = state.status == AuthStatus.error
+            ? state.errorMessage
+            : null;
 
         return AuthFlowShell(
           child: Column(
@@ -62,7 +61,9 @@ class _LoginScreenState extends State<LoginScreen> {
                         controller: _emailCtrl,
                         keyboardType: TextInputType.emailAddress,
                         enabled: !isLoading,
-                        decoration: const InputDecoration(hintText: 'you@example.com'),
+                        decoration: const InputDecoration(
+                          hintText: 'you@example.com',
+                        ),
                         validator: (v) {
                           if (v == null || v.trim().isEmpty) {
                             return 'Please enter your email';
@@ -77,9 +78,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       children: [
                         Text(
                           'Password',
-                          style: Theme.of(context)
-                              .textTheme
-                              .bodySmall
+                          style: Theme.of(context).textTheme.bodySmall
                               ?.copyWith(fontWeight: FontWeight.w500),
                         ),
                         TextButton(
@@ -88,7 +87,8 @@ class _LoginScreenState extends State<LoginScreen> {
                               : () {
                                   Navigator.of(context).push(
                                     MaterialPageRoute(
-                                      builder: (_) => const ForgotPasswordScreen(),
+                                      builder: (_) =>
+                                          const ForgotPasswordScreen(),
                                     ),
                                   );
                                 },
@@ -117,7 +117,9 @@ class _LoginScreenState extends State<LoginScreen> {
                             ? const SizedBox(
                                 width: 20,
                                 height: 20,
-                                child: CircularProgressIndicator(strokeWidth: 2),
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
                               )
                             : const Text('Sign in'),
                       ),
@@ -131,10 +133,9 @@ class _LoginScreenState extends State<LoginScreen> {
                 children: [
                   Text(
                     "Don't have an account?",
-                    style: Theme.of(context)
-                        .textTheme
-                        .bodySmall
-                        ?.copyWith(color: AppColors.baseMuted),
+                    style: Theme.of(
+                      context,
+                    ).textTheme.bodySmall?.copyWith(color: AppColors.baseMuted),
                   ),
                   TextButton(
                     onPressed: isLoading
