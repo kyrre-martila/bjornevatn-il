@@ -1,8 +1,8 @@
 "use client";
 
 import React from "react";
-import Link from "next/link";
-import { usePathname } from "next/navigation";
+
+import { PrimaryNav } from "./PrimaryNav";
 
 type NavItem = {
   href: string;
@@ -17,20 +17,9 @@ type AppShellProps = {
 export function AppShell({ children, navItems }: AppShellProps) {
   const [isNavOpen, setIsNavOpen] = React.useState(false);
   const toggleNav = () => setIsNavOpen((open) => !open);
-  const pathname = usePathname();
-
-  const isActive = React.useCallback(
-    (href: string) => {
-      if (!pathname) return false;
-
-      if (href === "/") {
-        return pathname === "/";
-      }
-
-      return href !== "/" && pathname.startsWith(href);
-    },
-    [pathname],
-  );
+  const handleNavItemClick = React.useCallback(() => {
+    setIsNavOpen(false);
+  }, []);
 
   return (
     <>
@@ -66,39 +55,18 @@ export function AppShell({ children, navItems }: AppShellProps) {
             aria-label="Primary navigation"
             className={`app-header__nav${isNavOpen ? " app-header__nav--open" : ""}`}
           >
-            {navItems.map((item) => {
-              const active = isActive(item.href);
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={`app-header__nav-link${active ? " app-header__nav-link--active" : ""}`}
-                >
-                  {item.label}
-                </Link>
-              );
-            })}
+            <PrimaryNav
+              items={navItems}
+              variant="header"
+              onItemClick={handleNavItemClick}
+            />
           </nav>
         </header>
 
         <div className="app-layout">
           <nav className="app-sidebar" aria-label="Primary navigation">
             <div className="app-sidebar__title">Navigation</div>
-            <ul className="app-sidebar__nav">
-              {navItems.map((item) => {
-                const active = isActive(item.href);
-                return (
-                  <li key={item.href}>
-                    <Link
-                      href={item.href}
-                      className={`app-sidebar__nav-link${active ? " app-sidebar__nav-link--active" : ""}`}
-                    >
-                      {item.label}
-                    </Link>
-                  </li>
-                );
-              })}
-            </ul>
+            <PrimaryNav items={navItems} variant="sidebar" />
           </nav>
 
           <main id="main-content" role="main" className="app-main">
