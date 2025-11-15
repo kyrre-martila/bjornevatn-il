@@ -1,6 +1,8 @@
 "use client";
 
 import React from "react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 
 type NavItem = {
   href: string;
@@ -15,6 +17,20 @@ type AppShellProps = {
 export function AppShell({ children, navItems }: AppShellProps) {
   const [isNavOpen, setIsNavOpen] = React.useState(false);
   const toggleNav = () => setIsNavOpen((open) => !open);
+  const pathname = usePathname();
+
+  const isActive = React.useCallback(
+    (href: string) => {
+      if (!pathname) return false;
+
+      if (href === "/") {
+        return pathname === "/";
+      }
+
+      return href !== "/" && pathname.startsWith(href);
+    },
+    [pathname],
+  );
 
   return (
     <>
@@ -50,11 +66,18 @@ export function AppShell({ children, navItems }: AppShellProps) {
             aria-label="Primary navigation"
             className={`app-header__nav${isNavOpen ? " app-header__nav--open" : ""}`}
           >
-            {navItems.map((item) => (
-              <a key={item.href} href={item.href} className="app-header__nav-link">
-                {item.label}
-              </a>
-            ))}
+            {navItems.map((item) => {
+              const active = isActive(item.href);
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={`app-header__nav-link${active ? " app-header__nav-link--active" : ""}`}
+                >
+                  {item.label}
+                </Link>
+              );
+            })}
           </nav>
         </header>
 
@@ -62,11 +85,19 @@ export function AppShell({ children, navItems }: AppShellProps) {
           <nav className="app-sidebar" aria-label="Primary navigation">
             <div className="app-sidebar__title">Navigation</div>
             <ul className="app-sidebar__nav">
-              {navItems.map((item) => (
-                <li key={item.href}>
-                  <a href={item.href}>{item.label}</a>
-                </li>
-              ))}
+              {navItems.map((item) => {
+                const active = isActive(item.href);
+                return (
+                  <li key={item.href}>
+                    <Link
+                      href={item.href}
+                      className={`app-sidebar__nav-link${active ? " app-sidebar__nav-link--active" : ""}`}
+                    >
+                      {item.label}
+                    </Link>
+                  </li>
+                );
+              })}
             </ul>
           </nav>
 

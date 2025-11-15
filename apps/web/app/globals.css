@@ -134,6 +134,11 @@ button:focus-visible {
   font-size: var(--text-s);
 }
 
+.app-header__nav-link--active {
+  color: var(--color-primary);
+  font-weight: 600;
+}
+
 .app-header__nav-link:hover,
 .app-header__nav-link:focus-visible {
   color: var(--color-primary);
@@ -158,14 +163,25 @@ button:focus-visible {
   gap: var(--space-s);
 }
 
-.app-sidebar__nav a {
+.app-sidebar__nav-link {
+  display: block;
   font-size: var(--text-m);
   color: inherit;
+  padding: var(--space-2xs) var(--space-xs);
+  border-radius: var(--radius-s);
+  transition: color 0.2s ease, background-color 0.2s ease;
 }
 
-.app-sidebar__nav a:hover,
-.app-sidebar__nav a:focus-visible {
+.app-sidebar__nav-link:hover,
+.app-sidebar__nav-link:focus-visible {
   color: var(--color-primary);
+}
+
+.app-sidebar__nav-link--active {
+  background: rgba(0, 0, 0, 0.03);
+  color: var(--color-primary);
+  border-radius: var(--radius-m);
+  font-weight: 600;
 }
 
 .app-main {
