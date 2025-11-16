@@ -70,7 +70,7 @@ export function AppShell({ children, navItems }: AppShellProps) {
           </nav>
 
           <main id="main-content" role="main" className="app-main">
-            {children}
+            <div className="app-main__inner">{children}</div>
           </main>
         </div>
 
