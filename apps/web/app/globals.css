@@ -456,6 +456,23 @@ button:focus-visible {
   color: var(--color-base-muted);
 }
 
+.auth__message {
+  margin: 0 0 var(--space-s);
+  font-size: var(--text-xs);
+}
+
+.auth__message--info {
+  color: var(--color-base-muted);
+}
+
+.auth__message--success {
+  color: var(--color-success, #15803d);
+}
+
+.auth__message--error {
+  color: var(--color-danger, #b91c1c);
+}
+
 .auth__link {
   color: var(--color-primary);
   text-decoration: underline;
@@ -517,4 +534,20 @@ button:focus-visible {
   margin: 0 0 var(--space-xs);
   font-size: var(--text-xs);
   color: var(--color-danger, #b91c1c);
+}
+
+.auth__field--checkbox {
+  margin-top: calc(var(--space-xs) * -0.25);
+}
+
+.auth__checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  font-size: var(--text-xs);
+  color: var(--color-base-muted);
+}
+
+.auth__checkbox-label input {
+  width: auto;
 }
