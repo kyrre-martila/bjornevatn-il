@@ -5,6 +5,7 @@ import React from "react";
 
 import Logo from "./Logo";
 import { PrimaryNav } from "./PrimaryNav";
+import { type UserProfile } from "../lib/me";
 
 type NavItem = {
   href: string;
@@ -14,6 +15,7 @@ type NavItem = {
 type AppShellProps = {
   children: React.ReactNode;
   navItems: NavItem[];
+  user?: UserProfile | null;
 };
 
 export function AppShell({ children, navItems }: AppShellProps) {

@@ -1,5 +1,7 @@
 import type { ReactNode } from "react";
+
 import { AppShell } from "../AppShell";
+import { getMe } from "../../lib/me";
 
 const navItems = [
   { href: "/", label: "Dashboard" },
@@ -8,10 +10,17 @@ const navItems = [
   { href: "/settings", label: "Settings" },
 ];
 
-export default function AppShellLayout({
+export default async function AppShellLayout({
   children,
 }: {
   children: ReactNode;
 }) {
-  return <AppShell navItems={navItems}>{children}</AppShell>;
+  const me = await getMe();
+  const user = me?.user ?? null;
+
+  return (
+    <AppShell navItems={navItems} user={user}>
+      {children}
+    </AppShell>
+  );
 }
