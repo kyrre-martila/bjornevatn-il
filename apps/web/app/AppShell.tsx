@@ -1,7 +1,9 @@
 "use client";
 
+import Link from "next/link";
 import React from "react";
 
+import Logo from "./Logo";
 import { PrimaryNav } from "./PrimaryNav";
 
 type NavItem = {
@@ -31,7 +33,9 @@ export function AppShell({ children, navItems }: AppShellProps) {
         <header className="app-header" aria-label="Application header">
           <div className="app-header__inner">
             <div className="app-header__brand">
-              Blueprint
+              <Link href="/" aria-label="Go to Blueprint home">
+                <Logo width={160} height={40} />
+              </Link>
               <span>Fullstack starter</span>
             </div>
 
