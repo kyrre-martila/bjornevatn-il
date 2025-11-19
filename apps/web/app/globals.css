@@ -91,6 +91,79 @@ button:focus-visible {
   color: var(--color-muted, var(--color-neutral-500));
 }
 
+.app-header__right {
+  display: flex;
+  align-items: center;
+  gap: var(--space-m);
+}
+
+.app-header__login-button {
+  padding: var(--space-2xs) var(--space-m);
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--color-primary);
+  font-size: var(--text-s);
+  font-weight: 500;
+  color: var(--color-primary);
+  background: var(--color-neutral-0);
+}
+
+.app-header__login-button:hover,
+.app-header__login-button:focus-visible {
+  background: var(--color-primary-soft, rgba(59, 130, 246, 0.08));
+}
+
+.app-header__account {
+  position: relative;
+}
+
+.app-header__avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  border: 1px solid var(--color-border-subtle);
+  background: var(--color-neutral-0);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+}
+
+.app-header__avatar-initials {
+  font-size: var(--text-xs);
+  font-weight: 600;
+}
+
+.app-header__account-menu {
+  position: absolute;
+  right: 0;
+  margin-top: var(--space-xs);
+  min-width: 160px;
+  padding: var(--space-2xs) 0;
+  border-radius: var(--radius-m);
+  background: var(--color-neutral-0);
+  box-shadow: var(--shadow-2);
+  border: 1px solid var(--color-border-subtle);
+  z-index: 20;
+}
+
+.app-header__account-menu-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  padding: var(--space-2xs) var(--space-m);
+  font-size: var(--text-s);
+  background: transparent;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+}
+
+.app-header__account-menu-item:hover,
+.app-header__account-menu-item:focus-visible {
+  background: var(--color-neutral-soft);
+}
+
 .nav-toggle {
   display: inline-flex;
   align-items: center;
