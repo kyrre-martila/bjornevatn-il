@@ -13,9 +13,12 @@ export const metadata: Metadata = {
       { url: "/favicons/favicon-16x16.png", sizes: "16x16", type: "image/png" },
       { url: "/favicons/favicon.ico", sizes: "any" },
       { url: "/favicons/favicon.svg", type: "image/svg+xml" },
+      { url: "/favicons/web-app-manifest-192x192.png", sizes: "192x192", type: "image/png" },
+      { url: "/favicons/web-app-manifest-512x512.png", sizes: "512x512", type: "image/png" },
     ],
     apple: "/favicons/apple-touch-icon.png",
   },
+  manifest: "/favicons/site.webmanifest",
 };
 
 export default function RootLayout({
@@ -25,12 +28,6 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <head>
-        <link rel="icon" href="/favicons/favicon.ico" sizes="any" />
-        <link rel="icon" href="/favicons/favicon.svg" type="image/svg+xml" />
-        <link rel="apple-touch-icon" href="/favicons/apple-touch-icon.png" />
-        <link rel="manifest" href="/favicons/site.webmanifest" />
-      </head>
       <body className="app-root">{children}</body>
     </html>
   );
