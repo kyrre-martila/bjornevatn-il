@@ -624,3 +624,67 @@ button:focus-visible {
 .auth__checkbox-label input {
   width: auto;
 }
+
+.profile {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xl);
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+.profile__header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-s);
+  align-items: center;
+  text-align: center;
+}
+
+.profile__avatar {
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  background: var(--color-primary);
+  color: var(--color-accent-contrast);
+  font-size: 32px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.profile__name {
+  font-size: var(--text-xl);
+  margin: 0;
+}
+
+.profile__email {
+  font-size: var(--text-s);
+  color: var(--color-muted);
+  margin: 0;
+}
+
+.profile__section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-m);
+}
+
+.profile__section-title {
+  font-size: var(--text-l);
+  margin: 0;
+}
+
+.profile__details {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-s);
+}
+
+.profile__detail {
+  display: flex;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--color-border-subtle);
+  padding: var(--space-xs) 0;
+}
