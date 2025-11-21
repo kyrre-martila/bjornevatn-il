@@ -14,6 +14,11 @@ export type UpdateUserProfileInput = {
   name?: string;
   role?: "ADMIN" | "USER";
   profile?: User["profile"];
+  firstName?: string;
+  lastName?: string;
+  phone?: string;
+  birthDate?: string;
+  displayName?: string;
 };
 
 export class UsersService {
@@ -61,6 +66,32 @@ export class UsersService {
       input = { ...input, email: normalizedEmail };
     }
 
-    return this.repository.update(userId, input);
+    const profileUpdate: User["profile"] = { ...input.profile };
+
+    if ("phone" in input) {
+      profileUpdate.phone = input.phone ?? null;
+    }
+    if ("firstName" in input) {
+      profileUpdate.firstName = input.firstName ?? null;
+    }
+    if ("lastName" in input) {
+      profileUpdate.lastName = input.lastName ?? null;
+    }
+    if ("birthDate" in input) {
+      profileUpdate.birthDate = input.birthDate
+        ? new Date(input.birthDate)
+        : null;
+    }
+    if ("displayName" in input) {
+      profileUpdate.displayName = input.displayName ?? null;
+    }
+
+    const updatePayload: UpdateUserProfileInput = { ...input };
+
+    if (Object.keys(profileUpdate).length > 0) {
+      updatePayload.profile = profileUpdate;
+    }
+
+    return this.repository.update(userId, updatePayload);
   }
 }
