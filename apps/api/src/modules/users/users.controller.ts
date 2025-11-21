@@ -1,4 +1,11 @@
-import { Controller, Get, Req, UnauthorizedException } from "@nestjs/common";
+import {
+  Body,
+  Controller,
+  Get,
+  Patch,
+  Req,
+  UnauthorizedException,
+} from "@nestjs/common";
 import {
   ApiBearerAuth,
   ApiCookieAuth,
@@ -6,10 +13,38 @@ import {
   ApiProperty,
   ApiTags,
 } from "@nestjs/swagger";
+import { IsOptional, IsString } from "class-validator";
 import type { Request } from "express";
 import { UsersService as UsersDomainService } from "@org/domain";
 
 import { AuthService } from "../auth/auth.service";
+
+class UpdateMeDto {
+  @ApiProperty({ required: false, type: String })
+  @IsOptional()
+  @IsString()
+  firstName?: string;
+
+  @ApiProperty({ required: false, type: String })
+  @IsOptional()
+  @IsString()
+  lastName?: string;
+
+  @ApiProperty({ required: false, type: String })
+  @IsOptional()
+  @IsString()
+  phone?: string;
+
+  @ApiProperty({ required: false, type: String })
+  @IsOptional()
+  @IsString()
+  birthDate?: string; // expect YYYY-MM-DD
+
+  @ApiProperty({ required: false, type: String })
+  @IsOptional()
+  @IsString()
+  displayName?: string;
+}
 
 class UserProfileDto {
   @ApiProperty()
@@ -85,6 +120,54 @@ export class UsersController {
           ? user.createdAt.toISOString()
           : user.createdAt,
       role: user.role,
+    };
+
+    return { user: safeUser };
+  }
+
+  @Patch()
+  @ApiBearerAuth()
+  @ApiCookieAuth()
+  @ApiOkResponse({ type: MeResponseDto })
+  async updateMe(
+    @Req() req: Request,
+    @Body() body: UpdateMeDto,
+  ): Promise<MeResponseDto> {
+    const access =
+      (req.cookies?.access as string) ||
+      (req.headers.authorization ?? "").replace(/^Bearer\s+/i, "");
+
+    if (!access) throw new UnauthorizedException("Missing token");
+
+    const payload = this.auth.decodeToken(access);
+    if (!payload) throw new UnauthorizedException("Invalid token");
+
+    // Call the domain service to update the profile.
+    const updated = await this.usersService.updateProfile(payload.sub, {
+      firstName: body.firstName,
+      lastName: body.lastName,
+      phone: body.phone,
+      birthDate: body.birthDate,
+      displayName: body.displayName,
+    });
+
+    const safeUser: UserProfileDto = {
+      id: updated.id,
+      email: updated.email,
+      phone: updated.profile?.phone ?? null,
+      firstName: updated.profile?.firstName ?? null,
+      lastName: updated.profile?.lastName ?? null,
+      birthDate: updated.profile?.birthDate
+        ? updated.profile.birthDate instanceof Date
+          ? updated.profile.birthDate.toISOString().slice(0, 10)
+          : updated.profile.birthDate
+        : null,
+      displayName: updated.profile?.displayName ?? updated.name ?? null,
+      createdAt:
+        updated.createdAt instanceof Date
+          ? updated.createdAt.toISOString()
+          : updated.createdAt,
+      role: updated.role,
     };
 
     return { user: safeUser };
