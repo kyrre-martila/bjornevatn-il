@@ -18,7 +18,6 @@ export type UpdateUserProfileInput = {
   lastName?: string;
   phone?: string;
   birthDate?: string;
-  displayName?: string;
 };
 
 export class UsersService {
@@ -81,9 +80,6 @@ export class UsersService {
       profileUpdate.birthDate = input.birthDate
         ? new Date(input.birthDate)
         : null;
-    }
-    if ("displayName" in input) {
-      profileUpdate.displayName = input.displayName ?? null;
     }
 
     const updatePayload: UpdateUserProfileInput = { ...input };

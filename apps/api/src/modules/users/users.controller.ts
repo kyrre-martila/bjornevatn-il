@@ -39,11 +39,6 @@ class UpdateMeDto {
   @IsOptional()
   @IsString()
   birthDate?: string; // expect YYYY-MM-DD
-
-  @ApiProperty({ required: false, type: String })
-  @IsOptional()
-  @IsString()
-  displayName?: string;
 }
 
 class UserProfileDto {
@@ -64,9 +59,6 @@ class UserProfileDto {
 
   @ApiProperty({ nullable: true, type: String })
   birthDate!: string | null;
-
-  @ApiProperty({ nullable: true, type: String })
-  displayName!: string | null;
 
   @ApiProperty({ type: String, format: "date-time" })
   createdAt!: string;
@@ -114,7 +106,6 @@ export class UsersController {
           ? user.profile.birthDate.toISOString().slice(0, 10)
           : user.profile.birthDate
         : null,
-      displayName: user.profile?.displayName ?? user.name ?? null,
       createdAt:
         user.createdAt instanceof Date
           ? user.createdAt.toISOString()
@@ -148,7 +139,6 @@ export class UsersController {
       lastName: body.lastName,
       phone: body.phone,
       birthDate: body.birthDate,
-      displayName: body.displayName,
     });
 
     const safeUser: UserProfileDto = {
@@ -162,7 +152,6 @@ export class UsersController {
           ? updated.profile.birthDate.toISOString().slice(0, 10)
           : updated.profile.birthDate
         : null,
-      displayName: updated.profile?.displayName ?? updated.name ?? null,
       createdAt:
         updated.createdAt instanceof Date
           ? updated.createdAt.toISOString()
