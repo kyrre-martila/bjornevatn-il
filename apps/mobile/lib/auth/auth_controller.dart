@@ -13,20 +13,30 @@ enum AuthStatus {
 class AuthState {
   final AuthStatus status;
   final AuthUser? user;
+  final String? accessToken;
   final String? errorMessage;
 
-  const AuthState({required this.status, this.user, this.errorMessage});
+  const AuthState({
+    required this.status,
+    this.user,
+    this.accessToken,
+    this.errorMessage,
+  });
 
   AuthState copyWith({
     AuthStatus? status,
     AuthUser? user,
     bool clearUser = false,
+    String? accessToken,
+    bool clearAccessToken = false,
     String? errorMessage,
     bool clearError = false,
   }) {
     return AuthState(
       status: status ?? this.status,
       user: clearUser ? null : (user ?? this.user),
+      accessToken:
+          clearAccessToken ? null : (accessToken ?? this.accessToken),
       errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
     );
   }
@@ -46,10 +56,18 @@ class AuthController extends ChangeNotifier {
     try {
       final session = await _service.restoreSession();
       if (session == null) {
-        _updateState(const AuthState(status: AuthStatus.unauthenticated));
+        _updateState(
+          const AuthState(
+            status: AuthStatus.unauthenticated,
+          ),
+        );
       } else {
         _updateState(
-          AuthState(status: AuthStatus.authenticated, user: session.user),
+          AuthState(
+            status: AuthStatus.authenticated,
+            user: session.user,
+            accessToken: session.accessToken,
+          ),
         );
       }
     } on AuthException catch (error) {
@@ -68,7 +86,11 @@ class AuthController extends ChangeNotifier {
     try {
       final session = await _service.login(email: email, password: password);
       _updateState(
-        AuthState(status: AuthStatus.authenticated, user: session.user),
+        AuthState(
+          status: AuthStatus.authenticated,
+          user: session.user,
+          accessToken: session.accessToken,
+        ),
       );
     } on AuthException catch (error) {
       _updateState(
@@ -95,7 +117,11 @@ class AuthController extends ChangeNotifier {
         name: name,
       );
       _updateState(
-        AuthState(status: AuthStatus.authenticated, user: session.user),
+        AuthState(
+          status: AuthStatus.authenticated,
+          user: session.user,
+          accessToken: session.accessToken,
+        ),
       );
     } on AuthException catch (error) {
       _updateState(
@@ -113,7 +139,11 @@ class AuthController extends ChangeNotifier {
 
   Future<void> logout() async {
     await _service.clearSession();
-    _updateState(const AuthState(status: AuthStatus.unauthenticated));
+    _updateState(
+      const AuthState(
+        status: AuthStatus.unauthenticated,
+      ),
+    );
   }
 
   void _updateState(AuthState state) {

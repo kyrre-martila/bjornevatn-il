@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 
 import 'package:blueprint_mobile/auth/auth_controller.dart';
+import 'package:blueprint_mobile/auth/auth_service.dart';
 import 'package:blueprint_mobile/theme/app_tokens.dart';
+import 'package:blueprint_mobile/ui/profile/profile_screen.dart';
 
 class AppShell extends StatefulWidget {
   const AppShell({super.key});
@@ -23,18 +25,19 @@ class _AppShellState extends State<AppShell> {
 
   @override
   Widget build(BuildContext context) {
+    final authState = context.auth.state;
     final pages = <Widget>[
       const _HomePage(),
       const _PlaceholderPage(title: 'API'),
       const _PlaceholderPage(title: 'Mobile'),
-      const _PlaceholderPage(title: 'Settings'),
+      ProfileScreen(apiBase: kApiBaseUrl, token: authState.accessToken),
     ];
 
     final navItems = const [
       _NavigationItem(icon: Icons.dashboard_outlined, label: 'Dashboard'),
       _NavigationItem(icon: Icons.api_outlined, label: 'API'),
       _NavigationItem(icon: Icons.phone_android_outlined, label: 'Mobile'),
-      _NavigationItem(icon: Icons.settings_outlined, label: 'Settings'),
+      _NavigationItem(icon: Icons.person_outline, label: 'Profile'),
     ];
 
     final isWide = MediaQuery.of(context).size.width >= 900;
