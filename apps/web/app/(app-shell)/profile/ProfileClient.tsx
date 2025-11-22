@@ -1,29 +1,23 @@
 "use client";
 
-import React from "react";
-
-import { UserProfile } from "../../../lib/me";
+import * as React from "react";
+import type { UserProfile } from "@/apps/web/lib/me";
 
 type EditableUser = UserProfile;
-
-type EditingField =
-  | "firstName"
-  | "lastName"
-  | "phone"
-  | "birthDate"
-  | "displayName"
-  | null;
+type EditingField = "firstName" | "lastName" | "phone" | "birthDate" | null;
 
 function getInitialsFromUser(user: UserProfile): string {
-  if (user.firstName || user.lastName) {
-    const first = user.firstName?.[0] ?? "";
-    const last = user.lastName?.[0] ?? "";
-    const initials = (first + last).trim();
+  const first = user.firstName?.trim();
+  const last = user.lastName?.trim();
+
+  if (first || last) {
+    const f = first ? first[0] : "";
+    const l = last ? last[0] : "";
+    const initials = (f + l).trim();
     if (initials) return initials.toUpperCase();
   }
-  if (user.displayName) {
-    return user.displayName.charAt(0).toUpperCase();
-  }
+
+  // fallback to email
   return user.email.charAt(0).toUpperCase();
 }
 
@@ -41,9 +35,7 @@ export function ProfileClient({ initialUser }: { initialUser: UserProfile }) {
     try {
       const res = await fetch("/api/me", {
         method: "PATCH",
-        headers: {
-          "content-type": "application/json",
-        },
+        headers: { "content-type": "application/json" },
         body: JSON.stringify({ [field]: value }),
       });
 
@@ -57,9 +49,9 @@ export function ProfileClient({ initialUser }: { initialUser: UserProfile }) {
 
       const data = await res.json();
       if (data && data.user) {
-        setUser(data.user);
+        setUser(data.user as UserProfile);
       }
-    } catch (e) {
+    } catch {
       setError("Network error while updating profile");
     } finally {
       setPendingField(null);
@@ -69,19 +61,16 @@ export function ProfileClient({ initialUser }: { initialUser: UserProfile }) {
 
   function InlineField(props: {
     label: string;
-    field: EditingField;
+    field: Exclude<EditingField, null>;
     value: string | null;
   }) {
     const isEditing = editingField === props.field;
     const isPending = pendingField === props.field;
     const displayValue = props.value ?? "—";
-
     const [draft, setDraft] = React.useState(displayValue);
 
     React.useEffect(() => {
-      if (!isEditing) {
-        setDraft(displayValue);
-      }
+      if (!isEditing) setDraft(displayValue);
     }, [isEditing, displayValue]);
 
     const startEdit = () => {
@@ -97,18 +86,15 @@ export function ProfileClient({ initialUser }: { initialUser: UserProfile }) {
     };
 
     const handleSubmit = async () => {
-      if (!props.field) return;
       await saveField(props.field, draft);
     };
 
-    const handleKeyDown: React.KeyboardEventHandler<HTMLInputElement> = (
-      event,
-    ) => {
-      if (event.key === "Enter") {
-        event.preventDefault();
+    const handleKeyDown: React.KeyboardEventHandler<HTMLInputElement> = (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
         void handleSubmit();
-      } else if (event.key === "Escape") {
-        event.preventDefault();
+      } else if (e.key === "Escape") {
+        e.preventDefault();
         cancelEdit();
       }
     };
@@ -163,7 +149,10 @@ export function ProfileClient({ initialUser }: { initialUser: UserProfile }) {
 
   const initials = getInitialsFromUser(user);
   const createdAt = new Date(user.createdAt).toLocaleDateString();
-  const displayName = user.displayName ?? user.email;
+  const derivedName =
+    user.firstName && user.lastName
+      ? `${user.firstName} ${user.lastName}`
+      : user.email;
 
   return (
     <section className="profile">
@@ -171,21 +160,15 @@ export function ProfileClient({ initialUser }: { initialUser: UserProfile }) {
         <div className="profile__avatar">
           <span className="profile__avatar-initials">{initials}</span>
         </div>
-        <h1 className="profile__name">{displayName}</h1>
+        <h1 className="profile__name">{derivedName}</h1>
         <p className="profile__email">{user.email}</p>
       </div>
 
       <div className="profile__section">
         <h2 className="profile__section-title">Profile details</h2>
-
         {error && <p className="profile__error">{error}</p>}
 
         <div className="profile__details">
-          <InlineField
-            label="Display name"
-            field="displayName"
-            value={user.displayName}
-          />
           <InlineField label="First name" field="firstName" value={user.firstName} />
           <InlineField label="Last name" field="lastName" value={user.lastName} />
           <InlineField label="Phone" field="phone" value={user.phone} />
