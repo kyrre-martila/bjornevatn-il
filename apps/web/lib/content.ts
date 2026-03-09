@@ -28,18 +28,6 @@ export type ContentPage = {
   blocks: ContentBlock[];
 };
 
-export type RenderablePageSection =
-  | { kind: "rich_text"; paragraphs: string[] }
-  | { kind: "unsupported"; blockType: ContentBlockType };
-
-export type RenderablePageContent = {
-  slug: string;
-  title: string;
-  intro: string;
-  body: string[];
-  sections: RenderablePageSection[];
-};
-
 export async function getHomepageContent(): Promise<HeroContent> {
   return {
     eyebrow: "Blueprint website",
@@ -76,52 +64,72 @@ const pageContentBySlug: Record<string, ContentPage> = {
     title: "About",
     blocks: [
       {
-        id: "about-intro",
-        type: "rich_text",
+        id: "about-hero",
+        type: "hero",
         order: 0,
         data: {
+          eyebrow: "About Blueprint",
+          title: "Composable page blocks for public content",
+          subtitle:
+            "This page is rendered from ordered blocks to prepare for CMS-managed pages.",
+          primaryCta: { href: "/news", label: "Read latest news" },
+          secondaryCta: { href: "/", label: "Go to homepage" },
+        },
+      },
+      {
+        id: "about-intro",
+        type: "rich_text",
+        order: 10,
+        data: {
           paragraphs: [
-            "This is a generic content page rendered through a content accessor.",
-            "The page route is intentionally generic so editors can publish future static pages.",
+            "This is a generic content page rendered through a block renderer.",
+            "The route fetches a page payload with blocks, sorts by order, then maps each block to a presentational component.",
             "In a later phase, this content will be loaded from a CMS-backed content repository.",
           ],
+        },
+      },
+      {
+        id: "about-image",
+        type: "image",
+        order: 20,
+        data: {
+          src: "/brand/blueprint-logo-horizontal.svg",
+          alt: "Blueprint horizontal logo",
+          caption: "Static assets can already be referenced from block data.",
+        },
+      },
+      {
+        id: "about-cta",
+        type: "cta",
+        order: 30,
+        data: {
+          title: "Need a public content foundation?",
+          description: "Start with reusable blocks and keep the admin UI focused.",
+          href: "/login",
+          label: "Admin login",
+        },
+      },
+      {
+        id: "about-news",
+        type: "news_list",
+        order: 40,
+        data: {
+          title: "Latest updates",
+          count: 2,
         },
       },
     ],
   },
 };
 
-function mapPageToRenderableContent(page: ContentPage): RenderablePageContent {
-  const orderedBlocks = [...page.blocks].sort((a, b) => a.order - b.order);
-  const sections: RenderablePageSection[] = orderedBlocks.map((block) => {
-    if (block.type === "rich_text") {
-      const paragraphs = Array.isArray(block.data.paragraphs)
-        ? block.data.paragraphs.filter((p): p is string => typeof p === "string")
-        : [];
-      return { kind: "rich_text", paragraphs };
-    }
-
-    return { kind: "unsupported", blockType: block.type };
-  });
-
-  const firstRichText = sections.find((section) => section.kind === "rich_text");
-
-  return {
-    slug: page.slug,
-    title: page.title,
-    intro: firstRichText?.paragraphs[0] ?? "",
-    body: firstRichText?.paragraphs.slice(1) ?? [],
-    sections,
-  };
-}
-
-export async function getPageContentBySlug(
-  slug: string,
-): Promise<RenderablePageContent | null> {
+export async function getPageContentBySlug(slug: string): Promise<ContentPage | null> {
   const page = pageContentBySlug[slug];
   if (!page) {
     return null;
   }
 
-  return mapPageToRenderableContent(page);
+  return {
+    ...page,
+    blocks: [...page.blocks].sort((a, b) => a.order - b.order),
+  };
 }

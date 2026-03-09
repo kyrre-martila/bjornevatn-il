@@ -867,3 +867,32 @@ button:focus-visible {
   font-size: var(--text-s);
   font-weight: 500;
 }
+
+.public-block__image {
+  display: grid;
+  gap: var(--space-xs);
+  margin: var(--space-l) 0;
+}
+
+.public-block__image img {
+  max-width: 100%;
+  height: auto;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-m);
+  padding: var(--space-m);
+  background: var(--color-neutral-soft);
+}
+
+.public-block__image figcaption {
+  font-size: var(--text-xs);
+  color: var(--color-muted, var(--color-neutral-500));
+}
+
+.public-block__cta {
+  display: grid;
+  gap: var(--space-s);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-m);
+  padding: var(--space-l);
+  margin: var(--space-l) 0;
+}
