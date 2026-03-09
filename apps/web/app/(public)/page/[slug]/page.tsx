@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 
 import { getPageContentBySlug } from "../../../../lib/content";
+import { renderBlock } from "./block-renderer";
 
 export default async function GenericPage({
   params,
@@ -14,15 +15,18 @@ export default async function GenericPage({
     notFound();
   }
 
+  const renderedBlocks = await Promise.all(
+    content.blocks.map(async (block) => ({
+      id: block.id,
+      node: await renderBlock(block),
+    })),
+  );
+
   return (
     <article>
-      <h1 className="public-page__title">{content.title}</h1>
-      <p className="public-page__intro">{content.intro}</p>
-      <div className="public-page__body">
-        {content.body.map((paragraph) => (
-          <p key={paragraph}>{paragraph}</p>
-        ))}
-      </div>
+      {renderedBlocks.map((block) => (
+        <div key={block.id}>{block.node}</div>
+      ))}
     </article>
   );
 }
