@@ -4,6 +4,7 @@ import { PrismaModule } from "../prisma/prisma.module";
 import { AuthModule } from "./auth/auth.module";
 import { HealthModule } from "./health/health.module";
 import { UsersModule } from "./users/users.module";
+import { ContentModule } from "./content/content.module";
 import { LoggerModule } from "../common/logging/logger.module";
 import { MetricsModule } from "../common/metrics/metrics.module";
 
@@ -14,6 +15,7 @@ import { MetricsModule } from "../common/metrics/metrics.module";
     MetricsModule,
     PrismaModule,
     UsersModule,
+    ContentModule,
     AuthModule,
     HealthModule,
   ],

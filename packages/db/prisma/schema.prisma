@@ -72,3 +72,55 @@ model MagicLink {
 
   @@index([email])
 }
+
+model Page {
+  id        String   @id @default(cuid())
+  slug      String   @unique
+  title     String
+  content   String
+  published Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([slug])
+  @@index([published])
+}
+
+model Post {
+  id            String   @id @default(cuid())
+  slug          String   @unique
+  title         String
+  excerpt       String
+  content       String
+  featuredImage String?
+  publishedAt   DateTime?
+  createdAt     DateTime @default(now())
+
+  @@index([slug])
+  @@index([publishedAt])
+}
+
+model NavigationItem {
+  id       String          @id @default(cuid())
+  label    String
+  url      String
+  order    Int
+  parentId String?
+  parent   NavigationItem? @relation("NavigationTree", fields: [parentId], references: [id], onDelete: SetNull)
+  children NavigationItem[] @relation("NavigationTree")
+
+  @@index([order])
+  @@index([parentId])
+}
+
+model SiteSetting {
+  key   String @id
+  value String
+}
+
+model Media {
+  id        String   @id @default(cuid())
+  url       String
+  alt       String
+  createdAt DateTime @default(now())
+}

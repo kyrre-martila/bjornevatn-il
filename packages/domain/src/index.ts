@@ -15,3 +15,18 @@ export type {
   UpdateUserProfileInput,
 } from "./users/users.service";
 export type { UsersRepository } from "./users/users.repository";
+
+export type {
+  Page,
+  Post,
+  NavigationItem,
+  SiteSetting,
+  Media,
+} from "./content/content.entity.js";
+export type {
+  PagesRepository,
+  PostsRepository,
+  NavigationItemsRepository,
+  SiteSettingsRepository,
+  MediaRepository,
+} from "./content/content.repositories.js";
