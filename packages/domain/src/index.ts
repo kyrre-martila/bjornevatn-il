@@ -33,3 +33,10 @@ export type {
   SiteSettingsRepository,
   MediaRepository,
 } from "./content/content.repositories.js";
+
+export type {
+  MediaStorageProvider,
+  MediaUploadFile,
+  MediaUploadMetadata,
+  UploadedMedia,
+} from "./content/media-storage.provider.js";

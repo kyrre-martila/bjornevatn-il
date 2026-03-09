@@ -8,6 +8,8 @@ import {
   SiteSettingsPrismaRepository,
 } from "@org/domain-adapters-prisma";
 import { ContentController } from "./content.controller";
+import { LocalFileStorageProvider } from "./local-file-storage.provider";
+import { MediaService } from "./media.service";
 
 @Module({
   controllers: [ContentController],
@@ -36,6 +38,11 @@ import { ContentController } from "./content.controller";
       provide: "MediaRepository",
       useClass: MediaPrismaRepository,
     },
+    {
+      provide: "MediaStorageProvider",
+      useClass: LocalFileStorageProvider,
+    },
+    MediaService,
   ],
 })
 export class ContentModule {}

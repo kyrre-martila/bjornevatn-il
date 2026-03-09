@@ -11,6 +11,7 @@ import {
 } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { validateSecurityConfig } from "./config/security.config";
+import * as express from "express";
 import type { Request, Response, NextFunction } from "express";
 import { createCsrfMiddleware } from "./middleware/csrf.middleware";
 import { DomainErrorInterceptor } from "./common/interceptors/domain-error.interceptor";
@@ -23,6 +24,7 @@ import { MetricsMiddleware } from "./common/metrics/metrics.middleware";
 import { MetricsGuard } from "./common/metrics/metrics.guard";
 import { trace } from "@opentelemetry/api";
 import { randomUUID } from "node:crypto";
+import { join } from "node:path";
 import type { Logger } from "pino";
 import { startOtel, shutdownOtel } from "../otel";
 
@@ -209,6 +211,8 @@ async function bootstrap() {
     new SensitiveLoggingInterceptor(),
     new DomainErrorInterceptor(),
   );
+
+  app.use("/uploads", express.static(join(process.cwd(), "uploads")));
 
   const shouldEmitOpenApi =
     process.env.NODE_ENV !== "production" || process.env.EMIT_OPENAPI === "1";
