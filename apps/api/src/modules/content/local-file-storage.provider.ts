@@ -14,7 +14,8 @@ export class LocalFileStorageProvider implements MediaStorageProvider {
   private readonly uploadsDir = join(process.cwd(), "uploads");
   private readonly publicPrefix = "/uploads";
 
-  async upload(file: MediaUploadFile, _metadata: MediaUploadMetadata): Promise<UploadedMedia> {
+  async upload(file: MediaUploadFile, metadata: MediaUploadMetadata): Promise<UploadedMedia> {
+    void metadata;
     await mkdir(this.uploadsDir, { recursive: true });
     const extension = extname(file.originalName);
     const id = `${randomUUID()}${extension}`;

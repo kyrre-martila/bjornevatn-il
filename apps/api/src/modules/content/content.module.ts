@@ -9,10 +9,11 @@ import {
 } from "@org/domain-adapters-prisma";
 import { ContentController } from "./content.controller";
 import { LocalFileStorageProvider } from "./local-file-storage.provider";
+import { MediaController } from "./media.controller";
 import { MediaService } from "./media.service";
 
 @Module({
-  controllers: [ContentController],
+  controllers: [ContentController, MediaController],
   providers: [
     {
       provide: "PagesRepository",

@@ -7,11 +7,8 @@ import {
   Param,
   Patch,
   Post,
-  UploadedFile,
-  UseInterceptors,
-  BadRequestException,
 } from "@nestjs/common";
-import { ApiBody, ApiConsumes, ApiProperty, ApiTags } from "@nestjs/swagger";
+import { ApiProperty, ApiTags } from "@nestjs/swagger";
 import {
   IsArray,
   IsBoolean,
@@ -25,7 +22,6 @@ import {
   ValidateNested,
 } from "class-validator";
 import { Type } from "class-transformer";
-import { FileInterceptor } from "@nestjs/platform-express";
 import type {
   MediaRepository,
   NavigationItemsRepository,
@@ -222,11 +218,6 @@ class CreateMediaDto {
 
 
 
-class UploadMediaDto {
-  @ApiProperty()
-  @IsString()
-  alt!: string;
-}
 class UpdateMediaDto {
   @ApiProperty({ required: false })
   @IsOptional()
@@ -390,38 +381,6 @@ export class ContentController {
     return this.media.findById(id);
   }
 
-
-  @Post("media/upload")
-  @UseInterceptors(FileInterceptor("file"))
-  @ApiConsumes("multipart/form-data")
-  @ApiBody({
-    schema: {
-      type: "object",
-      properties: {
-        file: { type: "string", format: "binary" },
-        alt: { type: "string" },
-      },
-      required: ["file", "alt"],
-    },
-  })
-  async uploadMedia(
-    @UploadedFile() file:
-      | { buffer: Buffer; originalname: string; mimetype: string }
-      | undefined,
-    @Body() body: UploadMediaDto,
-  ) {
-    if (!file) {
-      throw new BadRequestException("File is required");
-    }
-
-    return this.mediaService.upload({
-      fileBuffer: file.buffer,
-      fileName: file.originalname,
-      mimeType: file.mimetype,
-      alt: body.alt,
-    });
-  }
-
   @Post("media")
   createMedia(@Body() body: CreateMediaDto) {
     return this.media.create(body);
@@ -434,7 +393,7 @@ export class ContentController {
 
   @Delete("media/:id")
   async deleteMedia(@Param("id") id: string) {
-    await this.media.delete(id);
+    await this.mediaService.delete(id);
     return { ok: true };
   }
 }
