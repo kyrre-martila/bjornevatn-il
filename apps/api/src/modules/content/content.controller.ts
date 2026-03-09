@@ -1,5 +1,6 @@
 import {
   Body,
+  ConflictException,
   Controller,
   Delete,
   Get,
@@ -23,10 +24,11 @@ import {
 } from "class-validator";
 import { Type } from "class-transformer";
 import type {
+  ContentItemsRepository,
+  ContentTypesRepository,
   MediaRepository,
   NavigationItemsRepository,
   PagesRepository,
-  PostsRepository,
   SiteSettingsRepository,
 } from "@org/domain";
 import { MediaService } from "./media.service";
@@ -93,7 +95,42 @@ class UpdatePageDto {
   published?: boolean;
 }
 
-class CreatePostDto {
+class CreateContentTypeDto {
+  @ApiProperty()
+  @IsString()
+  name!: string;
+
+  @ApiProperty()
+  @IsString()
+  slug!: string;
+
+  @ApiProperty()
+  @IsString()
+  description!: string;
+}
+
+class UpdateContentTypeDto {
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  name?: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  slug?: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  description?: string;
+}
+
+class CreateContentItemDto {
+  @ApiProperty()
+  @IsString()
+  contentTypeId!: string;
+
   @ApiProperty()
   @IsString()
   slug!: string;
@@ -102,26 +139,21 @@ class CreatePostDto {
   @IsString()
   title!: string;
 
-  @ApiProperty()
-  @IsString()
-  excerpt!: string;
+  @ApiProperty({ type: Object })
+  @IsObject()
+  data!: Record<string, unknown>;
 
   @ApiProperty()
-  @IsString()
-  content!: string;
-
-  @ApiProperty({ required: false })
-  @IsOptional()
-  @IsUrl()
-  featuredImage?: string;
-
-  @ApiProperty({ required: false })
-  @IsOptional()
-  @IsString()
-  publishedAt?: string;
+  @IsBoolean()
+  published!: boolean;
 }
 
-class UpdatePostDto {
+class UpdateContentItemDto {
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  contentTypeId?: string;
+
   @ApiProperty({ required: false })
   @IsOptional()
   @IsString()
@@ -132,25 +164,15 @@ class UpdatePostDto {
   @IsString()
   title?: string;
 
-  @ApiProperty({ required: false })
+  @ApiProperty({ required: false, type: Object })
   @IsOptional()
-  @IsString()
-  excerpt?: string;
+  @IsObject()
+  data?: Record<string, unknown>;
 
   @ApiProperty({ required: false })
   @IsOptional()
-  @IsString()
-  content?: string;
-
-  @ApiProperty({ required: false })
-  @IsOptional()
-  @IsUrl()
-  featuredImage?: string;
-
-  @ApiProperty({ required: false })
-  @IsOptional()
-  @IsString()
-  publishedAt?: string;
+  @IsBoolean()
+  published?: boolean;
 }
 
 class CreateNavigationItemDto {
@@ -216,8 +238,6 @@ class CreateMediaDto {
   alt!: string;
 }
 
-
-
 class UpdateMediaDto {
   @ApiProperty({ required: false })
   @IsOptional()
@@ -236,8 +256,10 @@ export class ContentController {
   constructor(
     @Inject("PagesRepository")
     private readonly pages: PagesRepository,
-    @Inject("PostsRepository")
-    private readonly posts: PostsRepository,
+    @Inject("ContentTypesRepository")
+    private readonly contentTypes: ContentTypesRepository,
+    @Inject("ContentItemsRepository")
+    private readonly contentItems: ContentItemsRepository,
     @Inject("NavigationItemsRepository")
     private readonly navigation: NavigationItemsRepository,
     @Inject("SiteSettingsRepository")
@@ -278,51 +300,79 @@ export class ContentController {
     return { ok: true };
   }
 
-  @Get("posts")
-  listPosts() {
-    return this.posts.findMany();
+  @Get("types")
+  listContentTypes() {
+    return this.contentTypes.findMany();
   }
 
-  @Get("posts/:id")
-  getPost(@Param("id") id: string) {
-    return this.posts.findById(id);
+  @Get("types/:id")
+  getContentType(@Param("id") id: string) {
+    return this.contentTypes.findById(id);
   }
 
-  @Get("posts/slug/:slug")
-  getPostBySlug(@Param("slug") slug: string) {
-    return this.posts.findBySlug(slug);
+  @Post("types")
+  createContentType(@Body() body: CreateContentTypeDto) {
+    return this.contentTypes.create(body);
   }
 
-  @Get("posts/published/listing")
-  async listPublishedPosts() {
-    const posts = await this.posts.findMany();
-    return posts
-      .filter((post) => Boolean(post.publishedAt))
-      .sort((a, b) => (b.publishedAt?.getTime() ?? 0) - (a.publishedAt?.getTime() ?? 0));
+  @Patch("types/:id")
+  updateContentType(@Param("id") id: string, @Body() body: UpdateContentTypeDto) {
+    return this.contentTypes.update(id, body);
   }
 
-  @Post("posts")
-  createPost(@Body() body: CreatePostDto) {
-    return this.posts.create({
-      ...body,
-      featuredImage: body.featuredImage ?? null,
-      publishedAt: body.publishedAt ? new Date(body.publishedAt) : null,
-    });
+  @Delete("types/:id")
+  async deleteContentType(@Param("id") id: string) {
+    const items = await this.contentItems.findManyByContentTypeId(id);
+    if (items.length > 0) {
+      throw new ConflictException("Cannot delete content type with existing content items.");
+    }
+
+    await this.contentTypes.delete(id);
+    return { ok: true };
   }
 
-  @Patch("posts/:id")
-  updatePost(@Param("id") id: string, @Body() body: UpdatePostDto) {
-    return this.posts.update(id, {
-      ...body,
-      featuredImage: body.featuredImage,
-      publishedAt:
-        body.publishedAt === undefined ? undefined : new Date(body.publishedAt),
-    });
+  @Get("items")
+  listContentItems() {
+    return this.contentItems.findMany();
   }
 
-  @Delete("posts/:id")
-  async deletePost(@Param("id") id: string) {
-    await this.posts.delete(id);
+  @Get("items/:id")
+  getContentItem(@Param("id") id: string) {
+    return this.contentItems.findById(id);
+  }
+
+  @Get("items/type/:contentTypeId")
+  listContentItemsByTypeId(@Param("contentTypeId") contentTypeId: string) {
+    return this.contentItems.findManyByContentTypeId(contentTypeId);
+  }
+
+  @Get("items/type-slug/:slug")
+  async listContentItemsByTypeSlug(@Param("slug") slug: string) {
+    const items = await this.contentItems.findManyByContentTypeSlug(slug);
+    return items.filter((item) => item.published);
+  }
+
+  @Get("items/type-slug/:contentTypeSlug/:slug")
+  getContentItemBySlug(
+    @Param("contentTypeSlug") contentTypeSlug: string,
+    @Param("slug") slug: string,
+  ) {
+    return this.contentItems.findBySlug(contentTypeSlug, slug);
+  }
+
+  @Post("items")
+  createContentItem(@Body() body: CreateContentItemDto) {
+    return this.contentItems.create(body);
+  }
+
+  @Patch("items/:id")
+  updateContentItem(@Param("id") id: string, @Body() body: UpdateContentItemDto) {
+    return this.contentItems.update(id, body);
+  }
+
+  @Delete("items/:id")
+  async deleteContentItem(@Param("id") id: string) {
+    await this.contentItems.delete(id);
     return { ok: true };
   }
 

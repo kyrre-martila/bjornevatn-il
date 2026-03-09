@@ -7,6 +7,7 @@ import { getMe } from "../../../lib/me";
 const adminNavItems = [
   { href: "/admin", label: "Overview" },
   { href: "/admin/pages", label: "Pages" },
+  { href: "/admin/content", label: "Content" },
   { href: "/admin/navigation", label: "Navigation" },
   { href: "/admin/settings", label: "Site settings" },
   { href: "/admin/media", label: "Media" },

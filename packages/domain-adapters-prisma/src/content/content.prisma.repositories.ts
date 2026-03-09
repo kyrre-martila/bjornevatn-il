@@ -1,5 +1,9 @@
 import { Prisma } from "@prisma/client";
 import type {
+  ContentItem,
+  ContentItemsRepository,
+  ContentType,
+  ContentTypesRepository,
   Media,
   MediaRepository,
   NavigationItem,
@@ -9,8 +13,6 @@ import type {
   PageBlockType,
   PageBlocksRepository,
   PagesRepository,
-  Post,
-  PostsRepository,
   SiteSetting,
   SiteSettingsRepository,
 } from "@org/domain";
@@ -72,6 +74,25 @@ function mapInputBlocks(blocks: PageBlock[]) {
     data: block.data as Prisma.InputJsonValue,
     order: block.order,
   }));
+}
+
+function mapContentItem(item: {
+  id: string;
+  contentTypeId: string;
+  slug: string;
+  title: string;
+  data: Prisma.JsonValue;
+  published: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}): ContentItem {
+  return {
+    ...item,
+    data:
+      item.data && typeof item.data === "object" && !Array.isArray(item.data)
+        ? (item.data as Record<string, unknown>)
+        : {},
+  };
 }
 
 export class PagesPrismaRepository implements PagesRepository {
@@ -185,31 +206,99 @@ export class PageBlocksPrismaRepository implements PageBlocksRepository {
   }
 }
 
-export class PostsPrismaRepository implements PostsRepository {
+export class ContentTypesPrismaRepository implements ContentTypesRepository {
   private readonly prisma = getPrisma();
 
-  async findMany(): Promise<Post[]> {
-    return this.prisma.post.findMany({ orderBy: { createdAt: "desc" } });
+  async findMany(): Promise<ContentType[]> {
+    return this.prisma.contentType.findMany({ orderBy: { createdAt: "desc" } });
   }
 
-  async findById(id: string): Promise<Post | null> {
-    return this.prisma.post.findUnique({ where: { id } });
+  async findById(id: string): Promise<ContentType | null> {
+    return this.prisma.contentType.findUnique({ where: { id } });
   }
 
-  async findBySlug(slug: string): Promise<Post | null> {
-    return this.prisma.post.findUnique({ where: { slug } });
+  async findBySlug(slug: string): Promise<ContentType | null> {
+    return this.prisma.contentType.findUnique({ where: { slug } });
   }
 
-  async create(data: Omit<Post, "id" | "createdAt">): Promise<Post> {
-    return this.prisma.post.create({ data });
+  async create(data: Omit<ContentType, "id" | "createdAt" | "updatedAt">): Promise<ContentType> {
+    return this.prisma.contentType.create({ data });
   }
 
-  async update(id: string, data: Partial<Omit<Post, "id" | "createdAt">>): Promise<Post> {
-    return this.prisma.post.update({ where: { id }, data });
+  async update(
+    id: string,
+    data: Partial<Omit<ContentType, "id" | "createdAt" | "updatedAt">>,
+  ): Promise<ContentType> {
+    return this.prisma.contentType.update({ where: { id }, data });
   }
 
   async delete(id: string): Promise<void> {
-    await this.prisma.post.delete({ where: { id } });
+    await this.prisma.contentType.delete({ where: { id } });
+  }
+}
+
+export class ContentItemsPrismaRepository implements ContentItemsRepository {
+  private readonly prisma = getPrisma();
+
+  async findMany(): Promise<ContentItem[]> {
+    const items = await this.prisma.contentItem.findMany({ orderBy: { createdAt: "desc" } });
+    return items.map(mapContentItem);
+  }
+
+  async findManyByContentTypeId(contentTypeId: string): Promise<ContentItem[]> {
+    const items = await this.prisma.contentItem.findMany({
+      where: { contentTypeId },
+      orderBy: { createdAt: "desc" },
+    });
+    return items.map(mapContentItem);
+  }
+
+  async findManyByContentTypeSlug(contentTypeSlug: string): Promise<ContentItem[]> {
+    const items = await this.prisma.contentItem.findMany({
+      where: { contentType: { slug: contentTypeSlug } },
+      orderBy: { createdAt: "desc" },
+    });
+    return items.map(mapContentItem);
+  }
+
+  async findById(id: string): Promise<ContentItem | null> {
+    const item = await this.prisma.contentItem.findUnique({ where: { id } });
+    return item ? mapContentItem(item) : null;
+  }
+
+  async findBySlug(contentTypeSlug: string, slug: string): Promise<ContentItem | null> {
+    const item = await this.prisma.contentItem.findFirst({
+      where: { slug, contentType: { slug: contentTypeSlug } },
+    });
+    return item ? mapContentItem(item) : null;
+  }
+
+  async create(data: Omit<ContentItem, "id" | "createdAt" | "updatedAt">): Promise<ContentItem> {
+    const item = await this.prisma.contentItem.create({
+      data: {
+        ...data,
+        data: data.data as Prisma.InputJsonValue,
+      },
+    });
+    return mapContentItem(item);
+  }
+
+  async update(
+    id: string,
+    data: Partial<Omit<ContentItem, "id" | "createdAt" | "updatedAt">>,
+  ): Promise<ContentItem> {
+    const item = await this.prisma.contentItem.update({
+      where: { id },
+      data: {
+        ...data,
+        data: data.data ? (data.data as Prisma.InputJsonValue) : undefined,
+      },
+    });
+    return mapContentItem(item);
+  }
+
+  async delete(id: string): Promise<void> {
+    await this.prisma.contentItem.delete({ where: { id } });
   }
 }
 

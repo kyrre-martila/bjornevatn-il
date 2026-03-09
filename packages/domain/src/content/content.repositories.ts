@@ -1,9 +1,10 @@
 import type {
+  ContentItem,
+  ContentType,
   Media,
   NavigationItem,
   Page,
   PageBlock,
-  Post,
   SiteSetting,
 } from "./content.entity";
 
@@ -29,12 +30,29 @@ export interface PageBlocksRepository {
   delete(id: string): Promise<void>;
 }
 
-export interface PostsRepository {
-  findMany(): Promise<Post[]>;
-  findById(id: string): Promise<Post | null>;
-  findBySlug(slug: string): Promise<Post | null>;
-  create(data: Omit<Post, "id" | "createdAt">): Promise<Post>;
-  update(id: string, data: Partial<Omit<Post, "id" | "createdAt">>): Promise<Post>;
+export interface ContentTypesRepository {
+  findMany(): Promise<ContentType[]>;
+  findById(id: string): Promise<ContentType | null>;
+  findBySlug(slug: string): Promise<ContentType | null>;
+  create(data: Omit<ContentType, "id" | "createdAt" | "updatedAt">): Promise<ContentType>;
+  update(
+    id: string,
+    data: Partial<Omit<ContentType, "id" | "createdAt" | "updatedAt">>,
+  ): Promise<ContentType>;
+  delete(id: string): Promise<void>;
+}
+
+export interface ContentItemsRepository {
+  findMany(): Promise<ContentItem[]>;
+  findManyByContentTypeId(contentTypeId: string): Promise<ContentItem[]>;
+  findManyByContentTypeSlug(contentTypeSlug: string): Promise<ContentItem[]>;
+  findById(id: string): Promise<ContentItem | null>;
+  findBySlug(contentTypeSlug: string, slug: string): Promise<ContentItem | null>;
+  create(data: Omit<ContentItem, "id" | "createdAt" | "updatedAt">): Promise<ContentItem>;
+  update(
+    id: string,
+    data: Partial<Omit<ContentItem, "id" | "createdAt" | "updatedAt">>,
+  ): Promise<ContentItem>;
   delete(id: string): Promise<void>;
 }
 

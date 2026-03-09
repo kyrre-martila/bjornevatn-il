@@ -5,7 +5,8 @@ export { UsersPrismaRepository } from "./users/users.prisma.repository.js";
 export {
   PagesPrismaRepository,
   PageBlocksPrismaRepository,
-  PostsPrismaRepository,
+  ContentTypesPrismaRepository,
+  ContentItemsPrismaRepository,
   NavigationItemsPrismaRepository,
   SiteSettingsPrismaRepository,
   MediaPrismaRepository,

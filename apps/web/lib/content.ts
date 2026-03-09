@@ -67,11 +67,11 @@ type ApiPage = {
   blocks?: ApiPageBlock[];
 };
 
-type ApiPost = {
+type ApiContentItem = {
   slug: string;
   title: string;
-  excerpt: string;
-  publishedAt: string | null;
+  data: Record<string, unknown> | null;
+  updatedAt: string;
 };
 
 type ApiSiteSetting = {
@@ -136,12 +136,15 @@ function mapApiPage(page: ApiPage): ContentPage {
   };
 }
 
-function mapApiPost(post: ApiPost): NewsItem {
+function mapApiContentItem(item: ApiContentItem): NewsItem {
+  const data = asRecord(item.data);
+  const publishedAt = typeof data.publishedAt === "string" ? data.publishedAt : item.updatedAt;
+
   return {
-    slug: post.slug,
-    title: post.title,
-    summary: post.excerpt,
-    publishedAt: post.publishedAt ? new Date(post.publishedAt).toISOString().slice(0, 10) : "",
+    slug: item.slug,
+    title: item.title,
+    summary: typeof data.excerpt === "string" ? data.excerpt : "",
+    publishedAt: new Date(publishedAt).toISOString().slice(0, 10),
   };
 }
 
@@ -257,12 +260,12 @@ export async function getHomepageContent(): Promise<HeroContent> {
 }
 
 export async function getNewsListing(): Promise<NewsItem[]> {
-  const posts = await fetchContent<ApiPost[]>("/content/posts/published/listing");
-  if (!posts) {
+  const items = await fetchContent<ApiContentItem[]>("/content/items/type-slug/news");
+  if (!items) {
     return [];
   }
 
-  return posts.map(mapApiPost);
+  return items.map(mapApiContentItem);
 }
 
 export async function getPageContentBySlug(slug: string): Promise<ContentPage | null> {

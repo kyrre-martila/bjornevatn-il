@@ -100,18 +100,32 @@ model PageBlock {
   @@index([pageId, order])
 }
 
-model Post {
-  id            String   @id @default(cuid())
-  slug          String   @unique
-  title         String
-  excerpt       String
-  content       String
-  featuredImage String?
-  publishedAt   DateTime?
-  createdAt     DateTime @default(now())
+model ContentType {
+  id          String        @id @default(cuid())
+  name        String
+  slug        String        @unique
+  description String
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  items       ContentItem[]
 
   @@index([slug])
-  @@index([publishedAt])
+}
+
+model ContentItem {
+  id            String      @id @default(cuid())
+  contentTypeId String
+  contentType   ContentType @relation(fields: [contentTypeId], references: [id], onDelete: Cascade)
+  slug          String
+  title         String
+  data          Json
+  published     Boolean     @default(false)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@unique([contentTypeId, slug])
+  @@index([contentTypeId])
+  @@index([published])
 }
 
 model NavigationItem {

@@ -4,7 +4,8 @@ import {
   PageBlocksPrismaRepository,
   NavigationItemsPrismaRepository,
   PagesPrismaRepository,
-  PostsPrismaRepository,
+  ContentTypesPrismaRepository,
+  ContentItemsPrismaRepository,
   SiteSettingsPrismaRepository,
 } from "@org/domain-adapters-prisma";
 import { ContentController } from "./content.controller";
@@ -20,8 +21,12 @@ import { MediaService } from "./media.service";
       useClass: PagesPrismaRepository,
     },
     {
-      provide: "PostsRepository",
-      useClass: PostsPrismaRepository,
+      provide: "ContentTypesRepository",
+      useClass: ContentTypesPrismaRepository,
+    },
+    {
+      provide: "ContentItemsRepository",
+      useClass: ContentItemsPrismaRepository,
     },
     {
       provide: "PageBlocksRepository",

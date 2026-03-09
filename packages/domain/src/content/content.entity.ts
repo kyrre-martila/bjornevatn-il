@@ -26,15 +26,24 @@ export type PageBlock = {
   updatedAt: Date;
 };
 
-export type Post = {
+export type ContentType = {
   id: string;
+  name: string;
+  slug: string;
+  description: string;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+export type ContentItem = {
+  id: string;
+  contentTypeId: string;
   slug: string;
   title: string;
-  excerpt: string;
-  content: string;
-  featuredImage: string | null;
-  publishedAt: Date | null;
+  data: Record<string, unknown>;
+  published: boolean;
   createdAt: Date;
+  updatedAt: Date;
 };
 
 export type NavigationItem = {
