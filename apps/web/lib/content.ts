@@ -30,6 +30,29 @@ export type ContentPage = {
   blocks: ContentBlock[];
 };
 
+export type SiteSettingKey =
+  | "site_title"
+  | "site_tagline"
+  | "logo_url"
+  | "footer_text"
+  | "facebook_url"
+  | "instagram_url"
+  | "youtube_url";
+
+export type PublicSiteSettings = Partial<Record<SiteSettingKey, string>>;
+
+export type NavigationItem = {
+  id: string;
+  label: string;
+  url: string;
+  order: number;
+  parentId: string | null;
+};
+
+export type NavigationTreeItem = NavigationItem & {
+  children: NavigationTreeItem[];
+};
+
 type ApiPageBlock = {
   id: string;
   type: ContentBlockType;
@@ -50,6 +73,21 @@ type ApiPost = {
   excerpt: string;
   publishedAt: string | null;
 };
+
+type ApiSiteSetting = {
+  key: string;
+  value: string;
+};
+
+const PUBLIC_SITE_SETTING_KEYS: SiteSettingKey[] = [
+  "site_title",
+  "site_tagline",
+  "logo_url",
+  "footer_text",
+  "facebook_url",
+  "instagram_url",
+  "youtube_url",
+];
 
 function asRecord(value: unknown): Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value)
@@ -105,6 +143,70 @@ function mapApiPost(post: ApiPost): NewsItem {
     summary: post.excerpt,
     publishedAt: post.publishedAt ? new Date(post.publishedAt).toISOString().slice(0, 10) : "",
   };
+}
+
+function sortNavigationItems(items: NavigationItem[]): NavigationItem[] {
+  return [...items].sort((a, b) => {
+    if (a.order !== b.order) {
+      return a.order - b.order;
+    }
+    return a.label.localeCompare(b.label);
+  });
+}
+
+function mapNavigationItem(item: unknown): NavigationItem | null {
+  const record = asRecord(item);
+  if (
+    typeof record.id !== "string" ||
+    typeof record.label !== "string" ||
+    typeof record.url !== "string"
+  ) {
+    return null;
+  }
+
+  return {
+    id: record.id,
+    label: record.label,
+    url: record.url,
+    order: typeof record.order === "number" ? record.order : 0,
+    parentId: typeof record.parentId === "string" ? record.parentId : null,
+  };
+}
+
+function buildNavigationTree(items: NavigationItem[]): NavigationTreeItem[] {
+  const sorted = sortNavigationItems(items);
+  const byId = new Map<string, NavigationTreeItem>();
+
+  sorted.forEach((item) => {
+    byId.set(item.id, { ...item, children: [] });
+  });
+
+  const rootItems: NavigationTreeItem[] = [];
+
+  sorted.forEach((item) => {
+    const entry = byId.get(item.id);
+    if (!entry) {
+      return;
+    }
+
+    if (item.parentId) {
+      const parent = byId.get(item.parentId);
+      if (parent) {
+        parent.children.push(entry);
+        parent.children.sort((a, b) => {
+          if (a.order !== b.order) {
+            return a.order - b.order;
+          }
+          return a.label.localeCompare(b.label);
+        });
+        return;
+      }
+    }
+
+    rootItems.push(entry);
+  });
+
+  return rootItems;
 }
 
 function mapHeroFromPage(page: ContentPage): HeroContent | null {
@@ -170,4 +272,37 @@ export async function getPageContentBySlug(slug: string): Promise<ContentPage | 
   }
 
   return mapApiPage(page);
+}
+
+export async function getPublicSiteSettings(): Promise<PublicSiteSettings> {
+  const settings = await fetchContent<ApiSiteSetting[]>("/content/settings");
+  if (!settings) {
+    return {};
+  }
+
+  const keySet = new Set(PUBLIC_SITE_SETTING_KEYS);
+
+  return settings.reduce<PublicSiteSettings>((acc, setting) => {
+    if (
+      keySet.has(setting.key as SiteSettingKey) &&
+      typeof setting.value === "string" &&
+      setting.value.trim()
+    ) {
+      acc[setting.key as SiteSettingKey] = setting.value.trim();
+    }
+    return acc;
+  }, {});
+}
+
+export async function getPublicNavigationTree(): Promise<NavigationTreeItem[]> {
+  const items = await fetchContent<unknown[]>("/content/navigation-items");
+  if (!Array.isArray(items)) {
+    return [];
+  }
+
+  const mappedItems = items
+    .map(mapNavigationItem)
+    .filter((item): item is NavigationItem => item !== null);
+
+  return buildNavigationTree(mappedItems);
 }
