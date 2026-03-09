@@ -2,6 +2,7 @@ import type {
   Media,
   NavigationItem,
   Page,
+  PageBlock,
   Post,
   SiteSetting,
 } from "./content.entity";
@@ -15,6 +16,16 @@ export interface PagesRepository {
     id: string,
     data: Partial<Omit<Page, "id" | "createdAt" | "updatedAt">>,
   ): Promise<Page>;
+  delete(id: string): Promise<void>;
+}
+
+export interface PageBlocksRepository {
+  findManyByPageId(pageId: string): Promise<PageBlock[]>;
+  create(data: Omit<PageBlock, "id" | "createdAt" | "updatedAt">): Promise<PageBlock>;
+  update(
+    id: string,
+    data: Partial<Omit<PageBlock, "id" | "createdAt" | "updatedAt">>,
+  ): Promise<PageBlock>;
   delete(id: string): Promise<void>;
 }
 

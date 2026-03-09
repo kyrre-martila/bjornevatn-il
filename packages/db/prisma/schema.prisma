@@ -74,16 +74,30 @@ model MagicLink {
 }
 
 model Page {
-  id        String   @id @default(cuid())
-  slug      String   @unique
+  id        String      @id @default(cuid())
+  slug      String      @unique
   title     String
-  content   String
-  published Boolean  @default(false)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  published Boolean     @default(false)
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+  blocks    PageBlock[]
 
   @@index([slug])
   @@index([published])
+}
+
+model PageBlock {
+  id        String   @id @default(cuid())
+  pageId     String
+  page      Page     @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  type      String
+  data      Json
+  order     Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([pageId])
+  @@index([pageId, order])
 }
 
 model Post {

@@ -18,6 +18,8 @@ export type { UsersRepository } from "./users/users.repository";
 
 export type {
   Page,
+  PageBlock,
+  PageBlockType,
   Post,
   NavigationItem,
   SiteSetting,
@@ -25,6 +27,7 @@ export type {
 } from "./content/content.entity.js";
 export type {
   PagesRepository,
+  PageBlocksRepository,
   PostsRepository,
   NavigationItemsRepository,
   SiteSettingsRepository,

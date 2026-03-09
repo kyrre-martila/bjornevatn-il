@@ -1,6 +1,7 @@
 import { Module } from "@nestjs/common";
 import {
   MediaPrismaRepository,
+  PageBlocksPrismaRepository,
   NavigationItemsPrismaRepository,
   PagesPrismaRepository,
   PostsPrismaRepository,
@@ -18,6 +19,10 @@ import { ContentController } from "./content.controller";
     {
       provide: "PostsRepository",
       useClass: PostsPrismaRepository,
+    },
+    {
+      provide: "PageBlocksRepository",
+      useClass: PageBlocksPrismaRepository,
     },
     {
       provide: "NavigationItemsRepository",
