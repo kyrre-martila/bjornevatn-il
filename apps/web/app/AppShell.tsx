@@ -73,10 +73,10 @@ export function AppShell({ children, navItems, user }: AppShellProps) {
         <header className="app-header" aria-label="Application header">
           <div className="app-header__inner">
             <div className="app-header__brand">
-              <Link href="/" aria-label="Go to Blueprint home">
+              <Link href="/" aria-label="Go to Blueprint website">
                 <Logo width={160} height={40} />
               </Link>
-              <span>Fullstack starter</span>
+              <span>Admin interface</span>
             </div>
 
             <div className="app-header__right">
@@ -97,10 +97,12 @@ export function AppShell({ children, navItems, user }: AppShellProps) {
                   {isAccountMenuOpen && (
                     <div className="app-header__account-menu" role="menu">
                       {userLabel && (
-                        <div className="app-header__account-info">{userLabel}</div>
+                        <div className="app-header__account-info">
+                          {userLabel}
+                        </div>
                       )}
                       <Link
-                        href="/profile"
+                        href="/admin/profile"
                         className="app-header__account-menu-item"
                         role="menuitem"
                         onClick={closeAccountMenu}

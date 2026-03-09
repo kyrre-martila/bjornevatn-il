@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import type { UserProfile } from "@/apps/web/lib/me";
+import type { UserProfile } from "../../../../lib/me";
 
 type EditableUser = UserProfile;
 type EditingField = "firstName" | "lastName" | "phone" | "birthDate" | null;
@@ -169,10 +169,22 @@ export function ProfileClient({ initialUser }: { initialUser: UserProfile }) {
         {error && <p className="profile__error">{error}</p>}
 
         <div className="profile__details">
-          <InlineField label="First name" field="firstName" value={user.firstName} />
-          <InlineField label="Last name" field="lastName" value={user.lastName} />
+          <InlineField
+            label="First name"
+            field="firstName"
+            value={user.firstName}
+          />
+          <InlineField
+            label="Last name"
+            field="lastName"
+            value={user.lastName}
+          />
           <InlineField label="Phone" field="phone" value={user.phone} />
-          <InlineField label="Birth date" field="birthDate" value={user.birthDate} />
+          <InlineField
+            label="Birth date"
+            field="birthDate"
+            value={user.birthDate}
+          />
           <div className="profile__detail">
             <span>Role</span>
             <strong>{user.role}</strong>

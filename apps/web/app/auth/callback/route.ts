@@ -45,7 +45,7 @@ export async function GET(req: Request) {
     return NextResponse.redirect(new URL("/login", url.origin));
   }
 
-  const res = NextResponse.redirect(new URL("/profile", url.origin));
+  const res = NextResponse.redirect(new URL("/admin/profile", url.origin));
   const secureRequest =
     process.env.NODE_ENV === "production" ? true : isSecureRequest(req);
   const domain = process.env.COOKIE_DOMAIN || undefined;

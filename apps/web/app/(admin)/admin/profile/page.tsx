@@ -1,7 +1,7 @@
-import { getMe } from "@/apps/web/lib/me";
+import { getMe } from "../../../../lib/me";
 import { ProfileClient } from "./ProfileClient";
 
-export default async function ProfilePage() {
+export default async function AdminProfilePage() {
   const me = await getMe();
   const user = me?.user ?? null;
 
@@ -13,7 +13,9 @@ export default async function ProfilePage() {
           <p className="profile__subtitle">
             You are not logged in. Please sign in to view your account details.
           </p>
-          <a href="/login" className="button-primary">Log in</a>
+          <a href="/login" className="button-primary">
+            Log in
+          </a>
         </div>
       </section>
     );

@@ -16,9 +16,10 @@ export default function RegisterPage() {
     acceptedTerms: false,
   });
   const [loading, setLoading] = useState(false);
-  const [status, setStatus] = useState<{ tone: StatusTone; message: string } | null>(
-    null,
-  );
+  const [status, setStatus] = useState<{
+    tone: StatusTone;
+    message: string;
+  } | null>(null);
   const { token: csrfToken, refresh: refreshCsrf } = useCsrfToken();
 
   const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
@@ -49,13 +50,16 @@ export default function RegisterPage() {
       });
       if (res.ok) {
         setStatus({ tone: "success", message: "Konto opprettet!" });
-        window.location.href = "/profile";
+        window.location.href = "/admin/profile";
       } else {
         const err = await res.text();
         setStatus({ tone: "error", message: `Feil: ${err}` });
       }
     } catch (error: any) {
-      setStatus({ tone: "error", message: `Feil: ${error?.message ?? "Ukjent feil"}` });
+      setStatus({
+        tone: "error",
+        message: `Feil: ${error?.message ?? "Ukjent feil"}`,
+      });
     } finally {
       setLoading(false);
     }
@@ -72,8 +76,8 @@ export default function RegisterPage() {
             La oss komme i gang.
           </h2>
           <p className="auth__visual-subtitle">
-            Registrer deg for å få tilgang til dashboardet, API-et og alle andre deler av
-            blueprinten.
+            Registrer deg for å få tilgang til admin-grensesnittet, API-et og
+            alle andre deler av blueprinten.
           </p>
         </div>
       </div>
@@ -84,7 +88,8 @@ export default function RegisterPage() {
             <p className="auth__eyebrow">Kom i gang</p>
             <h1 className="auth__title">Opprett konto</h1>
             <p className="auth__subtitle">
-              Fyll inn detaljene dine og bli klar til å bygge produkter med Blueprint.
+              Fyll inn detaljene dine og bli klar til å bygge produkter med
+              Blueprint.
             </p>
           </header>
 

@@ -36,7 +36,7 @@ export default function LoginPage() {
         window.localStorage.setItem("bp_auth", JSON.stringify(payload));
       }
 
-      router.push("/");
+      router.push("/admin");
     } catch (err) {
       if (err instanceof AuthError) {
         setError(
@@ -62,8 +62,8 @@ export default function LoginPage() {
             Deploy everywhere.
           </h2>
           <p className="auth__visual-subtitle">
-            A fullstack starter that gives you a solid foundation for web, API and mobile —
-            so you can focus on features and vibes.
+            A fullstack starter that gives you a solid foundation for web, API
+            and mobile — so you can focus on features and vibes.
           </p>
         </div>
       </div>
@@ -130,7 +130,11 @@ export default function LoginPage() {
               </p>
             )}
 
-            <button type="submit" className="auth__submit" disabled={submitting}>
+            <button
+              type="submit"
+              className="auth__submit"
+              disabled={submitting}
+            >
               {submitting ? "Signing in…" : "Sign in"}
             </button>
           </form>

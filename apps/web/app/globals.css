@@ -8,7 +8,14 @@
 }
 
 body.app-root {
-  font-family: var(--font-sans, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif);
+  font-family: var(
+    --font-sans,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif
+  );
   background: var(--color-surface, #ffffff);
   color: var(--color-base, #111827);
   line-height: 1.5;
@@ -242,7 +249,9 @@ button:focus-visible {
   color: inherit;
   padding: var(--space-2xs) var(--space-xs);
   border-radius: var(--radius-s);
-  transition: color 0.2s ease, background-color 0.2s ease;
+  transition:
+    color 0.2s ease,
+    background-color 0.2s ease;
 }
 
 .app-sidebar__nav-link:hover,
@@ -363,7 +372,9 @@ button:focus-visible {
    =========================== */
 
 .auth {
-  min-height: calc(100vh - 2 * var(--space-l)); /* header/footer already present */
+  min-height: calc(
+    100vh - 2 * var(--space-l)
+  ); /* header/footer already present */
   display: flex;
   align-items: center;
   justify-content: center;
@@ -389,7 +400,11 @@ button:focus-visible {
   position: relative;
   min-height: 220px;
   background:
-    radial-gradient(circle at top left, rgba(255, 255, 255, 0.35), transparent 60%),
+    radial-gradient(
+      circle at top left,
+      rgba(255, 255, 255, 0.35),
+      transparent 60%
+    ),
     linear-gradient(135deg, var(--color-secondary), var(--color-accent));
   color: var(--color-neutral-0);
 }
@@ -745,4 +760,110 @@ button:focus-visible {
 .profile__error {
   color: var(--color-danger, #b91c1c);
   font-size: var(--text-xs);
+}
+
+.public-shell {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.public-header,
+.public-footer {
+  padding: var(--space-m) var(--space-l);
+  background: var(--color-neutral-soft);
+  border-color: var(--color-border-subtle);
+}
+
+.public-header {
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+
+.public-header__inner {
+  max-width: 1120px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-m);
+}
+
+.public-nav {
+  display: flex;
+  gap: var(--space-m);
+  flex-wrap: wrap;
+}
+
+.public-nav__link {
+  font-size: var(--text-s);
+  color: var(--color-muted, var(--color-neutral-600));
+}
+
+.public-nav__link:hover,
+.public-nav__link:focus-visible {
+  color: var(--color-primary);
+}
+
+.public-main {
+  flex: 1;
+  padding: var(--space-xl) var(--space-l);
+}
+
+.public-main__inner {
+  max-width: 1120px;
+  margin: 0 auto;
+}
+
+.public-footer {
+  border-top: 1px solid var(--color-border-subtle);
+  text-align: center;
+  font-size: var(--text-s);
+}
+
+.public-page__title {
+  font-size: var(--text-2xl);
+  margin-bottom: var(--space-m);
+}
+
+.public-page__intro {
+  color: var(--color-muted, var(--color-neutral-600));
+  margin-bottom: var(--space-l);
+}
+
+.public-page__body {
+  display: grid;
+  gap: var(--space-s);
+}
+
+.public-list {
+  display: grid;
+  gap: var(--space-m);
+  list-style: none;
+}
+
+.public-list__item {
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-m);
+  padding: var(--space-m);
+  display: grid;
+  gap: var(--space-2xs);
+}
+
+.public-list__meta {
+  font-size: var(--text-xs);
+  color: var(--color-muted, var(--color-neutral-500));
+}
+
+.public-list__title {
+  font-size: var(--text-l);
+}
+
+.public-list__summary {
+  color: var(--color-muted, var(--color-neutral-600));
+}
+
+.public-list__link {
+  color: var(--color-primary);
+  font-size: var(--text-s);
+  font-weight: 500;
 }
