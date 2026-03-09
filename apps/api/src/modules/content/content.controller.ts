@@ -7,8 +7,11 @@ import {
   Param,
   Patch,
   Post,
+  UploadedFile,
+  UseInterceptors,
+  BadRequestException,
 } from "@nestjs/common";
-import { ApiProperty, ApiTags } from "@nestjs/swagger";
+import { ApiBody, ApiConsumes, ApiProperty, ApiTags } from "@nestjs/swagger";
 import {
   IsArray,
   IsBoolean,
@@ -22,6 +25,7 @@ import {
   ValidateNested,
 } from "class-validator";
 import { Type } from "class-transformer";
+import { FileInterceptor } from "@nestjs/platform-express";
 import type {
   MediaRepository,
   NavigationItemsRepository,
@@ -29,6 +33,7 @@ import type {
   PostsRepository,
   SiteSettingsRepository,
 } from "@org/domain";
+import { MediaService } from "./media.service";
 
 const PAGE_BLOCK_TYPES = ["hero", "rich_text", "cta", "image", "news_list"] as const;
 
@@ -215,6 +220,13 @@ class CreateMediaDto {
   alt!: string;
 }
 
+
+
+class UploadMediaDto {
+  @ApiProperty()
+  @IsString()
+  alt!: string;
+}
 class UpdateMediaDto {
   @ApiProperty({ required: false })
   @IsOptional()
@@ -241,6 +253,7 @@ export class ContentController {
     private readonly settings: SiteSettingsRepository,
     @Inject("MediaRepository")
     private readonly media: MediaRepository,
+    private readonly mediaService: MediaService,
   ) {}
 
   @Get("pages")
@@ -375,6 +388,38 @@ export class ContentController {
   @Get("media/:id")
   getMedia(@Param("id") id: string) {
     return this.media.findById(id);
+  }
+
+
+  @Post("media/upload")
+  @UseInterceptors(FileInterceptor("file"))
+  @ApiConsumes("multipart/form-data")
+  @ApiBody({
+    schema: {
+      type: "object",
+      properties: {
+        file: { type: "string", format: "binary" },
+        alt: { type: "string" },
+      },
+      required: ["file", "alt"],
+    },
+  })
+  async uploadMedia(
+    @UploadedFile() file:
+      | { buffer: Buffer; originalname: string; mimetype: string }
+      | undefined,
+    @Body() body: UploadMediaDto,
+  ) {
+    if (!file) {
+      throw new BadRequestException("File is required");
+    }
+
+    return this.mediaService.upload({
+      fileBuffer: file.buffer,
+      fileName: file.originalname,
+      mimeType: file.mimetype,
+      alt: body.alt,
+    });
   }
 
   @Post("media")
