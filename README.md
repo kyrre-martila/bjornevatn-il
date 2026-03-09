@@ -1,6 +1,6 @@
 # Fullstack App Blueprint
 
-An opinionated monorepo that combines a NestJS API, Next.js web client, Flutter mobile app, Prisma ORM, and Turborepo tooling for modern product teams.
+An opinionated monorepo that combines a NestJS API, Next.js web client, Prisma ORM, and Turborepo tooling for content-driven websites.
 
 ## Who is this for?
 
@@ -23,7 +23,7 @@ Set up environment variables (see [docs/OPERATIONS.md](docs/OPERATIONS.md#local-
 
 ## Overview
 
-- Stack: NestJS API, Next.js web, Flutter mobile, Prisma ORM, Turborepo monorepo.
+- Stack: NestJS API, Next.js web, Prisma ORM, Turborepo monorepo.
 - Contracts: OpenAPI under `packages/contracts`.
 - Infra: Docker Compose for local + prod simulation, GitHub Actions CI/CD.
 

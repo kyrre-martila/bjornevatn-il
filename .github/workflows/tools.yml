@@ -26,8 +26,6 @@ jobs:
   setup:
     name: Setup monorepo
     runs-on: ubuntu-latest
-    outputs:
-      has_dart: ${{ steps.detect-dart.outputs.has_dart }}
     steps:
       - uses: actions/checkout@v4
 
@@ -47,15 +45,6 @@ jobs:
 
       - name: Install deps
         run: pnpm install --frozen-lockfile
-
-      # Deteksjon av Dart/Flutter-kode i repoet
-      - id: detect-dart
-        run: |
-          if git ls-files | grep -E '\.dart$' >/dev/null; then
-            echo "has_dart=true" >> $GITHUB_OUTPUT
-          else
-            echo "has_dart=false" >> $GITHUB_OUTPUT
-          fi
 
   lint:
     name: Lint (ESLint)
@@ -166,14 +155,3 @@ jobs:
           else
             npx prettier --check .
           fi
-
-  dart_format:
-    name: Dart format check
-    needs: setup
-    if: needs.setup.outputs.has_dart == 'true'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dart-lang/setup-dart@v1
-      - name: dart format --set-exit-if-changed
-        run: dart format --output=none --set-exit-if-changed .

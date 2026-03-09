@@ -11,7 +11,6 @@
 1. Verify browser has `XSRF-TOKEN` cookie set.
 2. Ensure client sends `x-csrf-token` header that matches cookie.
 3. Confirm request origin is allowlisted via `API_CORS_ORIGINS`.
-4. For mobile clients, ensure requests use Bearer tokens only (no cookies).
 
 ## CORS Errors
 

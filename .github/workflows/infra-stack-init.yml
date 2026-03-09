@@ -69,8 +69,6 @@ jobs:
       - name: Generate TS SDK
         run: pnpm sdk:ts
 
-      - name: Generate Dart SDK
-        run: pnpm sdk:dart
 
       - name: Upload artifacts (OpenAPI + SDKs)
         uses: actions/upload-artifact@v4
@@ -81,11 +79,10 @@ jobs:
             apps/api/openapi/openapi.json
             packages/contracts/dist/openapi.json
             packages/sdk-ts/**
-            packages/sdk-dart/**
 
       - name: Job summary
         run: |
           echo "### ✅ Stack init OK" >> $GITHUB_STEP_SUMMARY
           echo "- OpenAPI: apps/api/openapi/openapi.json" >> $GITHUB_STEP_SUMMARY
           echo "- Synced: packages/contracts/dist/openapi.json" >> $GITHUB_STEP_SUMMARY
-          echo "- SDKs: packages/sdk-ts, packages/sdk-dart (lastet som artifact)" >> $GITHUB_STEP_SUMMARY
+          echo "- SDKs: packages/sdk-ts (lastet som artifact)" >> $GITHUB_STEP_SUMMARY
