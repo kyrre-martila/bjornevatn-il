@@ -1,3 +1,5 @@
+import { resolveApiUrl } from "./api";
+
 export type HeroContent = {
   eyebrow: string;
   title: string;
@@ -28,108 +30,144 @@ export type ContentPage = {
   blocks: ContentBlock[];
 };
 
-export async function getHomepageContent(): Promise<HeroContent> {
+type ApiPageBlock = {
+  id: string;
+  type: ContentBlockType;
+  order: number;
+  data: unknown;
+};
+
+type ApiPage = {
+  slug: string;
+  title: string;
+  published: boolean;
+  blocks?: ApiPageBlock[];
+};
+
+type ApiPost = {
+  slug: string;
+  title: string;
+  excerpt: string;
+  publishedAt: string | null;
+};
+
+function asRecord(value: unknown): Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : {};
+}
+
+async function fetchContent<T>(path: string): Promise<T | null> {
+  try {
+    const response = await fetch(resolveApiUrl(path), {
+      method: "GET",
+      next: { revalidate: 60 },
+    });
+
+    if (response.status === 404) {
+      return null;
+    }
+
+    if (!response.ok) {
+      throw new Error(`Content request failed (${response.status}) for ${path}`);
+    }
+
+    return (await response.json()) as T;
+  } catch (error) {
+    console.error(`Content request failed for ${path}`, error);
+    return null;
+  }
+}
+
+function mapApiPageBlock(block: ApiPageBlock): ContentBlock {
   return {
-    eyebrow: "Blueprint website",
-    title: "A content-first foundation for your public website",
-    subtitle:
-      "This route is prepared to read published content from a future CMS layer instead of hardcoded route markup.",
-    primaryCta: { href: "/news", label: "Read latest news" },
-    secondaryCta: { href: "/page/about", label: "Open generic page" },
+    id: block.id,
+    type: block.type,
+    order: block.order,
+    data: asRecord(block.data),
+  };
+}
+
+function mapApiPage(page: ApiPage): ContentPage {
+  const blocks = Array.isArray(page.blocks) ? page.blocks.map(mapApiPageBlock) : [];
+
+  return {
+    slug: page.slug,
+    title: page.title,
+    blocks: blocks.sort((a, b) => a.order - b.order),
+  };
+}
+
+function mapApiPost(post: ApiPost): NewsItem {
+  return {
+    slug: post.slug,
+    title: post.title,
+    summary: post.excerpt,
+    publishedAt: post.publishedAt ? new Date(post.publishedAt).toISOString().slice(0, 10) : "",
+  };
+}
+
+function mapHeroFromPage(page: ContentPage): HeroContent | null {
+  const heroBlock = page.blocks.find((block) => block.type === "hero");
+  if (!heroBlock) {
+    return null;
+  }
+
+  const data = heroBlock.data;
+  const primaryCta = asRecord(data.primaryCta);
+  const secondaryCta = asRecord(data.secondaryCta);
+
+  return {
+    eyebrow: typeof data.eyebrow === "string" ? data.eyebrow : "",
+    title: typeof data.title === "string" ? data.title : page.title,
+    subtitle: typeof data.subtitle === "string" ? data.subtitle : "",
+    primaryCta: {
+      href: typeof primaryCta.href === "string" ? primaryCta.href : "/news",
+      label: typeof primaryCta.label === "string" ? primaryCta.label : "Read latest news",
+    },
+    secondaryCta: {
+      href: typeof secondaryCta.href === "string" ? secondaryCta.href : "/news",
+      label: typeof secondaryCta.label === "string" ? secondaryCta.label : "Browse news",
+    },
+  };
+}
+
+export async function getHomepageContent(): Promise<HeroContent> {
+  const apiPage = await fetchContent<ApiPage>("/content/pages/slug/home");
+  if (!apiPage || !apiPage.published) {
+    return {
+      eyebrow: "",
+      title: "",
+      subtitle: "",
+      primaryCta: { href: "/news", label: "News" },
+      secondaryCta: { href: "/", label: "Home" },
+    };
+  }
+
+  const hero = mapHeroFromPage(mapApiPage(apiPage));
+  return hero ?? {
+    eyebrow: "",
+    title: apiPage.title,
+    subtitle: "",
+    primaryCta: { href: "/news", label: "News" },
+    secondaryCta: { href: "/", label: "Home" },
   };
 }
 
 export async function getNewsListing(): Promise<NewsItem[]> {
-  return [
-    {
-      slug: "launch-update",
-      title: "Launch update",
-      summary:
-        "Initial website architecture is now split into public and admin areas.",
-      publishedAt: "2026-01-10",
-    },
-    {
-      slug: "content-layer-plan",
-      title: "Content layer plan",
-      summary:
-        "Routes now depend on content-access functions to ease CMS integration later.",
-      publishedAt: "2026-01-18",
-    },
-  ];
+  const posts = await fetchContent<ApiPost[]>("/content/posts/published/listing");
+  if (!posts) {
+    return [];
+  }
+
+  return posts.map(mapApiPost);
 }
 
-const pageContentBySlug: Record<string, ContentPage> = {
-  about: {
-    slug: "about",
-    title: "About",
-    blocks: [
-      {
-        id: "about-hero",
-        type: "hero",
-        order: 0,
-        data: {
-          eyebrow: "About Blueprint",
-          title: "Composable page blocks for public content",
-          subtitle:
-            "This page is rendered from ordered blocks to prepare for CMS-managed pages.",
-          primaryCta: { href: "/news", label: "Read latest news" },
-          secondaryCta: { href: "/", label: "Go to homepage" },
-        },
-      },
-      {
-        id: "about-intro",
-        type: "rich_text",
-        order: 10,
-        data: {
-          paragraphs: [
-            "This is a generic content page rendered through a block renderer.",
-            "The route fetches a page payload with blocks, sorts by order, then maps each block to a presentational component.",
-            "In a later phase, this content will be loaded from a CMS-backed content repository.",
-          ],
-        },
-      },
-      {
-        id: "about-image",
-        type: "image",
-        order: 20,
-        data: {
-          src: "/brand/blueprint-logo-horizontal.svg",
-          alt: "Blueprint horizontal logo",
-          caption: "Static assets can already be referenced from block data.",
-        },
-      },
-      {
-        id: "about-cta",
-        type: "cta",
-        order: 30,
-        data: {
-          title: "Need a public content foundation?",
-          description: "Start with reusable blocks and keep the admin UI focused.",
-          href: "/login",
-          label: "Admin login",
-        },
-      },
-      {
-        id: "about-news",
-        type: "news_list",
-        order: 40,
-        data: {
-          title: "Latest updates",
-          count: 2,
-        },
-      },
-    ],
-  },
-};
-
 export async function getPageContentBySlug(slug: string): Promise<ContentPage | null> {
-  const page = pageContentBySlug[slug];
-  if (!page) {
+  const page = await fetchContent<ApiPage>(`/content/pages/slug/${encodeURIComponent(slug)}`);
+  if (!page || !page.published) {
     return null;
   }
 
-  return {
-    ...page,
-    blocks: [...page.blocks].sort((a, b) => a.order - b.order),
-  };
+  return mapApiPage(page);
 }
