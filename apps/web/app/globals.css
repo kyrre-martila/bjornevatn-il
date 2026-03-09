@@ -896,3 +896,127 @@ button:focus-visible {
   padding: var(--space-l);
   margin: var(--space-l) 0;
 }
+
+.admin-pages {
+  display: grid;
+  gap: var(--space-m);
+}
+
+.admin-pages__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: var(--space-m);
+}
+
+.admin-pages__create,
+.admin-pages__edit-link,
+.page-editor__actions button,
+.page-editor__block-type-buttons button,
+.page-editor__block-toolbar button {
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-s);
+  background: var(--color-neutral-0);
+  padding: var(--space-2xs) var(--space-s);
+  cursor: pointer;
+}
+
+.admin-pages__list {
+  display: grid;
+  gap: var(--space-s);
+}
+
+.admin-pages__item {
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-m);
+  padding: var(--space-s);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.page-editor {
+  display: grid;
+  gap: var(--space-m);
+}
+
+.page-editor__header {
+  display: grid;
+  gap: var(--space-2xs);
+}
+
+.page-editor__back {
+  color: var(--color-primary);
+}
+
+.page-editor__form,
+.page-editor__form label {
+  display: grid;
+  gap: var(--space-2xs);
+}
+
+.page-editor__form input,
+.page-editor__form textarea,
+.page-editor__form select {
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-s);
+  padding: var(--space-2xs) var(--space-s);
+  font: inherit;
+}
+
+.page-editor__blocks {
+  display: grid;
+  gap: var(--space-s);
+}
+
+.page-editor__blocks-header {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--space-s);
+  align-items: center;
+}
+
+.page-editor__block-type-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2xs);
+}
+
+.page-editor__block {
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-m);
+  padding: var(--space-s);
+  display: grid;
+  gap: var(--space-xs);
+}
+
+.page-editor__block-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.page-editor__block-toolbar div {
+  display: flex;
+  gap: var(--space-2xs);
+}
+
+.page-editor__checkbox {
+  display: flex !important;
+  gap: var(--space-2xs);
+  align-items: center;
+}
+
+.page-editor__error {
+  color: var(--color-danger, #b42318);
+}
+
+.page-editor__status {
+  color: var(--color-success, #067647);
+}
+
+.page-editor__actions {
+  display: flex;
+  gap: var(--space-s);
+}
