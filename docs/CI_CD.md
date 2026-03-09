@@ -6,10 +6,9 @@ The project uses GitHub Actions to enforce consistent quality checks on every pu
 
 - **Lint & Format (`.github/workflows/ci-lint.yml`)**
   - Runs ESLint and Prettier checks across all JavaScript/TypeScript sources.
-  - Validates Dart formatting for the mobile app.
   - Executes on every `push` and `pull_request` event.
 - **Build Verification (`.github/workflows/ci-build.yml`)**
-  - Installs dependencies and builds the API, web app, shared domain packages, and mobile app.
+  - Installs dependencies and builds the API, web app, and shared domain packages.
   - Publishes build artifacts (API dist, Next.js output, and domain package dist) for inspection or download.
   - Executes on every `push` and `pull_request` event.
 - **Test All (`.github/workflows/ci-test-all.yml`)**
@@ -22,7 +21,6 @@ The project uses GitHub Actions to enforce consistent quality checks on every pu
 Each workflow uses the GitHub Actions cache to speed up dependency installation:
 
 - **pnpm dependencies**: Caches `~/.pnpm-store` and `node_modules` keyed by the hash of all `pnpm-lock.yaml` files.
-- **Flutter/Dart dependencies**: Caches `~/.pub-cache` keyed by the `pubspec.lock` hash.
 - Restoring caches significantly reduces CI execution time for incremental runs (targeting under three minutes).
 
 ## Build Artifacts

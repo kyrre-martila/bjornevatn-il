@@ -18,7 +18,6 @@
 
 - API sets `XSRF-TOKEN` non-HttpOnly cookie.
 - Clients send matching `x-csrf-token` header on state-changing requests.
-- Native/mobile apps bypass CSRF by using `Authorization: Bearer <token>` headers only.
 
 ## CORS Configuration
 
@@ -29,7 +28,7 @@
 
 - Access tokens short-lived; refresh tokens rotated on each refresh call.
 - Refresh token rotation persists last valid token hash; revoked tokens are denied on reuse.
-- Web stores tokens in secure cookies; mobile stores tokens in platform secure storage (Keychain/Keystore).
+- Web stores tokens in secure cookies.
 
 ## Incident Response Checklist
 

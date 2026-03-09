@@ -8,7 +8,7 @@
 4. Generate Prisma client: `pnpm prisma:generate`.
 5. Run migrations: `pnpm prisma migrate deploy`.
 6. Seed dev data (optional): `pnpm prisma db seed`.
-7. Start apps: `pnpm dev` (web/api) and `cd apps/mobile && flutter run` for mobile.
+7. Start apps: `pnpm dev` (web/api).
 
 ## CI/CD Hooks
 

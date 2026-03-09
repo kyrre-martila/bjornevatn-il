@@ -3,7 +3,7 @@
 ## Layering
 
 - Controller (NestJS/Next.js API route) → Domain Service (business logic) → Repository Interface (port) → Prisma Adapter (implements repository) → PostgreSQL database.
-- Web and mobile clients use generated SDKs; shared DTOs live in `packages/contracts`.
+- Web clients use generated SDKs; shared DTOs live in `packages/contracts`.
 
 ## Login / Refresh Sequence
 
