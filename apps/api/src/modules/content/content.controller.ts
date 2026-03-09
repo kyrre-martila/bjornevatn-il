@@ -10,13 +10,18 @@ import {
 } from "@nestjs/common";
 import { ApiProperty, ApiTags } from "@nestjs/swagger";
 import {
+  IsArray,
   IsBoolean,
+  IsIn,
   IsInt,
+  IsObject,
   IsOptional,
   IsString,
   IsUrl,
   Min,
+  ValidateNested,
 } from "class-validator";
+import { Type } from "class-transformer";
 import type {
   MediaRepository,
   NavigationItemsRepository,
@@ -24,6 +29,24 @@ import type {
   PostsRepository,
   SiteSettingsRepository,
 } from "@org/domain";
+
+const PAGE_BLOCK_TYPES = ["hero", "rich_text", "cta", "image", "news_list"] as const;
+
+class PageBlockInputDto {
+  @ApiProperty({ enum: PAGE_BLOCK_TYPES })
+  @IsString()
+  @IsIn(PAGE_BLOCK_TYPES)
+  type!: (typeof PAGE_BLOCK_TYPES)[number];
+
+  @ApiProperty({ type: Object })
+  @IsObject()
+  data!: Record<string, unknown>;
+
+  @ApiProperty()
+  @IsInt()
+  @Min(0)
+  order!: number;
+}
 
 class CreatePageDto {
   @ApiProperty()
@@ -34,9 +57,11 @@ class CreatePageDto {
   @IsString()
   title!: string;
 
-  @ApiProperty()
-  @IsString()
-  content!: string;
+  @ApiProperty({ type: [PageBlockInputDto] })
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => PageBlockInputDto)
+  blocks!: PageBlockInputDto[];
 
   @ApiProperty()
   @IsBoolean()
@@ -54,10 +79,12 @@ class UpdatePageDto {
   @IsString()
   title?: string;
 
-  @ApiProperty({ required: false })
+  @ApiProperty({ required: false, type: [PageBlockInputDto] })
   @IsOptional()
-  @IsString()
-  content?: string;
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => PageBlockInputDto)
+  blocks?: PageBlockInputDto[];
 
   @ApiProperty({ required: false })
   @IsOptional()
@@ -226,7 +253,6 @@ export class ContentController {
     return this.pages.findById(id);
   }
 
-
   @Get("pages/slug/:slug")
   getPageBySlug(@Param("slug") slug: string) {
     return this.pages.findBySlug(slug);
@@ -257,7 +283,6 @@ export class ContentController {
   getPost(@Param("id") id: string) {
     return this.posts.findById(id);
   }
-
 
   @Get("posts/slug/:slug")
   getPostBySlug(@Param("slug") slug: string) {

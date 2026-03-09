@@ -13,11 +13,31 @@ export type NewsItem = {
   publishedAt: string;
 };
 
+export type ContentBlockType = "hero" | "rich_text" | "cta" | "image" | "news_list";
+
+export type ContentBlock = {
+  id: string;
+  type: ContentBlockType;
+  order: number;
+  data: Record<string, unknown>;
+};
+
 export type ContentPage = {
+  slug: string;
+  title: string;
+  blocks: ContentBlock[];
+};
+
+export type RenderablePageSection =
+  | { kind: "rich_text"; paragraphs: string[] }
+  | { kind: "unsupported"; blockType: ContentBlockType };
+
+export type RenderablePageContent = {
   slug: string;
   title: string;
   intro: string;
   body: string[];
+  sections: RenderablePageSection[];
 };
 
 export async function getHomepageContent(): Promise<HeroContent> {
@@ -54,17 +74,54 @@ const pageContentBySlug: Record<string, ContentPage> = {
   about: {
     slug: "about",
     title: "About",
-    intro:
-      "This is a generic content page rendered through a content accessor.",
-    body: [
-      "The page route is intentionally generic so editors can publish future static pages.",
-      "In a later phase, this content will be loaded from a CMS-backed content repository.",
+    blocks: [
+      {
+        id: "about-intro",
+        type: "rich_text",
+        order: 0,
+        data: {
+          paragraphs: [
+            "This is a generic content page rendered through a content accessor.",
+            "The page route is intentionally generic so editors can publish future static pages.",
+            "In a later phase, this content will be loaded from a CMS-backed content repository.",
+          ],
+        },
+      },
     ],
   },
 };
 
+function mapPageToRenderableContent(page: ContentPage): RenderablePageContent {
+  const orderedBlocks = [...page.blocks].sort((a, b) => a.order - b.order);
+  const sections: RenderablePageSection[] = orderedBlocks.map((block) => {
+    if (block.type === "rich_text") {
+      const paragraphs = Array.isArray(block.data.paragraphs)
+        ? block.data.paragraphs.filter((p): p is string => typeof p === "string")
+        : [];
+      return { kind: "rich_text", paragraphs };
+    }
+
+    return { kind: "unsupported", blockType: block.type };
+  });
+
+  const firstRichText = sections.find((section) => section.kind === "rich_text");
+
+  return {
+    slug: page.slug,
+    title: page.title,
+    intro: firstRichText?.paragraphs[0] ?? "",
+    body: firstRichText?.paragraphs.slice(1) ?? [],
+    sections,
+  };
+}
+
 export async function getPageContentBySlug(
   slug: string,
-): Promise<ContentPage | null> {
-  return pageContentBySlug[slug] ?? null;
+): Promise<RenderablePageContent | null> {
+  const page = pageContentBySlug[slug];
+  if (!page) {
+    return null;
+  }
+
+  return mapPageToRenderableContent(page);
 }

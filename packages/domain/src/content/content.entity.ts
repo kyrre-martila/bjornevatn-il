@@ -2,8 +2,26 @@ export type Page = {
   id: string;
   slug: string;
   title: string;
-  content: string;
   published: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+  blocks: PageBlock[];
+};
+
+// Initial block type convention:
+// - hero
+// - rich_text
+// - cta
+// - image
+// - news_list
+export type PageBlockType = "hero" | "rich_text" | "cta" | "image" | "news_list";
+
+export type PageBlock = {
+  id: string;
+  pageId: string;
+  type: PageBlockType;
+  data: Record<string, unknown>;
+  order: number;
   createdAt: Date;
   updatedAt: Date;
 };
