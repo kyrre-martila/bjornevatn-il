@@ -105,6 +105,7 @@ model ContentType {
   name        String
   slug        String        @unique
   description String
+  fields      Json          @default("[]")
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
   items       ContentItem[]

@@ -5,6 +5,7 @@ import {
   Delete,
   Get,
   Inject,
+  BadRequestException,
   Param,
   Patch,
   Post,
@@ -16,6 +17,7 @@ import {
   IsIn,
   IsInt,
   IsObject,
+  IsNotEmpty,
   IsOptional,
   IsString,
   IsUrl,
@@ -30,6 +32,7 @@ import type {
   NavigationItemsRepository,
   PagesRepository,
   SiteSettingsRepository,
+  ContentFieldDefinition,
 } from "@org/domain";
 import { MediaService } from "./media.service";
 
@@ -95,6 +98,29 @@ class UpdatePageDto {
   published?: boolean;
 }
 
+const CONTENT_FIELD_TYPES = ["text", "textarea", "rich_text", "image", "date", "boolean"] as const;
+
+class ContentFieldDefinitionDto {
+  @ApiProperty()
+  @IsString()
+  @IsNotEmpty()
+  key!: string;
+
+  @ApiProperty()
+  @IsString()
+  @IsNotEmpty()
+  label!: string;
+
+  @ApiProperty({ enum: CONTENT_FIELD_TYPES })
+  @IsString()
+  @IsIn(CONTENT_FIELD_TYPES)
+  type!: (typeof CONTENT_FIELD_TYPES)[number];
+
+  @ApiProperty()
+  @IsBoolean()
+  required!: boolean;
+}
+
 class CreateContentTypeDto {
   @ApiProperty()
   @IsString()
@@ -107,6 +133,12 @@ class CreateContentTypeDto {
   @ApiProperty()
   @IsString()
   description!: string;
+
+  @ApiProperty({ type: [ContentFieldDefinitionDto] })
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => ContentFieldDefinitionDto)
+  fields!: ContentFieldDefinitionDto[];
 }
 
 class UpdateContentTypeDto {
@@ -124,6 +156,13 @@ class UpdateContentTypeDto {
   @IsOptional()
   @IsString()
   description?: string;
+
+  @ApiProperty({ required: false, type: [ContentFieldDefinitionDto] })
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => ContentFieldDefinitionDto)
+  fields?: ContentFieldDefinitionDto[];
 }
 
 class CreateContentItemDto {
@@ -402,13 +441,56 @@ export class ContentController {
     return this.contentItems.findBySlug(contentTypeSlug, slug);
   }
 
+  private validateContentItemData(
+    fields: ContentFieldDefinition[],
+    data: Record<string, unknown>,
+  ) {
+    for (const field of fields) {
+      const value = data[field.key];
+      if (field.required && (value === undefined || value === null || value === "")) {
+        throw new BadRequestException(`Missing required field: ${field.key}`);
+      }
+
+      if (value === undefined || value === null || value === "") {
+        continue;
+      }
+
+      if (field.type === "boolean" && typeof value !== "boolean") {
+        throw new BadRequestException(`Field ${field.key} must be a boolean.`);
+      }
+
+      if (field.type !== "boolean" && typeof value !== "string") {
+        throw new BadRequestException(`Field ${field.key} must be a string.`);
+      }
+    }
+  }
+
   @Post("items")
-  createContentItem(@Body() body: CreateContentItemDto) {
+  async createContentItem(@Body() body: CreateContentItemDto) {
+    const contentType = await this.contentTypes.findById(body.contentTypeId);
+    if (!contentType) {
+      throw new BadRequestException("Invalid content type.");
+    }
+
+    this.validateContentItemData(contentType.fields, body.data);
     return this.contentItems.create(body);
   }
 
   @Patch("items/:id")
-  updateContentItem(@Param("id") id: string, @Body() body: UpdateContentItemDto) {
+  async updateContentItem(@Param("id") id: string, @Body() body: UpdateContentItemDto) {
+    const existing = await this.contentItems.findById(id);
+    if (!existing) {
+      throw new BadRequestException("Content item not found.");
+    }
+
+    const contentTypeId = body.contentTypeId ?? existing.contentTypeId;
+    const contentType = await this.contentTypes.findById(contentTypeId);
+    if (!contentType) {
+      throw new BadRequestException("Invalid content type.");
+    }
+
+    const data = body.data ?? existing.data;
+    this.validateContentItemData(contentType.fields, data);
     return this.contentItems.update(id, body);
   }
 

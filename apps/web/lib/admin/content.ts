@@ -1,10 +1,26 @@
 import { cookies } from "next/headers";
 
+export type AdminContentFieldType =
+  | "text"
+  | "textarea"
+  | "rich_text"
+  | "image"
+  | "date"
+  | "boolean";
+
+export type AdminContentFieldDefinition = {
+  key: string;
+  label: string;
+  type: AdminContentFieldType;
+  required: boolean;
+};
+
 export type AdminContentType = {
   id: string;
   name: string;
   slug: string;
   description: string;
+  fields: AdminContentFieldDefinition[];
 };
 
 export type AdminContentItem = {

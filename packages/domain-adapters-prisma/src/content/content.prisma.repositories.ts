@@ -3,6 +3,8 @@ import type {
   ContentItem,
   ContentItemsRepository,
   ContentType,
+  ContentFieldDefinition,
+  ContentFieldType,
   ContentTypesRepository,
   Media,
   MediaRepository,
@@ -74,6 +76,65 @@ function mapInputBlocks(blocks: PageBlock[]) {
     data: block.data as Prisma.InputJsonValue,
     order: block.order,
   }));
+}
+
+const CONTENT_FIELD_TYPES: ContentFieldType[] = [
+  "text",
+  "textarea",
+  "rich_text",
+  "image",
+  "date",
+  "boolean",
+];
+
+function toContentFieldType(value: unknown): ContentFieldType {
+  return typeof value === "string" && CONTENT_FIELD_TYPES.includes(value as ContentFieldType)
+    ? (value as ContentFieldType)
+    : "text";
+}
+
+function mapContentFields(fields: Prisma.JsonValue): ContentFieldDefinition[] {
+  if (!Array.isArray(fields)) {
+    return [];
+  }
+
+  return fields
+    .map((field) => {
+      if (!field || typeof field !== "object" || Array.isArray(field)) {
+        return null;
+      }
+
+      const record = field as Record<string, unknown>;
+      const key = typeof record.key === "string" ? record.key.trim() : "";
+      const label = typeof record.label === "string" ? record.label.trim() : "";
+
+      if (!key || !label) {
+        return null;
+      }
+
+      return {
+        key,
+        label,
+        type: toContentFieldType(record.type),
+        required: Boolean(record.required),
+      } satisfies ContentFieldDefinition;
+    })
+    .filter((field): field is ContentFieldDefinition => Boolean(field));
+}
+
+function mapContentType(type: {
+  id: string;
+  name: string;
+  slug: string;
+  description: string;
+  fields: Prisma.JsonValue;
+  createdAt: Date;
+  updatedAt: Date;
+}): ContentType {
+  return {
+    ...type,
+    fields: mapContentFields(type.fields),
+  };
 }
 
 function mapContentItem(item: {
@@ -223,26 +284,42 @@ export class ContentTypesPrismaRepository implements ContentTypesRepository {
   private readonly prisma = getPrisma();
 
   async findMany(): Promise<ContentType[]> {
-    return this.prisma.contentType.findMany({ orderBy: { createdAt: "desc" } });
+    const types = await this.prisma.contentType.findMany({ orderBy: { createdAt: "desc" } });
+    return types.map(mapContentType);
   }
 
   async findById(id: string): Promise<ContentType | null> {
-    return this.prisma.contentType.findUnique({ where: { id } });
+    const type = await this.prisma.contentType.findUnique({ where: { id } });
+    return type ? mapContentType(type) : null;
   }
 
   async findBySlug(slug: string): Promise<ContentType | null> {
-    return this.prisma.contentType.findUnique({ where: { slug } });
+    const type = await this.prisma.contentType.findUnique({ where: { slug } });
+    return type ? mapContentType(type) : null;
   }
 
   async create(data: Omit<ContentType, "id" | "createdAt" | "updatedAt">): Promise<ContentType> {
-    return this.prisma.contentType.create({ data });
+    const type = await this.prisma.contentType.create({
+      data: {
+        ...data,
+        fields: data.fields as Prisma.InputJsonValue,
+      },
+    });
+    return mapContentType(type);
   }
 
   async update(
     id: string,
     data: Partial<Omit<ContentType, "id" | "createdAt" | "updatedAt">>,
   ): Promise<ContentType> {
-    return this.prisma.contentType.update({ where: { id }, data });
+    const type = await this.prisma.contentType.update({
+      where: { id },
+      data: {
+        ...data,
+        fields: data.fields ? (data.fields as Prisma.InputJsonValue) : undefined,
+      },
+    });
+    return mapContentType(type);
   }
 
   async delete(id: string): Promise<void> {

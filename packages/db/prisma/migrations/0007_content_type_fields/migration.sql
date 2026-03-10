@@ -1,0 +1,2 @@
+ALTER TABLE "ContentType"
+ADD COLUMN "fields" JSONB NOT NULL DEFAULT '[]';

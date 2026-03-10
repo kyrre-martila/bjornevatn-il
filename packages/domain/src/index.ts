@@ -21,6 +21,8 @@ export type {
   PageBlock,
   PageBlockType,
   ContentType,
+  ContentFieldDefinition,
+  ContentFieldType,
   ContentItem,
   NavigationItem,
   SiteSetting,

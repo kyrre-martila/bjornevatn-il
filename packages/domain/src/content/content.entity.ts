@@ -31,8 +31,24 @@ export type ContentType = {
   name: string;
   slug: string;
   description: string;
+  fields: ContentFieldDefinition[];
   createdAt: Date;
   updatedAt: Date;
+};
+
+export type ContentFieldType =
+  | "text"
+  | "textarea"
+  | "rich_text"
+  | "image"
+  | "date"
+  | "boolean";
+
+export type ContentFieldDefinition = {
+  key: string;
+  label: string;
+  type: ContentFieldType;
+  required: boolean;
 };
 
 export type ContentItem = {
