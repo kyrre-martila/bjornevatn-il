@@ -1,4 +1,5 @@
 import { resolveApiUrl } from "./api";
+import { DEMO_NAVIGATION_ITEMS, DEMO_NEWS_ITEMS, DEMO_PAGE_BY_SLUG } from "./demo-content";
 
 export type HeroContent = {
   eyebrow: string;
@@ -79,168 +80,6 @@ type ApiSiteSetting = {
   value: string;
 };
 
-const EXAMPLE_NEWS_ITEMS: NewsItem[] = [
-  {
-    slug: "moren-launch-update",
-    title: "Moren Ipsum launch update",
-    summary:
-      "Moren ipsum dolor sit amet, consectetuer adipiscing elit. Moren donec quam felis, ultricies nec, pellentesque eu.",
-    publishedAt: "2026-01-04",
-  },
-  {
-    slug: "studio-behind-the-scenes",
-    title: "Behind the scenes in the Moren studio",
-    summary:
-      "Moren ipsum aenean massa. Cum sociis natoque penatibus et magnis dis parturient montes, nascetur ridiculus mus.",
-    publishedAt: "2025-12-19",
-  },
-  {
-    slug: "service-roadmap",
-    title: "Service roadmap highlights",
-    summary:
-      "Moren ipsum donec pede justo, fringilla vel, aliquet nec, vulputate eget, arcu. In enim justo, rhoncus ut.",
-    publishedAt: "2025-11-28",
-  },
-];
-
-const EXAMPLE_PAGES: ContentPage[] = [
-  {
-    slug: "home",
-    title: "Home",
-    blocks: [
-      {
-        id: "example-home-hero",
-        type: "hero",
-        order: 1,
-        data: {
-          eyebrow: "Moren Studio",
-          title: "Believable website blueprint",
-          subtitle:
-            "Moren ipsum dolor sit amet, consectetuer adipiscing elit. Moren aenean commodo ligula eget dolor.",
-          primaryCta: { href: "/page/services", label: "Explore services" },
-          secondaryCta: { href: "/page/contact", label: "Contact us" },
-        },
-      },
-      {
-        id: "example-home-rich-text",
-        type: "rich_text",
-        order: 2,
-        data: {
-          paragraphs: [
-            "Moren ipsum dolor sit amet, consectetuer adipiscing elit. Aenean commodo ligula eget dolor. Moren aenean massa.",
-            "Moren ipsum cum sociis natoque penatibus et magnis dis parturient montes, nascetur ridiculus mus.",
-          ],
-        },
-      },
-      {
-        id: "example-home-image",
-        type: "image",
-        order: 3,
-        data: {
-          src: "https://picsum.photos/seed/moren-home/1280/720",
-          alt: "Moren ipsum creative workspace",
-          caption:
-            "Moren ipsum donec quam felis, ultricies nec, pellentesque eu, pretium quis, sem.",
-        },
-      },
-      {
-        id: "example-home-cta",
-        type: "cta",
-        order: 4,
-        data: {
-          title: "Start your Moren project",
-          description:
-            "Moren ipsum nulla consequat massa quis enim. Donec pede justo, fringilla vel, aliquet nec, vulputate eget, arcu.",
-          href: "/page/contact",
-          label: "Book a consultation",
-        },
-      },
-      {
-        id: "example-home-news-list",
-        type: "news_list",
-        order: 5,
-        data: {
-          title: "Latest updates",
-          count: 3,
-        },
-      },
-    ],
-  },
-  {
-    slug: "about",
-    title: "About",
-    blocks: [
-      {
-        id: "example-about-rich-text",
-        type: "rich_text",
-        order: 1,
-        data: {
-          paragraphs: [
-            "Moren ipsum dolor sit amet, consectetuer adipiscing elit. Moren team builds practical digital experiences.",
-            "Moren ipsum phasellus viverra nulla ut metus varius laoreet. Quisque rutrum. Aenean imperdiet.",
-          ],
-        },
-      },
-      {
-        id: "example-about-image",
-        type: "image",
-        order: 2,
-        data: {
-          src: "https://picsum.photos/seed/moren-about/1200/675",
-          alt: "Moren ipsum team collaboration",
-        },
-      },
-    ],
-  },
-  {
-    slug: "services",
-    title: "Services",
-    blocks: [
-      {
-        id: "example-services-rich-text",
-        type: "rich_text",
-        order: 1,
-        data: {
-          paragraphs: [
-            "Moren ipsum aenean leo ligula, porttitor eu, consequat vitae, eleifend ac, enim. Aliquam lorem ante.",
-            "Moren ipsum dapibus in, viverra quis, feugiat a, tellus. Phasellus viverra nulla ut metus varius laoreet.",
-          ],
-        },
-      },
-      {
-        id: "example-services-cta",
-        type: "cta",
-        order: 2,
-        data: {
-          title: "Need a custom scope?",
-          description: "Moren ipsum maecenas tempus, tellus eget condimentum rhoncus, sem quam semper libero.",
-          href: "/page/contact",
-          label: "Request proposal",
-        },
-      },
-    ],
-  },
-  {
-    slug: "contact",
-    title: "Contact",
-    blocks: [
-      {
-        id: "example-contact-rich-text",
-        type: "rich_text",
-        order: 1,
-        data: {
-          paragraphs: [
-            "Moren ipsum donec vitae sapien ut libero venenatis faucibus. Nullam quis ante. Etiam sit amet orci eget eros.",
-            "Moren ipsum email: hello@example.com · phone: +1 (555) 010-2400 · hours: Monday to Friday, 9:00–17:00.",
-          ],
-        },
-      },
-    ],
-  },
-];
-
-const EXAMPLE_PAGE_BY_SLUG = new Map(EXAMPLE_PAGES.map((page) => [page.slug, page]));
-
 const PUBLIC_SITE_SETTING_KEYS: SiteSettingKey[] = [
   "site_title",
   "site_tagline",
@@ -250,6 +89,20 @@ const PUBLIC_SITE_SETTING_KEYS: SiteSettingKey[] = [
   "instagram_url",
   "youtube_url",
 ];
+
+function shouldUseDemoContentFallback(): boolean {
+  const configuredMode = process.env.CONTENT_DEMO_MODE?.trim().toLowerCase();
+
+  if (configuredMode === "true" || configuredMode === "1") {
+    return true;
+  }
+
+  if (configuredMode === "false" || configuredMode === "0") {
+    return false;
+  }
+
+  return process.env.NODE_ENV !== "production";
+}
 
 function asRecord(value: unknown): Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value)
@@ -402,7 +255,7 @@ function mapHeroFromPage(page: ContentPage): HeroContent | null {
 export async function getHomepageContent(): Promise<HeroContent> {
   const apiPage = await fetchContent<ApiPage>("/content/pages/slug/home");
   if (!apiPage || !apiPage.published) {
-    const fallbackPage = EXAMPLE_PAGE_BY_SLUG.get("home");
+    const fallbackPage = shouldUseDemoContentFallback() ? DEMO_PAGE_BY_SLUG.get("home") : null;
     const fallbackHero = fallbackPage ? mapHeroFromPage(fallbackPage) : null;
     if (fallbackHero) {
       return fallbackHero;
@@ -430,7 +283,7 @@ export async function getHomepageContent(): Promise<HeroContent> {
 export async function getNewsListing(): Promise<NewsItem[]> {
   const items = await fetchContent<ApiContentItem[]>("/content/items/type-slug/news");
   if (!items) {
-    return EXAMPLE_NEWS_ITEMS;
+    return shouldUseDemoContentFallback() ? DEMO_NEWS_ITEMS : [];
   }
 
   return items.map(mapApiContentItem);
@@ -439,7 +292,11 @@ export async function getNewsListing(): Promise<NewsItem[]> {
 export async function getPageContentBySlug(slug: string): Promise<ContentPage | null> {
   const page = await fetchContent<ApiPage>(`/content/pages/slug/${encodeURIComponent(slug)}`);
   if (!page || !page.published) {
-    return EXAMPLE_PAGE_BY_SLUG.get(slug) ?? null;
+    if (shouldUseDemoContentFallback()) {
+      return DEMO_PAGE_BY_SLUG.get(slug) ?? null;
+    }
+
+    return null;
   }
 
   return mapApiPage(page);
@@ -468,12 +325,7 @@ export async function getPublicSiteSettings(): Promise<PublicSiteSettings> {
 export async function getPublicNavigationTree(): Promise<NavigationTreeItem[]> {
   const items = await fetchContent<unknown[]>("/content/navigation-items");
   if (!Array.isArray(items)) {
-    return buildNavigationTree([
-      { id: "nav-home", label: "Home", url: "/", order: 1, parentId: null },
-      { id: "nav-about", label: "About", url: "/page/about", order: 2, parentId: null },
-      { id: "nav-services", label: "Services", url: "/page/services", order: 3, parentId: null },
-      { id: "nav-contact", label: "Contact", url: "/page/contact", order: 4, parentId: null },
-    ]);
+    return shouldUseDemoContentFallback() ? buildNavigationTree(DEMO_NAVIGATION_ITEMS) : [];
   }
 
   const mappedItems = items
@@ -481,12 +333,7 @@ export async function getPublicNavigationTree(): Promise<NavigationTreeItem[]> {
     .filter((item): item is NavigationItem => item !== null);
 
   if (mappedItems.length === 0) {
-    return buildNavigationTree([
-      { id: "nav-home", label: "Home", url: "/", order: 1, parentId: null },
-      { id: "nav-about", label: "About", url: "/page/about", order: 2, parentId: null },
-      { id: "nav-services", label: "Services", url: "/page/services", order: 3, parentId: null },
-      { id: "nav-contact", label: "Contact", url: "/page/contact", order: 4, parentId: null },
-    ]);
+    return shouldUseDemoContentFallback() ? buildNavigationTree(DEMO_NAVIGATION_ITEMS) : [];
   }
 
   return buildNavigationTree(mappedItems);
