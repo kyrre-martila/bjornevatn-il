@@ -938,12 +938,19 @@ button:focus-visible {
   width: 100%;
 }
 
+.public-nav__list {
+  list-style: none;
+  display: grid;
+  gap: var(--space-xs);
+}
+
 .public-nav__group {
   display: grid;
   gap: var(--space-3xs, 2px);
 }
 
 .public-nav__children {
+  list-style: none;
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-xs);
@@ -1027,6 +1034,8 @@ button:focus-visible {
   border-radius: var(--site-radius-md, var(--radius-m));
   padding: var(--site-space-3, var(--space-m));
   --stack-space: var(--space-xs);
+  content-visibility: auto;
+  contain-intrinsic-size: 240px;
 }
 
 .news-list__meta {
@@ -1080,7 +1089,6 @@ button:focus-visible {
 .public-block__button {
   width: fit-content;
 }
-
 
 .public-block--rich-text,
 .public-block--image,

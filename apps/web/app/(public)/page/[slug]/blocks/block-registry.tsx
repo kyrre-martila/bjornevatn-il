@@ -100,9 +100,10 @@ function ImageBlock({
         src={data.src}
         alt={(data.alt && data.alt.trim()) || fallbackAltText || "Image"}
         className="public-block__image"
-        width={data.width}
-        height={data.height}
+        width={data.width ?? 1200}
+        height={data.height ?? 675}
         loading="lazy"
+        decoding="async"
       />
       {data.caption ? (
         <figcaption className="public-block__caption">
