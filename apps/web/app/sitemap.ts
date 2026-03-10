@@ -2,7 +2,7 @@ import type { MetadataRoute } from "next";
 
 import {
   getContentItemPath,
-  getSiteUrl,
+  getSiteConfiguration,
   getSitemapContentItems,
   getSitemapPages,
 } from "../lib/content";
@@ -12,7 +12,7 @@ function normalizeUrl(baseUrl: string, path: string) {
 }
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const baseUrl = await getSiteUrl();
+  const { siteUrl: baseUrl } = await getSiteConfiguration();
   const [pages, contentItems] = await Promise.all([
     getSitemapPages(),
     getSitemapContentItems(),

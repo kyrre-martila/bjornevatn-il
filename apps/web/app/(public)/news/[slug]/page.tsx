@@ -1,7 +1,11 @@
 import type { Metadata } from "next";
 import { notFound, permanentRedirect } from "next/navigation";
 
-import { resolveNewsItemBySlug } from "../../../../lib/content";
+import {
+  getSiteConfiguration,
+  resolveNewsItemBySlug,
+  withTitleSuffix,
+} from "../../../../lib/content";
 
 export async function generateMetadata({
   params,
@@ -9,7 +13,10 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
   const { slug } = await params;
-  const resolved = await resolveNewsItemBySlug(slug);
+  const [resolved, siteConfig] = await Promise.all([
+    resolveNewsItemBySlug(slug),
+    getSiteConfiguration(),
+  ]);
 
   if (resolved.redirectTo) {
     return { title: "Redirecting" };
@@ -21,10 +28,24 @@ export async function generateMetadata({
     return { title: "Not found" };
   }
 
+  const canonicalUrl =
+    item.canonicalUrl ?? new URL(`/news/${item.slug}`, `${siteConfig.siteUrl}/`).toString();
+  const title = withTitleSuffix(item.title, siteConfig.defaultTitleSuffix);
+
   return {
-    title: item.title,
+    title,
     description: item.summary,
-    alternates: item.canonicalUrl ? { canonical: item.canonicalUrl } : undefined,
+    openGraph: {
+      title,
+      description: item.summary,
+      type: "article",
+      url: canonicalUrl,
+      images: siteConfig.defaultSeoImage
+        ? [{ url: siteConfig.defaultSeoImage }]
+        : undefined,
+      siteName: siteConfig.siteName,
+    },
+    alternates: { canonical: canonicalUrl },
     robots: item.noIndex ? { index: false, follow: true } : undefined,
   };
 }

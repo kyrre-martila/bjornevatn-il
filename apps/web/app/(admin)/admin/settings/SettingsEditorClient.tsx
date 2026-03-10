@@ -4,6 +4,10 @@ import * as React from "react";
 import type { AdminSiteSetting } from "../../../../lib/admin/settings";
 
 const RECOMMENDED_KEYS = [
+  "siteName",
+  "siteUrl",
+  "defaultSeoImage",
+  "defaultTitleSuffix",
   "site_title",
   "site_tagline",
   "logo_url",

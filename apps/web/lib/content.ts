@@ -62,6 +62,10 @@ export type ContentPage = {
 };
 
 export type SiteSettingKey =
+  | "siteName"
+  | "siteUrl"
+  | "defaultSeoImage"
+  | "defaultTitleSuffix"
   | "site_title"
   | "site_tagline"
   | "logo_url"
@@ -137,6 +141,10 @@ function isApiSlugRedirect(value: unknown): value is ApiSlugRedirect {
 }
 
 const PUBLIC_SITE_SETTING_KEYS: SiteSettingKey[] = [
+  "siteName",
+  "siteUrl",
+  "defaultSeoImage",
+  "defaultTitleSuffix",
   "site_title",
   "site_tagline",
   "logo_url",
@@ -148,6 +156,13 @@ const PUBLIC_SITE_SETTING_KEYS: SiteSettingKey[] = [
   "robots_noindex",
   "robots_disallow_all",
 ];
+
+export type SiteConfiguration = {
+  siteName: string;
+  siteUrl: string;
+  defaultSeoImage: string | null;
+  defaultTitleSuffix: string | null;
+};
 
 function asRecord(value: unknown): Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value)
@@ -451,13 +466,12 @@ export async function getPublicSiteSettings(): Promise<PublicSiteSettings> {
 }
 
 export async function getSiteUrl(): Promise<string> {
-  const settings = await getPublicSiteSettings();
-  const configured = settings.site_url?.trim();
+  const config = await getSiteConfiguration();
 
-  if (configured) {
-    return configured.replace(/\/$/, "");
-  }
+  return config.siteUrl;
+}
 
+function envSiteUrl() {
   const envUrl =
     process.env.NEXT_PUBLIC_SITE_URL ??
     process.env.NEXT_PUBLIC_APP_URL ??
@@ -466,6 +480,38 @@ export async function getSiteUrl(): Promise<string> {
     (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : undefined);
 
   return (envUrl ?? "http://localhost:3000").replace(/\/$/, "");
+}
+
+export async function getSiteConfiguration(): Promise<SiteConfiguration> {
+  const settings = await getPublicSiteSettings();
+  const siteUrl = (settings.siteUrl ?? settings.site_url)?.trim();
+  const siteName = (settings.siteName ?? settings.site_title)?.trim();
+  const defaultSeoImage = settings.defaultSeoImage?.trim();
+  const defaultTitleSuffix = settings.defaultTitleSuffix?.trim();
+
+  return {
+    siteName: siteName || "Blueprint Website",
+    siteUrl: (siteUrl || envSiteUrl()).replace(/\/$/, ""),
+    defaultSeoImage: defaultSeoImage || null,
+    defaultTitleSuffix: defaultTitleSuffix || null,
+  };
+}
+
+export function withTitleSuffix(
+  title: string,
+  defaultTitleSuffix: string | null,
+): string {
+  const trimmedTitle = title.trim();
+  if (!trimmedTitle) {
+    return title;
+  }
+
+  const trimmedSuffix = defaultTitleSuffix?.trim();
+  if (!trimmedSuffix) {
+    return trimmedTitle;
+  }
+
+  return `${trimmedTitle}${trimmedSuffix}`;
 }
 
 type SitemapPageEntry = {

@@ -1,7 +1,11 @@
 import type { Metadata } from "next";
 import { notFound, permanentRedirect } from "next/navigation";
 
-import { resolvePageContentBySlug } from "../../../../lib/content";
+import {
+  getSiteConfiguration,
+  resolvePageContentBySlug,
+  withTitleSuffix,
+} from "../../../../lib/content";
 import { renderBlock } from "./block-renderer";
 
 function stripHtml(value: string): string {
@@ -34,7 +38,10 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
   const { slug } = await params;
-  const resolved = await resolvePageContentBySlug(slug);
+  const [resolved, siteConfig] = await Promise.all([
+    resolvePageContentBySlug(slug),
+    getSiteConfiguration(),
+  ]);
 
   if (resolved.redirectTo) {
     return {};
@@ -46,25 +53,31 @@ export async function generateMetadata({
     return {};
   }
 
-  const title = page.seoTitle?.trim() || page.title;
+  const basePath = page.slug === "home" ? "/" : `/page/${page.slug}`;
+  const canonicalUrl =
+    page.canonicalUrl ?? new URL(basePath, `${siteConfig.siteUrl}/`).toString();
+  const title = withTitleSuffix(
+    page.seoTitle?.trim() || page.title,
+    siteConfig.defaultTitleSuffix,
+  );
   const description =
     page.seoDescription?.trim() || fallbackDescriptionFromBlocks(page.blocks);
+  const ogImage = page.seoImage || siteConfig.defaultSeoImage;
 
   const openGraph = {
     title,
     description,
     type: "website" as const,
-    url: page.canonicalUrl ?? `/page/${page.slug}`,
-    images: page.seoImage ? [{ url: page.seoImage }] : undefined,
+    url: canonicalUrl,
+    images: ogImage ? [{ url: ogImage }] : undefined,
+    siteName: siteConfig.siteName,
   };
 
   return {
     title,
     description: description || undefined,
     openGraph,
-    alternates: page.canonicalUrl
-      ? { canonical: page.canonicalUrl }
-      : undefined,
+    alternates: { canonical: canonicalUrl },
     robots: page.noIndex ? { index: false, follow: true } : undefined,
   };
 }
