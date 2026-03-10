@@ -1,0 +1,44 @@
+import type { MetadataRoute } from "next";
+
+import {
+  getContentItemPath,
+  getSiteUrl,
+  getSitemapContentItems,
+  getSitemapPages,
+} from "../lib/content";
+
+function normalizeUrl(baseUrl: string, path: string) {
+  return new URL(path, `${baseUrl}/`).toString();
+}
+
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+  const baseUrl = await getSiteUrl();
+  const [pages, contentItems] = await Promise.all([
+    getSitemapPages(),
+    getSitemapContentItems(),
+  ]);
+
+  const pageEntries = pages
+    .filter((page) => !page.noIndex)
+    .map((page) => ({
+      url:
+        page.canonicalUrl ??
+        normalizeUrl(baseUrl, page.slug === "home" ? "/" : `/page/${page.slug}`),
+      lastModified: new Date(page.updatedAt),
+    }));
+
+  const contentEntries = contentItems
+    .filter((item) => !item.noIndex)
+    .map((item) => {
+      const fallbackPath = getContentItemPath(item.contentTypeSlug, item.slug);
+
+      return {
+        url:
+          item.canonicalUrl ??
+          normalizeUrl(baseUrl, fallbackPath ?? `/page/${item.slug}`),
+        lastModified: new Date(item.updatedAt),
+      };
+    });
+
+  return [...pageEntries, ...contentEntries];
+}

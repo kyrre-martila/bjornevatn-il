@@ -14,8 +14,8 @@ export default async function NewsPage() {
             <p className="news-list__meta">{item.publishedAt}</p>
             <h2 className="news-list__title">{item.title}</h2>
             <p className="news-list__excerpt">{item.summary}</p>
-            <Link href={`/page/${item.slug}`} className="news-list__link">
-              Read page
+            <Link href={`/news/${item.slug}`} className="news-list__link">
+              Read story
             </Link>
           </li>
         ))}

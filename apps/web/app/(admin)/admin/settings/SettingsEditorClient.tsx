@@ -11,6 +11,9 @@ const RECOMMENDED_KEYS = [
   "facebook_url",
   "instagram_url",
   "youtube_url",
+  "site_url",
+  "robots_noindex",
+  "robots_disallow_all",
 ] as const;
 
 export function SettingsEditorClient({

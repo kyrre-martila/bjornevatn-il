@@ -7,6 +7,8 @@ export const DEMO_NEWS_ITEMS: NewsItem[] = [
     summary:
       "Moren ipsum dolor sit amet, consectetuer adipiscing elit. Moren donec quam felis, ultricies nec, pellentesque eu.",
     publishedAt: "2026-01-04",
+    canonicalUrl: null,
+    noIndex: false,
   },
   {
     slug: "studio-behind-the-scenes",
@@ -14,6 +16,8 @@ export const DEMO_NEWS_ITEMS: NewsItem[] = [
     summary:
       "Moren ipsum aenean massa. Cum sociis natoque penatibus et magnis dis parturient montes, nascetur ridiculus mus.",
     publishedAt: "2025-12-19",
+    canonicalUrl: null,
+    noIndex: false,
   },
   {
     slug: "service-roadmap",
@@ -21,6 +25,8 @@ export const DEMO_NEWS_ITEMS: NewsItem[] = [
     summary:
       "Moren ipsum donec pede justo, fringilla vel, aliquet nec, vulputate eget, arcu. In enim justo, rhoncus ut.",
     publishedAt: "2025-11-28",
+    canonicalUrl: null,
+    noIndex: false,
   },
 ];
 

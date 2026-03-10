@@ -18,6 +18,12 @@ export type NewsItem = {
   title: string;
   summary: string;
   publishedAt: string;
+  canonicalUrl: string | null;
+  noIndex: boolean;
+};
+
+export type NewsDetailItem = NewsItem & {
+  body: string;
 };
 
 export type ContentBlockType =
@@ -67,7 +73,10 @@ export type SiteSettingKey =
   | "footer_text"
   | "facebook_url"
   | "instagram_url"
-  | "youtube_url";
+  | "youtube_url"
+  | "site_url"
+  | "robots_noindex"
+  | "robots_disallow_all";
 
 export type PublicSiteSettings = Partial<Record<SiteSettingKey, string>>;
 
@@ -103,10 +112,18 @@ type ApiPage = {
 };
 
 type ApiContentItem = {
+  id: string;
   slug: string;
   title: string;
+  canonicalUrl: string | null;
+  noIndex: boolean;
+  published: boolean;
   data: Record<string, unknown> | null;
   updatedAt: string;
+};
+
+type ApiContentType = {
+  slug: string;
 };
 
 type ApiSiteSetting = {
@@ -122,6 +139,9 @@ const PUBLIC_SITE_SETTING_KEYS: SiteSettingKey[] = [
   "facebook_url",
   "instagram_url",
   "youtube_url",
+  "site_url",
+  "robots_noindex",
+  "robots_disallow_all",
 ];
 
 function shouldUseDemoContentFallback(): boolean {
@@ -213,7 +233,26 @@ function mapApiContentItem(item: ApiContentItem): NewsItem {
     title: item.title,
     summary: typeof data.excerpt === "string" ? data.excerpt : "",
     publishedAt: new Date(publishedAt).toISOString().slice(0, 10),
+    canonicalUrl: item.canonicalUrl ?? null,
+    noIndex: Boolean(item.noIndex),
   };
+}
+
+function mapApiContentItemDetail(item: ApiContentItem): NewsDetailItem {
+  const mapped = mapApiContentItem(item);
+  const data = asRecord(item.data);
+  return {
+    ...mapped,
+    body: typeof data.body === "string" ? data.body : "",
+  };
+}
+
+function boolSetting(value: string | undefined): boolean {
+  if (!value) {
+    return false;
+  }
+
+  return ["1", "true", "yes", "on"].includes(value.trim().toLowerCase());
 }
 
 function sortNavigationItems(items: NavigationItem[]): NavigationItem[] {
@@ -348,10 +387,42 @@ export async function getNewsListing(): Promise<NewsItem[]> {
     "/content/items/type-slug/news",
   );
   if (!items) {
-    return shouldUseDemoContentFallback() ? DEMO_NEWS_ITEMS : [];
+    return shouldUseDemoContentFallback()
+      ? DEMO_NEWS_ITEMS.map((item) => ({
+          ...item,
+          canonicalUrl: null,
+          noIndex: false,
+        }))
+      : [];
   }
 
   return items.map(mapApiContentItem);
+}
+
+export async function getNewsItemBySlug(
+  slug: string,
+): Promise<NewsDetailItem | null> {
+  const item = await fetchContent<ApiContentItem>(
+    `/content/items/type-slug/news/${encodeURIComponent(slug)}`,
+  );
+
+  if (!item || !item.published) {
+    if (shouldUseDemoContentFallback()) {
+      const demoItem = DEMO_NEWS_ITEMS.find((entry) => entry.slug === slug);
+      return demoItem
+        ? {
+            ...demoItem,
+            canonicalUrl: null,
+            noIndex: false,
+            body: demoItem.summary,
+          }
+        : null;
+    }
+
+    return null;
+  }
+
+  return mapApiContentItemDetail(item);
 }
 
 export async function getPageContentBySlug(
@@ -399,6 +470,121 @@ export async function getPublicSiteSettings(): Promise<PublicSiteSettings> {
     }
     return acc;
   }, {});
+}
+
+export async function getSiteUrl(): Promise<string> {
+  const settings = await getPublicSiteSettings();
+  const configured = settings.site_url?.trim();
+
+  if (configured) {
+    return configured.replace(/\/$/, "");
+  }
+
+  const envUrl =
+    process.env.NEXT_PUBLIC_SITE_URL ??
+    process.env.NEXT_PUBLIC_APP_URL ??
+    process.env.APP_URL ??
+    process.env.NEXTAUTH_URL ??
+    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : undefined);
+
+  return (envUrl ?? "http://localhost:3000").replace(/\/$/, "");
+}
+
+type SitemapPageEntry = {
+  slug: string;
+  canonicalUrl: string | null;
+  updatedAt: string;
+  noIndex: boolean;
+};
+
+type SitemapContentItemEntry = {
+  contentTypeSlug: string;
+  slug: string;
+  canonicalUrl: string | null;
+  updatedAt: string;
+  noIndex: boolean;
+};
+
+export async function getSitemapPages(): Promise<SitemapPageEntry[]> {
+  const pages = await fetchContent<
+    Array<{
+      slug: string;
+      canonicalUrl: string | null;
+      updatedAt: string;
+      published: boolean;
+      noIndex: boolean;
+    }>
+  >("/content/pages");
+
+  if (!pages) {
+    return [];
+  }
+
+  return pages
+    .filter((page) => page.published)
+    .map((page) => ({
+      slug: page.slug,
+      canonicalUrl: page.canonicalUrl ?? null,
+      updatedAt: page.updatedAt,
+      noIndex: Boolean(page.noIndex),
+    }));
+}
+
+function contentItemPath(contentTypeSlug: string, slug: string): string | null {
+  if (contentTypeSlug === "news") {
+    return `/news/${slug}`;
+  }
+
+  return null;
+}
+
+export async function getSitemapContentItems(): Promise<SitemapContentItemEntry[]> {
+  const types = await fetchContent<ApiContentType[]>("/content/types");
+  if (!types) {
+    return [];
+  }
+
+  const allItems = await Promise.all(
+    types.map(async (type) => {
+      const items = await fetchContent<ApiContentItem[]>(
+        `/content/items/type-slug/${encodeURIComponent(type.slug)}`,
+      );
+
+      if (!items) {
+        return [];
+      }
+
+      return items
+        .filter((item) => item.published)
+        .map((item) => ({
+          contentTypeSlug: type.slug,
+          slug: item.slug,
+          canonicalUrl: item.canonicalUrl ?? null,
+          updatedAt: item.updatedAt,
+          noIndex: Boolean(item.noIndex),
+        }));
+    }),
+  );
+
+  return allItems
+    .flat()
+    .filter((item) => Boolean(item.canonicalUrl || contentItemPath(item.contentTypeSlug, item.slug)));
+}
+
+export async function getRobotsSettings(): Promise<{
+  noIndex: boolean;
+  disallowAll: boolean;
+}> {
+  const settings = await getPublicSiteSettings();
+
+  return {
+    noIndex: boolSetting(settings.robots_noindex),
+    disallowAll: boolSetting(settings.robots_disallow_all),
+  };
+}
+
+export function getContentItemPath(contentTypeSlug: string, slug: string): string | null {
+  return contentItemPath(contentTypeSlug, slug);
 }
 
 export async function getPublicNavigationTree(): Promise<NavigationTreeItem[]> {
