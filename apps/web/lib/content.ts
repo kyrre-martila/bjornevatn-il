@@ -18,6 +18,18 @@ export type NewsItem = {
 
 export type ContentBlockType = "hero" | "rich_text" | "cta" | "image" | "news_list";
 
+const CONTENT_BLOCK_TYPES: ContentBlockType[] = [
+  "hero",
+  "rich_text",
+  "cta",
+  "image",
+  "news_list",
+];
+
+function isContentBlockType(value: unknown): value is ContentBlockType {
+  return typeof value === "string" && CONTENT_BLOCK_TYPES.includes(value as ContentBlockType);
+}
+
 export type ContentBlock = {
   id: string;
   type: ContentBlockType;
@@ -56,7 +68,7 @@ export type NavigationTreeItem = NavigationItem & {
 
 type ApiPageBlock = {
   id: string;
-  type: ContentBlockType;
+  type: string;
   order: number;
   data: unknown;
 };
@@ -132,7 +144,12 @@ async function fetchContent<T>(path: string): Promise<T | null> {
   }
 }
 
-function mapApiPageBlock(block: ApiPageBlock): ContentBlock {
+function mapApiPageBlock(block: ApiPageBlock): ContentBlock | null {
+  if (!isContentBlockType(block.type)) {
+    console.warn(`Unknown block type \"${block.type}\" received from content API; skipping block.`);
+    return null;
+  }
+
   return {
     id: block.id,
     type: block.type,
@@ -142,7 +159,11 @@ function mapApiPageBlock(block: ApiPageBlock): ContentBlock {
 }
 
 function mapApiPage(page: ApiPage): ContentPage {
-  const blocks = Array.isArray(page.blocks) ? page.blocks.map(mapApiPageBlock) : [];
+  const blocks = Array.isArray(page.blocks)
+    ? page.blocks
+        .map(mapApiPageBlock)
+        .filter((block): block is ContentBlock => block !== null)
+    : [];
 
   return {
     slug: page.slug,
