@@ -1,25 +1,45 @@
 import Link from "next/link";
 
-import { getHomepageContent } from "../../lib/content";
+import { getHomepageContent, getPageContentBySlug } from "../../lib/content";
+import { renderBlock } from "./page/[slug]/block-renderer";
 
 export default async function Homepage() {
-  const content = await getHomepageContent();
+  const content = await getPageContentBySlug("home");
+
+  if (!content) {
+    const hero = await getHomepageContent();
+
+    return (
+      <section aria-labelledby="hero-heading" className="hero">
+        <p className="hero__eyebrow">{hero.eyebrow}</p>
+        <h1 id="hero-heading" className="hero__title">
+          {hero.title}
+        </h1>
+        <p className="hero__subtitle">{hero.subtitle}</p>
+        <div className="hero__cta-row">
+          <Link href={hero.primaryCta.href} className="button-primary">
+            {hero.primaryCta.label}
+          </Link>
+          <Link href={hero.secondaryCta.href} className="button-secondary">
+            {hero.secondaryCta.label}
+          </Link>
+        </div>
+      </section>
+    );
+  }
+
+  const renderedBlocks = await Promise.all(
+    content.blocks.map(async (block) => ({
+      id: block.id,
+      node: await renderBlock(block),
+    })),
+  );
 
   return (
-    <section aria-labelledby="hero-heading" className="hero">
-      <p className="hero__eyebrow">{content.eyebrow}</p>
-      <h1 id="hero-heading" className="hero__title">
-        {content.title}
-      </h1>
-      <p className="hero__subtitle">{content.subtitle}</p>
-      <div className="hero__cta-row">
-        <Link href={content.primaryCta.href} className="button-primary">
-          {content.primaryCta.label}
-        </Link>
-        <Link href={content.secondaryCta.href} className="button-secondary">
-          {content.secondaryCta.label}
-        </Link>
-      </div>
-    </section>
+    <article>
+      {renderedBlocks.map((block) => (
+        <div key={block.id}>{block.node}</div>
+      ))}
+    </article>
   );
 }
