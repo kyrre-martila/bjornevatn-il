@@ -22,7 +22,8 @@
     "format": "prettier --write .",
     "test:e2e": "node scripts/e2e-auth.test.mjs",
     "db:push": "pnpm --filter @blueprint/db exec prisma db push",
-    "db:seed": "ts-node --transpile-only scripts/seed.ts",
+    "db:seed": "pnpm --filter @blueprint/db exec prisma generate && ts-node --transpile-only --compiler-options '{\"module\":\"CommonJS\",\"moduleResolution\":\"node\"}' scripts/seed.ts",
+    "seed": "pnpm db:seed",
     "api:start:prod": "pnpm --filter api build && node apps/api/dist/main.js",
     "start:api:ci": "node ./apps/api/dist/src/main.js"
   },
