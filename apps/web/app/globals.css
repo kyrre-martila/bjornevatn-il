@@ -1369,3 +1369,16 @@ button:focus-visible {
   font-size: var(--text-xs);
   color: var(--color-muted, var(--color-neutral-600));
 }
+
+.page-editor__seo {
+  border: 1px solid var(--color-border-subtle, #dfe3e8);
+  border-radius: 0.5rem;
+  padding: 1rem;
+  display: grid;
+  gap: 0.75rem;
+}
+
+.page-editor__seo legend {
+  font-weight: 600;
+  padding: 0 0.25rem;
+}

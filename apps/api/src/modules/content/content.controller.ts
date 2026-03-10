@@ -36,7 +36,13 @@ import type {
 } from "@org/domain";
 import { MediaService } from "./media.service";
 
-const PAGE_BLOCK_TYPES = ["hero", "rich_text", "cta", "image", "news_list"] as const;
+const PAGE_BLOCK_TYPES = [
+  "hero",
+  "rich_text",
+  "cta",
+  "image",
+  "news_list",
+] as const;
 
 class PageBlockInputDto {
   @ApiProperty({ enum: PAGE_BLOCK_TYPES })
@@ -69,6 +75,31 @@ class CreatePageDto {
   @Type(() => PageBlockInputDto)
   blocks!: PageBlockInputDto[];
 
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  seoTitle?: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  seoDescription?: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  seoImage?: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsUrl()
+  canonicalUrl?: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsBoolean()
+  noIndex?: boolean;
+
   @ApiProperty()
   @IsBoolean()
   published!: boolean;
@@ -94,11 +125,43 @@ class UpdatePageDto {
 
   @ApiProperty({ required: false })
   @IsOptional()
+  @IsString()
+  seoTitle?: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  seoDescription?: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  seoImage?: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsUrl()
+  canonicalUrl?: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsBoolean()
+  noIndex?: boolean;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
   @IsBoolean()
   published?: boolean;
 }
 
-const CONTENT_FIELD_TYPES = ["text", "textarea", "rich_text", "image", "date", "boolean"] as const;
+const CONTENT_FIELD_TYPES = [
+  "text",
+  "textarea",
+  "rich_text",
+  "image",
+  "date",
+  "boolean",
+] as const;
 
 class ContentFieldDefinitionDto {
   @ApiProperty()
@@ -178,6 +241,31 @@ class CreateContentItemDto {
   @IsString()
   title!: string;
 
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  seoTitle?: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  seoDescription?: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  seoImage?: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsUrl()
+  canonicalUrl?: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsBoolean()
+  noIndex?: boolean;
+
   @ApiProperty({ type: Object })
   @IsObject()
   data!: Record<string, unknown>;
@@ -202,6 +290,31 @@ class UpdateContentItemDto {
   @IsOptional()
   @IsString()
   title?: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  seoTitle?: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  seoDescription?: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  seoImage?: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsUrl()
+  canonicalUrl?: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsBoolean()
+  noIndex?: boolean;
 
   @ApiProperty({ required: false, type: Object })
   @IsOptional()
@@ -367,7 +480,7 @@ export class ContentController {
 
   @Post("pages")
   createPage(@Body() body: CreatePageDto) {
-    return this.pages.create(body);
+    return this.pages.create({ ...body, noIndex: body.noIndex ?? false });
   }
 
   @Patch("pages/:id")
@@ -397,7 +510,10 @@ export class ContentController {
   }
 
   @Patch("types/:id")
-  updateContentType(@Param("id") id: string, @Body() body: UpdateContentTypeDto) {
+  updateContentType(
+    @Param("id") id: string,
+    @Body() body: UpdateContentTypeDto,
+  ) {
     return this.contentTypes.update(id, body);
   }
 
@@ -405,7 +521,9 @@ export class ContentController {
   async deleteContentType(@Param("id") id: string) {
     const items = await this.contentItems.findManyByContentTypeId(id);
     if (items.length > 0) {
-      throw new ConflictException("Cannot delete content type with existing content items.");
+      throw new ConflictException(
+        "Cannot delete content type with existing content items.",
+      );
     }
 
     await this.contentTypes.delete(id);
@@ -447,7 +565,10 @@ export class ContentController {
   ) {
     for (const field of fields) {
       const value = data[field.key];
-      if (field.required && (value === undefined || value === null || value === "")) {
+      if (
+        field.required &&
+        (value === undefined || value === null || value === "")
+      ) {
         throw new BadRequestException(`Missing required field: ${field.key}`);
       }
 
@@ -473,11 +594,17 @@ export class ContentController {
     }
 
     this.validateContentItemData(contentType.fields, body.data);
-    return this.contentItems.create(body);
+    return this.contentItems.create({
+      ...body,
+      noIndex: body.noIndex ?? false,
+    });
   }
 
   @Patch("items/:id")
-  async updateContentItem(@Param("id") id: string, @Body() body: UpdateContentItemDto) {
+  async updateContentItem(
+    @Param("id") id: string,
+    @Body() body: UpdateContentItemDto,
+  ) {
     const existing = await this.contentItems.findById(id);
     if (!existing) {
       throw new BadRequestException("Content item not found.");

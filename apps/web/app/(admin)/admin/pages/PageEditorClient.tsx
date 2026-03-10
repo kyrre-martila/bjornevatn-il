@@ -88,6 +88,15 @@ export function PageEditorClient({
   const router = useRouter();
   const [title, setTitle] = React.useState(initialPage?.title ?? "");
   const [slug, setSlug] = React.useState(initialPage?.slug ?? "");
+  const [seoTitle, setSeoTitle] = React.useState(initialPage?.seoTitle ?? "");
+  const [seoDescription, setSeoDescription] = React.useState(
+    initialPage?.seoDescription ?? "",
+  );
+  const [seoImage, setSeoImage] = React.useState(initialPage?.seoImage ?? "");
+  const [canonicalUrl, setCanonicalUrl] = React.useState(
+    initialPage?.canonicalUrl ?? "",
+  );
+  const [noIndex, setNoIndex] = React.useState(initialPage?.noIndex ?? false);
   const [published, setPublished] = React.useState(
     initialPage?.published ?? false,
   );
@@ -272,6 +281,11 @@ export function PageEditorClient({
       const payload = {
         title: trimmedTitle,
         slug: normalizedSlug,
+        seoTitle: seoTitle.trim() || null,
+        seoDescription: seoDescription.trim() || null,
+        seoImage: seoImage.trim() || null,
+        canonicalUrl: canonicalUrl.trim() || null,
+        noIndex,
         published,
         blocks: parsedBlocks,
       };
@@ -402,6 +416,49 @@ export function PageEditorClient({
           />
           Published
         </label>
+
+        <fieldset className="page-editor__seo">
+          <legend>SEO</legend>
+          <label>
+            SEO Title
+            <input
+              value={seoTitle}
+              onChange={(e) => setSeoTitle(e.target.value)}
+            />
+          </label>
+          <label>
+            SEO Description
+            <textarea
+              rows={3}
+              value={seoDescription}
+              onChange={(e) => setSeoDescription(e.target.value)}
+            />
+          </label>
+          <label>
+            SEO Image
+            <input
+              value={seoImage}
+              onChange={(e) => setSeoImage(e.target.value)}
+              placeholder="https://..."
+            />
+          </label>
+          <label>
+            Canonical URL
+            <input
+              value={canonicalUrl}
+              onChange={(e) => setCanonicalUrl(e.target.value)}
+              placeholder="https://..."
+            />
+          </label>
+          <label className="page-editor__checkbox">
+            <input
+              type="checkbox"
+              checked={noIndex}
+              onChange={(e) => setNoIndex(e.target.checked)}
+            />
+            Noindex
+          </label>
+        </fieldset>
 
         <div className="page-editor__blocks">
           <div className="page-editor__blocks-header">

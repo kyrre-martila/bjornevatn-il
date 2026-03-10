@@ -29,6 +29,11 @@ export type AdminContentItem = {
   slug: string;
   title: string;
   data: Record<string, unknown>;
+  seoTitle: string | null;
+  seoDescription: string | null;
+  seoImage: string | null;
+  canonicalUrl: string | null;
+  noIndex: boolean;
   published: boolean;
 };
 
@@ -68,10 +73,13 @@ export async function listAdminContentTypes(): Promise<AdminContentType[]> {
 export async function listAdminContentItems(
   contentTypeId: string,
 ): Promise<AdminContentItem[]> {
-  const response = await fetch(`${getApiBase()}/content/items/type/${contentTypeId}`, {
-    headers: buildHeaders(),
-    cache: "no-store",
-  });
+  const response = await fetch(
+    `${getApiBase()}/content/items/type/${contentTypeId}`,
+    {
+      headers: buildHeaders(),
+      cache: "no-store",
+    },
+  );
 
   if (!response.ok) {
     return [];

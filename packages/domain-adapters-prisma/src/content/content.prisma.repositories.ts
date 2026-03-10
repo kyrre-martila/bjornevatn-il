@@ -20,7 +20,13 @@ import type {
 } from "@org/domain";
 import { getPrisma } from "../prisma.client.js";
 
-const PAGE_BLOCK_TYPES: PageBlockType[] = ["hero", "rich_text", "cta", "image", "news_list"];
+const PAGE_BLOCK_TYPES: PageBlockType[] = [
+  "hero",
+  "rich_text",
+  "cta",
+  "image",
+  "news_list",
+];
 
 function toPageBlockType(value: string): PageBlockType {
   return PAGE_BLOCK_TYPES.includes(value as PageBlockType)
@@ -51,6 +57,11 @@ function mapPage(page: {
   id: string;
   slug: string;
   title: string;
+  seoTitle: string | null;
+  seoDescription: string | null;
+  seoImage: string | null;
+  canonicalUrl: string | null;
+  noIndex: boolean;
   published: boolean;
   createdAt: Date;
   updatedAt: Date;
@@ -88,7 +99,8 @@ const CONTENT_FIELD_TYPES: ContentFieldType[] = [
 ];
 
 function toContentFieldType(value: unknown): ContentFieldType {
-  return typeof value === "string" && CONTENT_FIELD_TYPES.includes(value as ContentFieldType)
+  return typeof value === "string" &&
+    CONTENT_FIELD_TYPES.includes(value as ContentFieldType)
     ? (value as ContentFieldType)
     : "text";
 }
@@ -142,6 +154,11 @@ function mapContentItem(item: {
   contentTypeId: string;
   slug: string;
   title: string;
+  seoTitle: string | null;
+  seoDescription: string | null;
+  seoImage: string | null;
+  canonicalUrl: string | null;
+  noIndex: boolean;
   data: Prisma.JsonValue;
   published: boolean;
   createdAt: Date;
@@ -196,11 +213,18 @@ export class PagesPrismaRepository implements PagesRepository {
     return page ? mapPage(page) : null;
   }
 
-  async create(data: Omit<Page, "id" | "createdAt" | "updatedAt">): Promise<Page> {
+  async create(
+    data: Omit<Page, "id" | "createdAt" | "updatedAt">,
+  ): Promise<Page> {
     const page = await this.prisma.page.create({
       data: {
         slug: data.slug,
         title: data.title,
+        seoTitle: data.seoTitle,
+        seoDescription: data.seoDescription,
+        seoImage: data.seoImage,
+        canonicalUrl: data.canonicalUrl,
+        noIndex: data.noIndex,
         published: data.published,
         blocks: {
           create: mapInputBlocks(data.blocks),
@@ -247,11 +271,16 @@ export class PageBlocksPrismaRepository implements PageBlocksRepository {
   private readonly prisma = getPrisma();
 
   async findManyByPageId(pageId: string): Promise<PageBlock[]> {
-    const blocks = await this.prisma.pageBlock.findMany({ where: { pageId }, orderBy: { order: "asc" } });
+    const blocks = await this.prisma.pageBlock.findMany({
+      where: { pageId },
+      orderBy: { order: "asc" },
+    });
     return blocks.map(mapPageBlock);
   }
 
-  async create(data: Omit<PageBlock, "id" | "createdAt" | "updatedAt">): Promise<PageBlock> {
+  async create(
+    data: Omit<PageBlock, "id" | "createdAt" | "updatedAt">,
+  ): Promise<PageBlock> {
     const block = await this.prisma.pageBlock.create({
       data: {
         ...data,
@@ -284,7 +313,9 @@ export class ContentTypesPrismaRepository implements ContentTypesRepository {
   private readonly prisma = getPrisma();
 
   async findMany(): Promise<ContentType[]> {
-    const types = await this.prisma.contentType.findMany({ orderBy: { createdAt: "desc" } });
+    const types = await this.prisma.contentType.findMany({
+      orderBy: { createdAt: "desc" },
+    });
     return types.map(mapContentType);
   }
 
@@ -298,7 +329,9 @@ export class ContentTypesPrismaRepository implements ContentTypesRepository {
     return type ? mapContentType(type) : null;
   }
 
-  async create(data: Omit<ContentType, "id" | "createdAt" | "updatedAt">): Promise<ContentType> {
+  async create(
+    data: Omit<ContentType, "id" | "createdAt" | "updatedAt">,
+  ): Promise<ContentType> {
     const type = await this.prisma.contentType.create({
       data: {
         ...data,
@@ -316,7 +349,9 @@ export class ContentTypesPrismaRepository implements ContentTypesRepository {
       where: { id },
       data: {
         ...data,
-        fields: data.fields ? (data.fields as Prisma.InputJsonValue) : undefined,
+        fields: data.fields
+          ? (data.fields as Prisma.InputJsonValue)
+          : undefined,
       },
     });
     return mapContentType(type);
@@ -331,7 +366,9 @@ export class ContentItemsPrismaRepository implements ContentItemsRepository {
   private readonly prisma = getPrisma();
 
   async findMany(): Promise<ContentItem[]> {
-    const items = await this.prisma.contentItem.findMany({ orderBy: { createdAt: "desc" } });
+    const items = await this.prisma.contentItem.findMany({
+      orderBy: { createdAt: "desc" },
+    });
     return items.map(mapContentItem);
   }
 
@@ -343,7 +380,9 @@ export class ContentItemsPrismaRepository implements ContentItemsRepository {
     return items.map(mapContentItem);
   }
 
-  async findManyByContentTypeSlug(contentTypeSlug: string): Promise<ContentItem[]> {
+  async findManyByContentTypeSlug(
+    contentTypeSlug: string,
+  ): Promise<ContentItem[]> {
     const items = await this.prisma.contentItem.findMany({
       where: { contentType: { slug: contentTypeSlug } },
       orderBy: { createdAt: "desc" },
@@ -356,14 +395,19 @@ export class ContentItemsPrismaRepository implements ContentItemsRepository {
     return item ? mapContentItem(item) : null;
   }
 
-  async findBySlug(contentTypeSlug: string, slug: string): Promise<ContentItem | null> {
+  async findBySlug(
+    contentTypeSlug: string,
+    slug: string,
+  ): Promise<ContentItem | null> {
     const item = await this.prisma.contentItem.findFirst({
       where: { slug, contentType: { slug: contentTypeSlug } },
     });
     return item ? mapContentItem(item) : null;
   }
 
-  async create(data: Omit<ContentItem, "id" | "createdAt" | "updatedAt">): Promise<ContentItem> {
+  async create(
+    data: Omit<ContentItem, "id" | "createdAt" | "updatedAt">,
+  ): Promise<ContentItem> {
     const item = await this.prisma.contentItem.create({
       data: {
         ...data,
@@ -392,7 +436,9 @@ export class ContentItemsPrismaRepository implements ContentItemsRepository {
   }
 }
 
-export class NavigationItemsPrismaRepository implements NavigationItemsRepository {
+export class NavigationItemsPrismaRepository
+  implements NavigationItemsRepository
+{
   private readonly prisma = getPrisma();
 
   async findMany(): Promise<NavigationItem[]> {
@@ -407,7 +453,10 @@ export class NavigationItemsPrismaRepository implements NavigationItemsRepositor
     return this.prisma.navigationItem.create({ data });
   }
 
-  async update(id: string, data: Partial<Omit<NavigationItem, "id">>): Promise<NavigationItem> {
+  async update(
+    id: string,
+    data: Partial<Omit<NavigationItem, "id">>,
+  ): Promise<NavigationItem> {
     return this.prisma.navigationItem.update({ where: { id }, data });
   }
 
@@ -444,7 +493,9 @@ export class MediaPrismaRepository implements MediaRepository {
   private readonly prisma = getPrisma();
 
   async findMany(): Promise<Media[]> {
-    const media = await this.prisma.media.findMany({ orderBy: { createdAt: "desc" } });
+    const media = await this.prisma.media.findMany({
+      orderBy: { createdAt: "desc" },
+    });
     return media.map(mapMedia);
   }
 
@@ -458,7 +509,10 @@ export class MediaPrismaRepository implements MediaRepository {
     return mapMedia(media);
   }
 
-  async update(id: string, data: Partial<Omit<Media, "id" | "createdAt">>): Promise<Media> {
+  async update(
+    id: string,
+    data: Partial<Omit<Media, "id" | "createdAt">>,
+  ): Promise<Media> {
     const media = await this.prisma.media.update({ where: { id }, data });
     return mapMedia(media);
   }

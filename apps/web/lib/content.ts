@@ -1,5 +1,9 @@
 import { resolveApiUrl } from "./api";
-import { DEMO_NAVIGATION_ITEMS, DEMO_NEWS_ITEMS, DEMO_PAGE_BY_SLUG } from "./demo-content";
+import {
+  DEMO_NAVIGATION_ITEMS,
+  DEMO_NEWS_ITEMS,
+  DEMO_PAGE_BY_SLUG,
+} from "./demo-content";
 
 export type HeroContent = {
   eyebrow: string;
@@ -16,7 +20,12 @@ export type NewsItem = {
   publishedAt: string;
 };
 
-export type ContentBlockType = "hero" | "rich_text" | "cta" | "image" | "news_list";
+export type ContentBlockType =
+  | "hero"
+  | "rich_text"
+  | "cta"
+  | "image"
+  | "news_list";
 
 const CONTENT_BLOCK_TYPES: ContentBlockType[] = [
   "hero",
@@ -27,7 +36,10 @@ const CONTENT_BLOCK_TYPES: ContentBlockType[] = [
 ];
 
 function isContentBlockType(value: unknown): value is ContentBlockType {
-  return typeof value === "string" && CONTENT_BLOCK_TYPES.includes(value as ContentBlockType);
+  return (
+    typeof value === "string" &&
+    CONTENT_BLOCK_TYPES.includes(value as ContentBlockType)
+  );
 }
 
 export type ContentBlock = {
@@ -40,6 +52,11 @@ export type ContentBlock = {
 export type ContentPage = {
   slug: string;
   title: string;
+  seoTitle: string | null;
+  seoDescription: string | null;
+  seoImage: string | null;
+  canonicalUrl: string | null;
+  noIndex: boolean;
   blocks: ContentBlock[];
 };
 
@@ -76,6 +93,11 @@ type ApiPageBlock = {
 type ApiPage = {
   slug: string;
   title: string;
+  seoTitle: string | null;
+  seoDescription: string | null;
+  seoImage: string | null;
+  canonicalUrl: string | null;
+  noIndex: boolean;
   published: boolean;
   blocks?: ApiPageBlock[];
 };
@@ -134,7 +156,9 @@ async function fetchContent<T>(path: string): Promise<T | null> {
     }
 
     if (!response.ok) {
-      throw new Error(`Content request failed (${response.status}) for ${path}`);
+      throw new Error(
+        `Content request failed (${response.status}) for ${path}`,
+      );
     }
 
     return (await response.json()) as T;
@@ -146,7 +170,9 @@ async function fetchContent<T>(path: string): Promise<T | null> {
 
 function mapApiPageBlock(block: ApiPageBlock): ContentBlock | null {
   if (!isContentBlockType(block.type)) {
-    console.warn(`Unknown block type \"${block.type}\" received from content API; skipping block.`);
+    console.warn(
+      `Unknown block type \"${block.type}\" received from content API; skipping block.`,
+    );
     return null;
   }
 
@@ -168,13 +194,19 @@ function mapApiPage(page: ApiPage): ContentPage {
   return {
     slug: page.slug,
     title: page.title,
+    seoTitle: page.seoTitle ?? null,
+    seoDescription: page.seoDescription ?? null,
+    seoImage: page.seoImage ?? null,
+    canonicalUrl: page.canonicalUrl ?? null,
+    noIndex: Boolean(page.noIndex),
     blocks: blocks.sort((a, b) => a.order - b.order),
   };
 }
 
 function mapApiContentItem(item: ApiContentItem): NewsItem {
   const data = asRecord(item.data);
-  const publishedAt = typeof data.publishedAt === "string" ? data.publishedAt : item.updatedAt;
+  const publishedAt =
+    typeof data.publishedAt === "string" ? data.publishedAt : item.updatedAt;
 
   return {
     slug: item.slug,
@@ -264,11 +296,17 @@ function mapHeroFromPage(page: ContentPage): HeroContent | null {
     subtitle: typeof data.subtitle === "string" ? data.subtitle : "",
     primaryCta: {
       href: typeof primaryCta.href === "string" ? primaryCta.href : "/news",
-      label: typeof primaryCta.label === "string" ? primaryCta.label : "Read latest news",
+      label:
+        typeof primaryCta.label === "string"
+          ? primaryCta.label
+          : "Read latest news",
     },
     secondaryCta: {
       href: typeof secondaryCta.href === "string" ? secondaryCta.href : "/news",
-      label: typeof secondaryCta.label === "string" ? secondaryCta.label : "Browse news",
+      label:
+        typeof secondaryCta.label === "string"
+          ? secondaryCta.label
+          : "Browse news",
     },
   };
 }
@@ -276,7 +314,9 @@ function mapHeroFromPage(page: ContentPage): HeroContent | null {
 export async function getHomepageContent(): Promise<HeroContent> {
   const apiPage = await fetchContent<ApiPage>("/content/pages/slug/home");
   if (!apiPage || !apiPage.published) {
-    const fallbackPage = shouldUseDemoContentFallback() ? DEMO_PAGE_BY_SLUG.get("home") : null;
+    const fallbackPage = shouldUseDemoContentFallback()
+      ? DEMO_PAGE_BY_SLUG.get("home")
+      : null;
     const fallbackHero = fallbackPage ? mapHeroFromPage(fallbackPage) : null;
     if (fallbackHero) {
       return fallbackHero;
@@ -292,17 +332,21 @@ export async function getHomepageContent(): Promise<HeroContent> {
   }
 
   const hero = mapHeroFromPage(mapApiPage(apiPage));
-  return hero ?? {
-    eyebrow: "",
-    title: apiPage.title,
-    subtitle: "",
-    primaryCta: { href: "/news", label: "News" },
-    secondaryCta: { href: "/", label: "Home" },
-  };
+  return (
+    hero ?? {
+      eyebrow: "",
+      title: apiPage.title,
+      subtitle: "",
+      primaryCta: { href: "/news", label: "News" },
+      secondaryCta: { href: "/", label: "Home" },
+    }
+  );
 }
 
 export async function getNewsListing(): Promise<NewsItem[]> {
-  const items = await fetchContent<ApiContentItem[]>("/content/items/type-slug/news");
+  const items = await fetchContent<ApiContentItem[]>(
+    "/content/items/type-slug/news",
+  );
   if (!items) {
     return shouldUseDemoContentFallback() ? DEMO_NEWS_ITEMS : [];
   }
@@ -310,11 +354,25 @@ export async function getNewsListing(): Promise<NewsItem[]> {
   return items.map(mapApiContentItem);
 }
 
-export async function getPageContentBySlug(slug: string): Promise<ContentPage | null> {
-  const page = await fetchContent<ApiPage>(`/content/pages/slug/${encodeURIComponent(slug)}`);
+export async function getPageContentBySlug(
+  slug: string,
+): Promise<ContentPage | null> {
+  const page = await fetchContent<ApiPage>(
+    `/content/pages/slug/${encodeURIComponent(slug)}`,
+  );
   if (!page || !page.published) {
     if (shouldUseDemoContentFallback()) {
-      return DEMO_PAGE_BY_SLUG.get(slug) ?? null;
+      const demo = DEMO_PAGE_BY_SLUG.get(slug);
+      return demo
+        ? {
+            ...demo,
+            seoTitle: null,
+            seoDescription: null,
+            seoImage: null,
+            canonicalUrl: null,
+            noIndex: false,
+          }
+        : null;
     }
 
     return null;
@@ -346,7 +404,9 @@ export async function getPublicSiteSettings(): Promise<PublicSiteSettings> {
 export async function getPublicNavigationTree(): Promise<NavigationTreeItem[]> {
   const items = await fetchContent<unknown[]>("/content/navigation-items");
   if (!Array.isArray(items)) {
-    return shouldUseDemoContentFallback() ? buildNavigationTree(DEMO_NAVIGATION_ITEMS) : [];
+    return shouldUseDemoContentFallback()
+      ? buildNavigationTree(DEMO_NAVIGATION_ITEMS)
+      : [];
   }
 
   const mappedItems = items
@@ -354,7 +414,9 @@ export async function getPublicNavigationTree(): Promise<NavigationTreeItem[]> {
     .filter((item): item is NavigationItem => item !== null);
 
   if (mappedItems.length === 0) {
-    return shouldUseDemoContentFallback() ? buildNavigationTree(DEMO_NAVIGATION_ITEMS) : [];
+    return shouldUseDemoContentFallback()
+      ? buildNavigationTree(DEMO_NAVIGATION_ITEMS)
+      : [];
   }
 
   return buildNavigationTree(mappedItems);

@@ -74,13 +74,18 @@ model MagicLink {
 }
 
 model Page {
-  id        String      @id @default(cuid())
-  slug      String      @unique
-  title     String
-  published Boolean     @default(false)
-  createdAt DateTime    @default(now())
-  updatedAt DateTime    @updatedAt
-  blocks    PageBlock[]
+  id             String      @id @default(cuid())
+  slug           String      @unique
+  title          String
+  seoTitle       String?
+  seoDescription String?
+  seoImage       String?
+  canonicalUrl   String?
+  noIndex        Boolean     @default(false)
+  published      Boolean     @default(false)
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+  blocks         PageBlock[]
 
   @@index([slug])
   @@index([published])
@@ -114,15 +119,20 @@ model ContentType {
 }
 
 model ContentItem {
-  id            String      @id @default(cuid())
-  contentTypeId String
-  contentType   ContentType @relation(fields: [contentTypeId], references: [id], onDelete: Cascade)
-  slug          String
-  title         String
-  data          Json
-  published     Boolean     @default(false)
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
+  id             String      @id @default(cuid())
+  contentTypeId  String
+  contentType    ContentType @relation(fields: [contentTypeId], references: [id], onDelete: Cascade)
+  slug           String
+  title          String
+  seoTitle       String?
+  seoDescription String?
+  seoImage       String?
+  canonicalUrl   String?
+  noIndex        Boolean     @default(false)
+  data           Json
+  published      Boolean     @default(false)
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
 
   @@unique([contentTypeId, slug])
   @@index([contentTypeId])
