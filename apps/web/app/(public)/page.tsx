@@ -11,18 +11,20 @@ export default async function Homepage() {
 
     return (
       <section aria-labelledby="hero-heading" className="hero section">
-        <p className="hero__eyebrow">{hero.eyebrow}</p>
-        <h1 id="hero-heading" className="hero__title">
-          {hero.title}
-        </h1>
-        <p className="hero__subtitle">{hero.subtitle}</p>
-        <div className="hero__cta-row">
-          <Link href={hero.primaryCta.href} className="button-primary">
-            {hero.primaryCta.label}
-          </Link>
-          <Link href={hero.secondaryCta.href} className="button-secondary">
-            {hero.secondaryCta.label}
-          </Link>
+        <div className="hero__inner">
+          <p className="hero__eyebrow">{hero.eyebrow}</p>
+          <h1 id="hero-heading" className="hero__title">
+            {hero.title}
+          </h1>
+          <p className="hero__text">{hero.subtitle}</p>
+          <div className="hero__actions">
+            <Link href={hero.primaryCta.href} className="button-primary">
+              {hero.primaryCta.label}
+            </Link>
+            <Link href={hero.secondaryCta.href} className="button-secondary">
+              {hero.secondaryCta.label}
+            </Link>
+          </div>
         </div>
       </section>
     );

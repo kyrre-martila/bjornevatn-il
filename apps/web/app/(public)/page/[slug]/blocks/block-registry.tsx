@@ -31,18 +31,20 @@ type RegisteredBlock = {
 function HeroBlock({ data }: { data: HeroContent }) {
   return (
     <section aria-labelledby="hero-heading" className="hero section">
-      <p className="hero__eyebrow">{data.eyebrow}</p>
-      <h1 id="hero-heading" className="hero__title">
-        {data.title}
-      </h1>
-      <p className="hero__subtitle">{data.subtitle}</p>
-      <div className="hero__cta-row">
-        <Link href={data.primaryCta.href} className="button-primary">
-          {data.primaryCta.label}
-        </Link>
-        <Link href={data.secondaryCta.href} className="button-secondary">
-          {data.secondaryCta.label}
-        </Link>
+      <div className="hero__inner">
+        <p className="hero__eyebrow">{data.eyebrow}</p>
+        <h1 id="hero-heading" className="hero__title">
+          {data.title}
+        </h1>
+        <p className="hero__text">{data.subtitle}</p>
+        <div className="hero__actions">
+          <Link href={data.primaryCta.href} className="button-primary">
+            {data.primaryCta.label}
+          </Link>
+          <Link href={data.secondaryCta.href} className="button-secondary">
+            {data.secondaryCta.label}
+          </Link>
+        </div>
       </div>
     </section>
   );
@@ -51,16 +53,18 @@ function HeroBlock({ data }: { data: HeroContent }) {
 function RichTextBlock({ data }: { data: RichTextData }) {
   return (
     <section className="public-page__body section">
-      {data.paragraphs.map((paragraph) => (
-        <p key={paragraph}>{paragraph}</p>
-      ))}
+      <div className="section__content">
+        {data.paragraphs.map((paragraph) => (
+          <p key={paragraph}>{paragraph}</p>
+        ))}
+      </div>
     </section>
   );
 }
 
 function ImageBlock({ data }: { data: ImageData }) {
   return (
-    <figure className="public-block__image">
+    <figure className="section__content media-block section">
       <img src={data.src} alt={data.alt} />
       {data.caption ? <figcaption>{data.caption}</figcaption> : null}
     </figure>
@@ -69,10 +73,12 @@ function ImageBlock({ data }: { data: ImageData }) {
 
 function CtaBlock({ data }: { data: CtaData }) {
   return (
-    <section className="public-block__cta section">
-      {data.title ? <h2>{data.title}</h2> : null}
-      {data.description ? <p>{data.description}</p> : null}
-      <Link href={data.href} className="button-primary">
+    <section className="cta section">
+      {data.title ? <h2 className="section__title">{data.title}</h2> : null}
+      <div className="cta__text section__content">
+        {data.description ? <p>{data.description}</p> : null}
+      </div>
+      <Link href={data.href} className="button-primary cta__button">
         {data.label}
       </Link>
     </section>
@@ -85,14 +91,14 @@ function NewsListBlock({ data, items }: { data: NewsListData; items: NewsItem[] 
 
   return (
     <section className="section">
-      <h2 className="public-page__title">{data.title ?? "News"}</h2>
-      <ul className="public-list">
+      <h2 className="section__title public-page__title">{data.title ?? "News"}</h2>
+      <ul className="news-list section__content">
         {visibleItems.map((item) => (
-          <li key={item.slug} className="public-list__item">
-            <p className="public-list__meta">{item.publishedAt}</p>
-            <h3 className="public-list__title">{item.title}</h3>
-            <p className="public-list__summary">{item.summary}</p>
-            <Link href={`/page/${item.slug}`} className="public-list__link">
+          <li key={item.slug} className="news-list__item">
+            <p className="news-list__meta">{item.publishedAt}</p>
+            <h3 className="news-list__title">{item.title}</h3>
+            <p className="news-list__excerpt">{item.summary}</p>
+            <Link href={`/page/${item.slug}`} className="news-list__link">
               Read page
             </Link>
           </li>
