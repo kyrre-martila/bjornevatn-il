@@ -9,12 +9,20 @@ import type {
 
 type Props = {
   initialContentTypes: AdminContentType[];
-  initialGroupedItems: Array<{ contentTypeId: string; items: AdminContentItem[] }>;
+  initialGroupedItems: Array<{
+    contentTypeId: string;
+    items: AdminContentItem[];
+  }>;
 };
 
 type ContentItemDraft = {
   title: string;
   slug: string;
+  seoTitle: string;
+  seoDescription: string;
+  seoImage: string;
+  canonicalUrl: string;
+  noIndex: boolean;
   published: boolean;
   values: Record<string, string>;
   rawData: string;
@@ -34,7 +42,10 @@ function fieldTypeInputType(type: AdminContentFieldDefinition["type"]) {
   return "text";
 }
 
-function stringifyFieldValue(value: unknown, type: AdminContentFieldDefinition["type"]) {
+function stringifyFieldValue(
+  value: unknown,
+  type: AdminContentFieldDefinition["type"],
+) {
   if (value === undefined || value === null) return "";
   if (type === "boolean") return value ? "true" : "false";
   if (type === "date" && typeof value === "string") return value.slice(0, 10);
@@ -75,14 +86,22 @@ function buildDataFromFields(
 }
 
 function emptyDraft(contentType: AdminContentType): ContentItemDraft {
-  const values = contentType.fields.reduce<Record<string, string>>((acc, field) => {
-    acc[field.key] = field.type === "boolean" ? "false" : "";
-    return acc;
-  }, {});
+  const values = contentType.fields.reduce<Record<string, string>>(
+    (acc, field) => {
+      acc[field.key] = field.type === "boolean" ? "false" : "";
+      return acc;
+    },
+    {},
+  );
 
   return {
     title: "",
     slug: "",
+    seoTitle: "",
+    seoDescription: "",
+    seoImage: "",
+    canonicalUrl: "",
+    noIndex: false,
     published: false,
     values,
     rawData: "{}",
@@ -101,6 +120,11 @@ function ContentItemEditor({
     id: string;
     title: string;
     slug: string;
+    seoTitle: string | null;
+    seoDescription: string | null;
+    seoImage: string | null;
+    canonicalUrl: string | null;
+    noIndex: boolean;
     published: boolean;
     data: Record<string, unknown>;
   }) => Promise<void>;
@@ -108,16 +132,32 @@ function ContentItemEditor({
 }) {
   const [title, setTitle] = React.useState(item.title);
   const [slug, setSlug] = React.useState(item.slug);
+  const [seoTitle, setSeoTitle] = React.useState(item.seoTitle ?? "");
+  const [seoDescription, setSeoDescription] = React.useState(
+    item.seoDescription ?? "",
+  );
+  const [seoImage, setSeoImage] = React.useState(item.seoImage ?? "");
+  const [canonicalUrl, setCanonicalUrl] = React.useState(
+    item.canonicalUrl ?? "",
+  );
+  const [noIndex, setNoIndex] = React.useState(item.noIndex);
   const [published, setPublished] = React.useState(item.published);
   const [values, setValues] = React.useState<Record<string, string>>(
     buildValues(contentType.fields, item.data),
   );
-  const [rawData, setRawData] = React.useState(JSON.stringify(item.data, null, 2));
+  const [rawData, setRawData] = React.useState(
+    JSON.stringify(item.data, null, 2),
+  );
 
   React.useEffect(() => {
     setValues(buildValues(contentType.fields, item.data));
     setRawData(JSON.stringify(item.data, null, 2));
-  }, [contentType.fields, item.data]);
+    setSeoTitle(item.seoTitle ?? "");
+    setSeoDescription(item.seoDescription ?? "");
+    setSeoImage(item.seoImage ?? "");
+    setCanonicalUrl(item.canonicalUrl ?? "");
+    setNoIndex(item.noIndex);
+  }, [contentType.fields, item]);
 
   async function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -139,6 +179,11 @@ function ContentItemEditor({
       id: item.id,
       title,
       slug: normalizeSlug(slug),
+      seoTitle: seoTitle.trim() || null,
+      seoDescription: seoDescription.trim() || null,
+      seoImage: seoImage.trim() || null,
+      canonicalUrl: canonicalUrl.trim() || null,
+      noIndex,
       published,
       data,
     });
@@ -146,11 +191,66 @@ function ContentItemEditor({
 
   return (
     <form onSubmit={(e) => void submit(e)}>
-      <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Title" required />
-      <input value={slug} onChange={(e) => setSlug(e.target.value)} placeholder="slug" required />
+      <input
+        value={title}
+        onChange={(e) => setTitle(e.target.value)}
+        placeholder="Title"
+        required
+      />
+      <input
+        value={slug}
+        onChange={(e) => setSlug(e.target.value)}
+        placeholder="slug"
+        required
+      />
       <label>
-        Published <input type="checkbox" checked={published} onChange={(e) => setPublished(e.target.checked)} />
+        Published{" "}
+        <input
+          type="checkbox"
+          checked={published}
+          onChange={(e) => setPublished(e.target.checked)}
+        />
       </label>
+      <fieldset className="page-editor__seo">
+        <legend>SEO</legend>
+        <label>
+          SEO Title
+          <input
+            value={seoTitle}
+            onChange={(e) => setSeoTitle(e.target.value)}
+          />
+        </label>
+        <label>
+          SEO Description
+          <textarea
+            rows={3}
+            value={seoDescription}
+            onChange={(e) => setSeoDescription(e.target.value)}
+          />
+        </label>
+        <label>
+          SEO Image
+          <input
+            value={seoImage}
+            onChange={(e) => setSeoImage(e.target.value)}
+          />
+        </label>
+        <label>
+          Canonical URL
+          <input
+            value={canonicalUrl}
+            onChange={(e) => setCanonicalUrl(e.target.value)}
+          />
+        </label>
+        <label>
+          Noindex{" "}
+          <input
+            type="checkbox"
+            checked={noIndex}
+            onChange={(e) => setNoIndex(e.target.checked)}
+          />
+        </label>
+      </fieldset>
       {contentType.fields.length > 0 ? (
         contentType.fields.map((field) => (
           <label key={field.key}>
@@ -158,14 +258,24 @@ function ContentItemEditor({
             {field.type === "textarea" || field.type === "rich_text" ? (
               <textarea
                 value={values[field.key] ?? ""}
-                onChange={(e) => setValues((curr) => ({ ...curr, [field.key]: e.target.value }))}
+                onChange={(e) =>
+                  setValues((curr) => ({
+                    ...curr,
+                    [field.key]: e.target.value,
+                  }))
+                }
                 required={field.required}
                 rows={field.type === "rich_text" ? 6 : 3}
               />
             ) : field.type === "boolean" ? (
               <select
                 value={values[field.key] ?? "false"}
-                onChange={(e) => setValues((curr) => ({ ...curr, [field.key]: e.target.value }))}
+                onChange={(e) =>
+                  setValues((curr) => ({
+                    ...curr,
+                    [field.key]: e.target.value,
+                  }))
+                }
               >
                 <option value="false">False</option>
                 <option value="true">True</option>
@@ -174,45 +284,76 @@ function ContentItemEditor({
               <input
                 type={fieldTypeInputType(field.type)}
                 value={values[field.key] ?? ""}
-                onChange={(e) => setValues((curr) => ({ ...curr, [field.key]: e.target.value }))}
+                onChange={(e) =>
+                  setValues((curr) => ({
+                    ...curr,
+                    [field.key]: e.target.value,
+                  }))
+                }
                 required={field.required}
               />
             )}
           </label>
         ))
       ) : (
-        <textarea value={rawData} onChange={(e) => setRawData(e.target.value)} rows={8} required />
+        <textarea
+          value={rawData}
+          onChange={(e) => setRawData(e.target.value)}
+          rows={8}
+          required
+        />
       )}
       <button type="submit">Save</button>
-      <button type="button" onClick={() => void onDelete(item.id)}>Delete</button>
+      <button type="button" onClick={() => void onDelete(item.id)}>
+        Delete
+      </button>
     </form>
   );
 }
 
-export function ContentAdminClient({ initialContentTypes, initialGroupedItems }: Props) {
+export function ContentAdminClient({
+  initialContentTypes,
+  initialGroupedItems,
+}: Props) {
   const [contentTypes, setContentTypes] = React.useState(initialContentTypes);
   const [itemsByType, setItemsByType] = React.useState(
-    () => new Map(initialGroupedItems.map((entry) => [entry.contentTypeId, entry.items])),
+    () =>
+      new Map(
+        initialGroupedItems.map((entry) => [entry.contentTypeId, entry.items]),
+      ),
   );
-  const [selectedTypeId, setSelectedTypeId] = React.useState(initialContentTypes[0]?.id ?? "");
-  const [createDrafts, setCreateDrafts] = React.useState<Record<string, ContentItemDraft>>(() =>
-    Object.fromEntries(initialContentTypes.map((type) => [type.id, emptyDraft(type)])),
+  const [selectedTypeId, setSelectedTypeId] = React.useState(
+    initialContentTypes[0]?.id ?? "",
+  );
+  const [createDrafts, setCreateDrafts] = React.useState<
+    Record<string, ContentItemDraft>
+  >(() =>
+    Object.fromEntries(
+      initialContentTypes.map((type) => [type.id, emptyDraft(type)]),
+    ),
   );
   const [status, setStatus] = React.useState<string | null>(null);
   const [error, setError] = React.useState<string | null>(null);
 
-  const selectedType = contentTypes.find((type) => type.id === selectedTypeId) ?? null;
-  const selectedItems = selectedType ? itemsByType.get(selectedType.id) ?? [] : [];
+  const selectedType =
+    contentTypes.find((type) => type.id === selectedTypeId) ?? null;
+  const selectedItems = selectedType
+    ? (itemsByType.get(selectedType.id) ?? [])
+    : [];
 
   async function refreshItems(contentTypeId: string) {
-    const res = await fetch(`/api/admin/content-items?contentTypeId=${encodeURIComponent(contentTypeId)}`, { cache: "no-store" });
+    const res = await fetch(
+      `/api/admin/content-items?contentTypeId=${encodeURIComponent(contentTypeId)}`,
+      { cache: "no-store" },
+    );
     if (!res.ok) return;
     const items = (await res.json()) as AdminContentItem[];
     setItemsByType((curr) => new Map(curr).set(contentTypeId, items));
   }
 
   async function saveContentType(formData: FormData) {
-    setError(null); setStatus(null);
+    setError(null);
+    setStatus(null);
     const id = String(formData.get("id") ?? "");
     const fieldsRaw = String(formData.get("fields") ?? "[]");
     let fields: AdminContentFieldDefinition[] = [];
@@ -232,11 +373,14 @@ export function ContentAdminClient({ initialContentTypes, initialGroupedItems }:
       fields,
     };
 
-    const res = await fetch(id ? `/api/admin/content-types/${id}` : "/api/admin/content-types", {
-      method: id ? "PATCH" : "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify(payload),
-    });
+    const res = await fetch(
+      id ? `/api/admin/content-types/${id}` : "/api/admin/content-types",
+      {
+        method: id ? "PATCH" : "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(payload),
+      },
+    );
 
     if (!res.ok) {
       setError("Unable to save content type.");
@@ -246,7 +390,9 @@ export function ContentAdminClient({ initialContentTypes, initialGroupedItems }:
     const next = (await res.json()) as AdminContentType;
     setContentTypes((curr) => {
       const exists = curr.some((entry) => entry.id === next.id);
-      return exists ? curr.map((entry) => (entry.id === next.id ? next : entry)) : [next, ...curr];
+      return exists
+        ? curr.map((entry) => (entry.id === next.id ? next : entry))
+        : [next, ...curr];
     });
     setCreateDrafts((curr) => ({ ...curr, [next.id]: emptyDraft(next) }));
     setSelectedTypeId(next.id);
@@ -254,10 +400,15 @@ export function ContentAdminClient({ initialContentTypes, initialGroupedItems }:
   }
 
   async function deleteContentType(id: string) {
-    setError(null); setStatus(null);
-    const res = await fetch(`/api/admin/content-types/${id}`, { method: "DELETE" });
+    setError(null);
+    setStatus(null);
+    const res = await fetch(`/api/admin/content-types/${id}`, {
+      method: "DELETE",
+    });
     if (!res.ok) {
-      setError("Unable to delete content type. Delete all content items first.");
+      setError(
+        "Unable to delete content type. Delete all content items first.",
+      );
       return;
     }
 
@@ -275,22 +426,33 @@ export function ContentAdminClient({ initialContentTypes, initialGroupedItems }:
     id?: string;
     title: string;
     slug: string;
+    seoTitle: string | null;
+    seoDescription: string | null;
+    seoImage: string | null;
+    canonicalUrl: string | null;
+    noIndex: boolean;
     published: boolean;
     data: Record<string, unknown>;
   }) {
     if (!selectedType) return;
-    setError(null); setStatus(null);
+    setError(null);
+    setStatus(null);
 
     const requestPayload = {
       contentTypeId: selectedType.id,
       ...payload,
     };
 
-    const res = await fetch(payload.id ? `/api/admin/content-items/${payload.id}` : "/api/admin/content-items", {
-      method: payload.id ? "PATCH" : "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify(requestPayload),
-    });
+    const res = await fetch(
+      payload.id
+        ? `/api/admin/content-items/${payload.id}`
+        : "/api/admin/content-items",
+      {
+        method: payload.id ? "PATCH" : "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(requestPayload),
+      },
+    );
 
     if (!res.ok) {
       setError("Unable to save content item.");
@@ -299,15 +461,21 @@ export function ContentAdminClient({ initialContentTypes, initialGroupedItems }:
 
     await refreshItems(selectedType.id);
     if (!payload.id) {
-      setCreateDrafts((curr) => ({ ...curr, [selectedType.id]: emptyDraft(selectedType) }));
+      setCreateDrafts((curr) => ({
+        ...curr,
+        [selectedType.id]: emptyDraft(selectedType),
+      }));
     }
     setStatus("Content item saved.");
   }
 
   async function deleteContentItem(id: string) {
     if (!selectedType) return;
-    setError(null); setStatus(null);
-    const res = await fetch(`/api/admin/content-items/${id}`, { method: "DELETE" });
+    setError(null);
+    setStatus(null);
+    const res = await fetch(`/api/admin/content-items/${id}`, {
+      method: "DELETE",
+    });
     if (!res.ok) {
       setError("Unable to delete content item.");
       return;
@@ -317,7 +485,9 @@ export function ContentAdminClient({ initialContentTypes, initialGroupedItems }:
     setStatus("Content item deleted.");
   }
 
-  const createDraft = selectedType ? createDrafts[selectedType.id] ?? emptyDraft(selectedType) : null;
+  const createDraft = selectedType
+    ? (createDrafts[selectedType.id] ?? emptyDraft(selectedType))
+    : null;
 
   return (
     <section className="admin-pages">
@@ -329,13 +499,37 @@ export function ContentAdminClient({ initialContentTypes, initialGroupedItems }:
       {contentTypes.map((type) => (
         <form key={type.id} action={saveContentType}>
           <input type="hidden" name="id" defaultValue={type.id} />
-          <input name="name" defaultValue={type.name} placeholder="Name" required />
-          <input name="slug" defaultValue={type.slug} placeholder="slug" required />
-          <input name="description" defaultValue={type.description} placeholder="Description" required />
-          <textarea name="fields" defaultValue={JSON.stringify(type.fields, null, 2)} rows={6} required />
+          <input
+            name="name"
+            defaultValue={type.name}
+            placeholder="Name"
+            required
+          />
+          <input
+            name="slug"
+            defaultValue={type.slug}
+            placeholder="slug"
+            required
+          />
+          <input
+            name="description"
+            defaultValue={type.description}
+            placeholder="Description"
+            required
+          />
+          <textarea
+            name="fields"
+            defaultValue={JSON.stringify(type.fields, null, 2)}
+            rows={6}
+            required
+          />
           <button type="submit">Save</button>
-          <button type="button" onClick={() => setSelectedTypeId(type.id)}>Items</button>
-          <button type="button" onClick={() => void deleteContentType(type.id)}>Delete</button>
+          <button type="button" onClick={() => setSelectedTypeId(type.id)}>
+            Items
+          </button>
+          <button type="button" onClick={() => void deleteContentType(type.id)}>
+            Delete
+          </button>
         </form>
       ))}
 
@@ -366,10 +560,18 @@ export function ContentAdminClient({ initialContentTypes, initialGroupedItems }:
             onSubmit={(e) => {
               e.preventDefault();
               if (!selectedType) return;
-              const data = buildDataFromFields(selectedType.fields, createDraft.values);
+              const data = buildDataFromFields(
+                selectedType.fields,
+                createDraft.values,
+              );
               void saveContentItem({
                 title: createDraft.title,
                 slug: normalizeSlug(createDraft.slug),
+                seoTitle: createDraft.seoTitle.trim() || null,
+                seoDescription: createDraft.seoDescription.trim() || null,
+                seoImage: createDraft.seoImage.trim() || null,
+                canonicalUrl: createDraft.canonicalUrl.trim() || null,
+                noIndex: createDraft.noIndex,
                 published: createDraft.published,
                 data,
               });
@@ -405,11 +607,94 @@ export function ContentAdminClient({ initialContentTypes, initialGroupedItems }:
                 onChange={(e) =>
                   setCreateDrafts((curr) => ({
                     ...curr,
-                    [selectedType.id]: { ...createDraft, published: e.target.checked },
+                    [selectedType.id]: {
+                      ...createDraft,
+                      published: e.target.checked,
+                    },
                   }))
                 }
               />
             </label>
+            <fieldset className="page-editor__seo">
+              <legend>SEO</legend>
+              <label>
+                SEO Title
+                <input
+                  value={createDraft.seoTitle}
+                  onChange={(e) =>
+                    setCreateDrafts((curr) => ({
+                      ...curr,
+                      [selectedType.id]: {
+                        ...createDraft,
+                        seoTitle: e.target.value,
+                      },
+                    }))
+                  }
+                />
+              </label>
+              <label>
+                SEO Description
+                <textarea
+                  rows={3}
+                  value={createDraft.seoDescription}
+                  onChange={(e) =>
+                    setCreateDrafts((curr) => ({
+                      ...curr,
+                      [selectedType.id]: {
+                        ...createDraft,
+                        seoDescription: e.target.value,
+                      },
+                    }))
+                  }
+                />
+              </label>
+              <label>
+                SEO Image
+                <input
+                  value={createDraft.seoImage}
+                  onChange={(e) =>
+                    setCreateDrafts((curr) => ({
+                      ...curr,
+                      [selectedType.id]: {
+                        ...createDraft,
+                        seoImage: e.target.value,
+                      },
+                    }))
+                  }
+                />
+              </label>
+              <label>
+                Canonical URL
+                <input
+                  value={createDraft.canonicalUrl}
+                  onChange={(e) =>
+                    setCreateDrafts((curr) => ({
+                      ...curr,
+                      [selectedType.id]: {
+                        ...createDraft,
+                        canonicalUrl: e.target.value,
+                      },
+                    }))
+                  }
+                />
+              </label>
+              <label>
+                Noindex
+                <input
+                  type="checkbox"
+                  checked={createDraft.noIndex}
+                  onChange={(e) =>
+                    setCreateDrafts((curr) => ({
+                      ...curr,
+                      [selectedType.id]: {
+                        ...createDraft,
+                        noIndex: e.target.checked,
+                      },
+                    }))
+                  }
+                />
+              </label>
+            </fieldset>
             {selectedType.fields.length > 0 ? (
               selectedType.fields.map((field) => (
                 <label key={field.key}>
@@ -422,7 +707,10 @@ export function ContentAdminClient({ initialContentTypes, initialGroupedItems }:
                           ...curr,
                           [selectedType.id]: {
                             ...createDraft,
-                            values: { ...createDraft.values, [field.key]: e.target.value },
+                            values: {
+                              ...createDraft.values,
+                              [field.key]: e.target.value,
+                            },
                           },
                         }))
                       }
@@ -437,7 +725,10 @@ export function ContentAdminClient({ initialContentTypes, initialGroupedItems }:
                           ...curr,
                           [selectedType.id]: {
                             ...createDraft,
-                            values: { ...createDraft.values, [field.key]: e.target.value },
+                            values: {
+                              ...createDraft.values,
+                              [field.key]: e.target.value,
+                            },
                           },
                         }))
                       }
@@ -454,7 +745,10 @@ export function ContentAdminClient({ initialContentTypes, initialGroupedItems }:
                           ...curr,
                           [selectedType.id]: {
                             ...createDraft,
-                            values: { ...createDraft.values, [field.key]: e.target.value },
+                            values: {
+                              ...createDraft.values,
+                              [field.key]: e.target.value,
+                            },
                           },
                         }))
                       }
@@ -464,7 +758,10 @@ export function ContentAdminClient({ initialContentTypes, initialGroupedItems }:
                 </label>
               ))
             ) : (
-              <p>Add field definitions to the content type to enable structured item editing.</p>
+              <p>
+                Add field definitions to the content type to enable structured
+                item editing.
+              </p>
             )}
             <button type="submit">Create</button>
           </form>

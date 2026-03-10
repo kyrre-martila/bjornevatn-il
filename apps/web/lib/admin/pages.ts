@@ -18,6 +18,11 @@ export type AdminPage = {
   id: string;
   title: string;
   slug: string;
+  seoTitle: string | null;
+  seoDescription: string | null;
+  seoImage: string | null;
+  canonicalUrl: string | null;
+  noIndex: boolean;
   published: boolean;
   blocks: AdminPageBlock[];
 };

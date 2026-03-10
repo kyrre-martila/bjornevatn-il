@@ -1,7 +1,20 @@
+export type SeoFields = {
+  seoTitle: string | null;
+  seoDescription: string | null;
+  seoImage: string | null;
+  canonicalUrl: string | null;
+  noIndex: boolean;
+};
+
 export type Page = {
   id: string;
   slug: string;
   title: string;
+  seoTitle: string | null;
+  seoDescription: string | null;
+  seoImage: string | null;
+  canonicalUrl: string | null;
+  noIndex: boolean;
   published: boolean;
   createdAt: Date;
   updatedAt: Date;
@@ -14,7 +27,12 @@ export type Page = {
 // - cta
 // - image
 // - news_list
-export type PageBlockType = "hero" | "rich_text" | "cta" | "image" | "news_list";
+export type PageBlockType =
+  | "hero"
+  | "rich_text"
+  | "cta"
+  | "image"
+  | "news_list";
 
 export type PageBlock = {
   id: string;
@@ -56,6 +74,11 @@ export type ContentItem = {
   contentTypeId: string;
   slug: string;
   title: string;
+  seoTitle: string | null;
+  seoDescription: string | null;
+  seoImage: string | null;
+  canonicalUrl: string | null;
+  noIndex: boolean;
   data: Record<string, unknown>;
   published: boolean;
   createdAt: Date;

@@ -28,6 +28,11 @@ export const DEMO_PAGES: ContentPage[] = [
   {
     slug: "home",
     title: "Home",
+    seoTitle: null,
+    seoDescription: null,
+    seoImage: null,
+    canonicalUrl: null,
+    noIndex: false,
     blocks: [
       {
         id: "example-home-hero",
@@ -90,6 +95,11 @@ export const DEMO_PAGES: ContentPage[] = [
   {
     slug: "about",
     title: "About",
+    seoTitle: null,
+    seoDescription: null,
+    seoImage: null,
+    canonicalUrl: null,
+    noIndex: false,
     blocks: [
       {
         id: "example-about-rich-text",
@@ -116,6 +126,11 @@ export const DEMO_PAGES: ContentPage[] = [
   {
     slug: "services",
     title: "Services",
+    seoTitle: null,
+    seoDescription: null,
+    seoImage: null,
+    canonicalUrl: null,
+    noIndex: false,
     blocks: [
       {
         id: "example-services-rich-text",
@@ -145,6 +160,11 @@ export const DEMO_PAGES: ContentPage[] = [
   {
     slug: "contact",
     title: "Contact",
+    seoTitle: null,
+    seoDescription: null,
+    seoImage: null,
+    canonicalUrl: null,
+    noIndex: false,
     blocks: [
       {
         id: "example-contact-rich-text",
@@ -161,11 +181,31 @@ export const DEMO_PAGES: ContentPage[] = [
   },
 ];
 
-export const DEMO_PAGE_BY_SLUG = new Map(DEMO_PAGES.map((page) => [page.slug, page]));
+export const DEMO_PAGE_BY_SLUG = new Map(
+  DEMO_PAGES.map((page) => [page.slug, page]),
+);
 
 export const DEMO_NAVIGATION_ITEMS: NavigationItem[] = [
   { id: "nav-home", label: "Home", url: "/", order: 1, parentId: null },
-  { id: "nav-about", label: "About", url: "/page/about", order: 2, parentId: null },
-  { id: "nav-services", label: "Services", url: "/page/services", order: 3, parentId: null },
-  { id: "nav-contact", label: "Contact", url: "/page/contact", order: 4, parentId: null },
+  {
+    id: "nav-about",
+    label: "About",
+    url: "/page/about",
+    order: 2,
+    parentId: null,
+  },
+  {
+    id: "nav-services",
+    label: "Services",
+    url: "/page/services",
+    order: 3,
+    parentId: null,
+  },
+  {
+    id: "nav-contact",
+    label: "Contact",
+    url: "/page/contact",
+    order: 4,
+    parentId: null,
+  },
 ];
