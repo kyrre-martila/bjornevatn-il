@@ -474,8 +474,17 @@ export class ContentController {
   }
 
   @Get("pages/slug/:slug")
-  getPageBySlug(@Param("slug") slug: string) {
-    return this.pages.findBySlug(slug);
+  async getPageBySlug(@Param("slug") slug: string) {
+    const result = await this.pages.findBySlugOrRedirect(slug);
+    if (!result) {
+      return null;
+    }
+
+    if (result.kind === "redirect") {
+      return { redirectTo: `/page/${result.destinationSlug}`, permanent: true };
+    }
+
+    return result.entity;
   }
 
   @Post("pages")
@@ -552,11 +561,26 @@ export class ContentController {
   }
 
   @Get("items/type-slug/:contentTypeSlug/:slug")
-  getContentItemBySlug(
+  async getContentItemBySlug(
     @Param("contentTypeSlug") contentTypeSlug: string,
     @Param("slug") slug: string,
   ) {
-    return this.contentItems.findBySlug(contentTypeSlug, slug);
+    const result = await this.contentItems.findBySlugOrRedirect(contentTypeSlug, slug);
+    if (!result) {
+      return null;
+    }
+
+    if (result.kind === "redirect") {
+      if (contentTypeSlug === "news") {
+        return { redirectTo: `/news/${result.destinationSlug}`, permanent: true };
+      }
+      return {
+        redirectTo: `/content/${encodeURIComponent(contentTypeSlug)}/${encodeURIComponent(result.destinationSlug)}`,
+        permanent: true,
+      };
+    }
+
+    return result.entity;
   }
 
   private validateContentItemData(

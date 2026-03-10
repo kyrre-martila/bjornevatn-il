@@ -17,6 +17,7 @@ export type {
 export type { UsersRepository } from "./users/users.repository";
 
 export type {
+  SlugLookupResult,
   Page,
   PageBlock,
   PageBlockType,

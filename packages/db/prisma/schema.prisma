@@ -86,9 +86,20 @@ model Page {
   createdAt      DateTime    @default(now())
   updatedAt      DateTime    @updatedAt
   blocks         PageBlock[]
+  slugRedirects  PageSlugRedirect[]
 
   @@index([slug])
   @@index([published])
+}
+
+model PageSlugRedirect {
+  id         String   @id @default(cuid())
+  pageId     String
+  page       Page     @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  sourceSlug String   @unique
+  createdAt  DateTime @default(now())
+
+  @@index([pageId])
 }
 
 model PageBlock {
@@ -114,6 +125,7 @@ model ContentType {
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
   items       ContentItem[]
+  slugRedirects ContentItemSlugRedirect[]
 
   @@index([slug])
 }
@@ -133,10 +145,24 @@ model ContentItem {
   published      Boolean     @default(false)
   createdAt      DateTime    @default(now())
   updatedAt      DateTime    @updatedAt
+  slugRedirects  ContentItemSlugRedirect[]
 
   @@unique([contentTypeId, slug])
   @@index([contentTypeId])
   @@index([published])
+}
+
+model ContentItemSlugRedirect {
+  id            String      @id @default(cuid())
+  contentItemId String
+  contentItem   ContentItem @relation(fields: [contentItemId], references: [id], onDelete: Cascade)
+  contentTypeId String
+  contentType   ContentType @relation(fields: [contentTypeId], references: [id], onDelete: Cascade)
+  sourceSlug    String
+  createdAt     DateTime    @default(now())
+
+  @@unique([contentTypeId, sourceSlug])
+  @@index([contentItemId])
 }
 
 model NavigationItem {
