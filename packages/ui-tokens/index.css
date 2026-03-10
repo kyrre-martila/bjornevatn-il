@@ -1,4 +1,6 @@
 :root {
+  /* Minimal public website tokens */
+
   /* Brand colors */
 
   /* Primary & secondary */
@@ -39,15 +41,30 @@
   --space-xl: 24px;
   --space-2xl: 32px;
 
+  /* Public layout spacing aliases */
+  --site-space-1: var(--space-xs);
+  --site-space-2: var(--space-s);
+  --site-space-3: var(--space-m);
+  --site-space-4: var(--space-l);
+  --site-space-5: var(--space-xl);
+
   /* Radius */
   --radius-s: 6px;
   --radius-m: 10px;
   --radius-l: 16px;
   --radius-pill: 999px;
 
+  --site-radius-sm: var(--radius-s);
+  --site-radius-md: var(--radius-m);
+  --site-radius-lg: var(--radius-l);
+  --site-radius-pill: var(--radius-pill);
+
   /* Shadows */
   --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.18);
   --shadow-2: 0 10px 40px rgba(0, 0, 0, 0.32);
+
+  --site-shadow-sm: var(--shadow-1);
+  --site-shadow-md: var(--shadow-2);
 
   /* Typography */
 
@@ -60,6 +77,25 @@
   --text-l: clamp(1.1rem, 1.0rem + 0.4vw, 1.3rem);
   --text-xl: clamp(1.3rem, 1.1rem + 0.8vw, 1.6rem);
   --text-2xl: clamp(1.6rem, 1.2rem + 1.4vw, 2.2rem);
+
+  --site-font-size-sm: var(--text-s);
+  --site-font-size-md: var(--text-m);
+  --site-font-size-lg: var(--text-l);
+  --site-font-size-xl: var(--text-2xl);
+
+  /* Public container widths */
+  --site-container-sm: 640px;
+  --site-container-md: 720px;
+  --site-container-lg: 1120px;
+
+  /* Public color aliases */
+  --site-color-bg: var(--color-neutral-0);
+  --site-color-surface: var(--color-neutral-soft);
+  --site-color-text: var(--color-base);
+  --site-color-text-muted: var(--color-base-muted);
+  --site-color-primary: var(--color-primary);
+  --site-color-primary-contrast: var(--color-accent-contrast);
+  --site-color-border: var(--color-border-subtle);
 
   /* Font family */
   --font-sans: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
