@@ -95,6 +95,19 @@ function mapContentItem(item: {
   };
 }
 
+function mapMedia(media: {
+  id: string;
+  url: string;
+  alt: string;
+  mimeType: string | null;
+  sizeBytes: number | null;
+  originalFilename: string | null;
+  storageKey: string | null;
+  createdAt: Date;
+}): Media {
+  return media;
+}
+
 export class PagesPrismaRepository implements PagesRepository {
   private readonly prisma = getPrisma();
 
@@ -354,19 +367,23 @@ export class MediaPrismaRepository implements MediaRepository {
   private readonly prisma = getPrisma();
 
   async findMany(): Promise<Media[]> {
-    return this.prisma.media.findMany({ orderBy: { createdAt: "desc" } });
+    const media = await this.prisma.media.findMany({ orderBy: { createdAt: "desc" } });
+    return media.map(mapMedia);
   }
 
   async findById(id: string): Promise<Media | null> {
-    return this.prisma.media.findUnique({ where: { id } });
+    const media = await this.prisma.media.findUnique({ where: { id } });
+    return media ? mapMedia(media) : null;
   }
 
   async create(data: Omit<Media, "id" | "createdAt">): Promise<Media> {
-    return this.prisma.media.create({ data });
+    const media = await this.prisma.media.create({ data });
+    return mapMedia(media);
   }
 
   async update(id: string, data: Partial<Omit<Media, "id" | "createdAt">>): Promise<Media> {
-    return this.prisma.media.update({ where: { id }, data });
+    const media = await this.prisma.media.update({ where: { id }, data });
+    return mapMedia(media);
   }
 
   async delete(id: string): Promise<void> {

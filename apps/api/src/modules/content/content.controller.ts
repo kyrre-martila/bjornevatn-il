@@ -236,6 +236,27 @@ class CreateMediaDto {
   @ApiProperty()
   @IsString()
   alt!: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  mimeType?: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  sizeBytes?: number;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  originalFilename?: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  storageKey?: string;
 }
 
 class UpdateMediaDto {
@@ -248,6 +269,27 @@ class UpdateMediaDto {
   @IsOptional()
   @IsString()
   alt?: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  mimeType?: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  sizeBytes?: number;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  originalFilename?: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  storageKey?: string;
 }
 
 @ApiTags("content")
@@ -433,7 +475,13 @@ export class ContentController {
 
   @Post("media")
   createMedia(@Body() body: CreateMediaDto) {
-    return this.media.create(body);
+    return this.media.create({
+      ...body,
+      mimeType: body.mimeType ?? null,
+      sizeBytes: body.sizeBytes ?? null,
+      originalFilename: body.originalFilename ?? null,
+      storageKey: body.storageKey ?? null,
+    });
   }
 
   @Patch("media/:id")

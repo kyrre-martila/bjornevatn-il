@@ -147,8 +147,12 @@ model SiteSetting {
 }
 
 model Media {
-  id        String   @id @default(cuid())
-  url       String
-  alt       String
-  createdAt DateTime @default(now())
+  id               String   @id @default(cuid())
+  url              String
+  alt              String
+  mimeType         String?
+  sizeBytes        Int?
+  originalFilename String?
+  storageKey       String?
+  createdAt        DateTime @default(now())
 }
