@@ -32,6 +32,10 @@ export class MediaService {
     return this.mediaRepository.create({
       url: this.mediaStorageProvider.getUrl(stored.id),
       alt: input.alt,
+      mimeType: input.mimeType,
+      sizeBytes: input.fileBuffer.byteLength,
+      originalFilename: input.fileName,
+      storageKey: stored.id,
     });
   }
 
@@ -49,7 +53,7 @@ export class MediaService {
       return;
     }
 
-    const storedFileId = this.extractStoredFileId(media.url);
+    const storedFileId = media.storageKey ?? this.extractStoredFileId(media.url);
     await this.mediaStorageProvider.delete(storedFileId);
     await this.mediaRepository.delete(mediaId);
   }
