@@ -3,7 +3,10 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import * as React from "react";
-import type { AdminPage, AdminPageBlockType } from "../../../../lib/admin/pages";
+import type {
+  AdminPage,
+  AdminPageBlockType,
+} from "../../../../lib/admin/pages";
 
 type AdminMedia = {
   id: string;
@@ -11,12 +14,12 @@ type AdminMedia = {
   alt: string;
 };
 
-const BLOCK_TYPES: AdminPageBlockType[] = [
-  "hero",
-  "rich_text",
-  "image",
-  "cta",
-  "news_list",
+const BLOCK_TYPES: Array<{ value: AdminPageBlockType; label: string }> = [
+  { value: "hero", label: "Hero" },
+  { value: "rich_text", label: "Rich text" },
+  { value: "image", label: "Image" },
+  { value: "cta", label: "Call to action" },
+  { value: "news_list", label: "News list" },
 ];
 
 type EditableBlock = {
@@ -49,14 +52,53 @@ function toEditableBlocks(page: AdminPage | null): EditableBlock[] {
     }));
 }
 
-export function PageEditorClient({ initialPage }: { initialPage: AdminPage | null }) {
+function getBlockTypeLabel(type: AdminPageBlockType) {
+  return BLOCK_TYPES.find((item) => item.value === type)?.label ?? type;
+}
+
+function defaultBlockJson(type: AdminPageBlockType): string {
+  if (type === "hero") {
+    return JSON.stringify({ heading: "", text: "", imageUrl: "" }, null, 2);
+  }
+
+  if (type === "image") {
+    return JSON.stringify({ src: "", alt: "" }, null, 2);
+  }
+
+  if (type === "cta") {
+    return JSON.stringify(
+      { heading: "", text: "", buttonText: "", href: "" },
+      null,
+      2,
+    );
+  }
+
+  if (type === "news_list") {
+    return JSON.stringify({ heading: "Latest news", limit: 3 }, null, 2);
+  }
+
+  return JSON.stringify({ body: "" }, null, 2);
+}
+
+export function PageEditorClient({
+  initialPage,
+}: {
+  initialPage: AdminPage | null;
+}) {
   const router = useRouter();
   const [title, setTitle] = React.useState(initialPage?.title ?? "");
   const [slug, setSlug] = React.useState(initialPage?.slug ?? "");
-  const [published, setPublished] = React.useState(initialPage?.published ?? false);
-  const [blocks, setBlocks] = React.useState<EditableBlock[]>(toEditableBlocks(initialPage));
+  const [published, setPublished] = React.useState(
+    initialPage?.published ?? false,
+  );
+  const [blocks, setBlocks] = React.useState<EditableBlock[]>(
+    toEditableBlocks(initialPage),
+  );
   const [error, setError] = React.useState<string | null>(null);
   const [status, setStatus] = React.useState<string | null>(null);
+  const [activeBlockId, setActiveBlockId] = React.useState<string | null>(
+    initialPage?.blocks[0]?.id ?? null,
+  );
   const [isSaving, setIsSaving] = React.useState(false);
   const [isDeleting, setIsDeleting] = React.useState(false);
   const [media, setMedia] = React.useState<AdminMedia[]>([]);
@@ -64,7 +106,9 @@ export function PageEditorClient({ initialPage }: { initialPage: AdminPage | nul
   React.useEffect(() => {
     let active = true;
     void fetch("/api/admin/media", { cache: "no-store" })
-      .then((res) => (res.ok ? (res.json() as Promise<AdminMedia[]>) : Promise.resolve([])))
+      .then((res) =>
+        res.ok ? (res.json() as Promise<AdminMedia[]>) : Promise.resolve([]),
+      )
       .then((items) => {
         if (active) {
           setMedia(items);
@@ -82,24 +126,39 @@ export function PageEditorClient({ initialPage }: { initialPage: AdminPage | nul
   }, []);
 
   function addBlock(type: AdminPageBlockType) {
+    const nextId = `new-${Date.now()}-${blocks.length}`;
     setBlocks((current) => [
       ...current,
       {
-        id: `new-${Date.now()}-${current.length}`,
+        id: nextId,
         type,
-        dataJson: "{}",
+        dataJson: defaultBlockJson(type),
       },
     ]);
+    setActiveBlockId(nextId);
+    setStatus(`Added ${getBlockTypeLabel(type)} block.`);
+    setError(null);
   }
 
   function updateBlock(index: number, patch: Partial<EditableBlock>) {
     setBlocks((current) =>
-      current.map((block, idx) => (idx === index ? { ...block, ...patch } : block)),
+      current.map((block, idx) =>
+        idx === index ? { ...block, ...patch } : block,
+      ),
     );
   }
 
   function removeBlock(index: number) {
-    setBlocks((current) => current.filter((_, idx) => idx !== index));
+    setBlocks((current) => {
+      const removed = current[index];
+      const next = current.filter((_, idx) => idx !== index);
+      if (removed && removed.id === activeBlockId) {
+        setActiveBlockId(next[index]?.id ?? next[index - 1]?.id ?? null);
+      }
+      return next;
+    });
+    setStatus("Block removed.");
+    setError(null);
   }
 
   function moveBlock(index: number, direction: -1 | 1) {
@@ -114,6 +173,8 @@ export function PageEditorClient({ initialPage }: { initialPage: AdminPage | nul
       updated.splice(nextIndex, 0, moved);
       return updated;
     });
+    setStatus("Block order updated.");
+    setError(null);
   }
 
   function setBlockMedia(index: number, selectedMediaId: string) {
@@ -123,7 +184,10 @@ export function PageEditorClient({ initialPage }: { initialPage: AdminPage | nul
     }
 
     try {
-      const current = JSON.parse(blocks[index]?.dataJson ?? "{}") as Record<string, unknown>;
+      const current = JSON.parse(blocks[index]?.dataJson ?? "{}") as Record<
+        string,
+        unknown
+      >;
       const nextData: Record<string, unknown> = {
         ...current,
       };
@@ -138,8 +202,12 @@ export function PageEditorClient({ initialPage }: { initialPage: AdminPage | nul
       }
 
       updateBlock(index, { dataJson: JSON.stringify(nextData, null, 2) });
+      setStatus("Media selected for block.");
+      setError(null);
     } catch {
-      setError(`Block #${index + 1} has invalid JSON.`);
+      setError(
+        `Block #${index + 1} has invalid JSON. Fix it before selecting media.`,
+      );
     }
   }
 
@@ -157,17 +225,30 @@ export function PageEditorClient({ initialPage }: { initialPage: AdminPage | nul
     }
 
     if (!normalizedSlug) {
-      setError("Slug is required and can contain only letters, numbers, and hyphens.");
+      setError(
+        "Slug is required and can contain only letters, numbers, and hyphens.",
+      );
       return;
     }
 
-    const parsedBlocks: Array<{ type: AdminPageBlockType; data: Record<string, unknown>; order: number }> = [];
+    const parsedBlocks: Array<{
+      type: AdminPageBlockType;
+      data: Record<string, unknown>;
+      order: number;
+    }> = [];
 
     for (const [index, block] of blocks.entries()) {
       try {
         const parsed = JSON.parse(block.dataJson) as unknown;
-        if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
-          setError(`Block #${index + 1} must be a JSON object.`);
+        if (
+          typeof parsed !== "object" ||
+          parsed === null ||
+          Array.isArray(parsed)
+        ) {
+          setError(
+            `Block #${index + 1} (${getBlockTypeLabel(block.type)}) must be a JSON object.`,
+          );
+          setActiveBlockId(block.id);
           return;
         }
 
@@ -177,7 +258,10 @@ export function PageEditorClient({ initialPage }: { initialPage: AdminPage | nul
           order: index,
         });
       } catch {
-        setError(`Block #${index + 1} has invalid JSON.`);
+        setError(
+          `Block #${index + 1} (${getBlockTypeLabel(block.type)}) has invalid JSON.`,
+        );
+        setActiveBlockId(block.id);
         return;
       }
     }
@@ -192,7 +276,9 @@ export function PageEditorClient({ initialPage }: { initialPage: AdminPage | nul
         blocks: parsedBlocks,
       };
 
-      const endpoint = initialPage ? `/api/admin/pages/${initialPage.id}` : "/api/admin/pages";
+      const endpoint = initialPage
+        ? `/api/admin/pages/${initialPage.id}`
+        : "/api/admin/pages";
       const method = initialPage ? "PATCH" : "POST";
 
       const res = await fetch(endpoint, {
@@ -203,8 +289,11 @@ export function PageEditorClient({ initialPage }: { initialPage: AdminPage | nul
 
       if (!res.ok) {
         const data = await res.json().catch(() => null);
-        const message = (data && (data.message || data.error)) || "Unable to save page.";
-        setError(typeof message === "string" ? message : "Unable to save page.");
+        const message =
+          (data && (data.message || data.error)) || "Unable to save page.";
+        setError(
+          typeof message === "string" ? message : "Unable to save page.",
+        );
         return;
       }
 
@@ -230,7 +319,9 @@ export function PageEditorClient({ initialPage }: { initialPage: AdminPage | nul
       return;
     }
 
-    const confirmed = window.confirm("Delete this page?");
+    const confirmed = window.confirm(
+      `Delete page \"${initialPage.title}\"? This cannot be undone.`,
+    );
     if (!confirmed) {
       return;
     }
@@ -245,7 +336,12 @@ export function PageEditorClient({ initialPage }: { initialPage: AdminPage | nul
       });
 
       if (!res.ok) {
-        setError("Unable to delete page.");
+        const data = await res.json().catch(() => null);
+        const message =
+          (data && (data.message || data.error)) || "Unable to delete page.";
+        setError(
+          typeof message === "string" ? message : "Unable to delete page.",
+        );
         return;
       }
 
@@ -258,6 +354,11 @@ export function PageEditorClient({ initialPage }: { initialPage: AdminPage | nul
     }
   }
 
+  const activeBlockIndex = blocks.findIndex(
+    (block) => block.id === activeBlockId,
+  );
+  const activeBlock = activeBlockIndex >= 0 ? blocks[activeBlockIndex] : null;
+
   return (
     <section className="page-editor">
       <div className="page-editor__header">
@@ -265,17 +366,32 @@ export function PageEditorClient({ initialPage }: { initialPage: AdminPage | nul
           ← Back to pages
         </Link>
         <h1>{initialPage ? "Edit page" : "Create page"}</h1>
+        <p className="page-editor__help">
+          Keep layout flexible with simple blocks. Edit block JSON for advanced
+          fields when needed.
+        </p>
       </div>
 
       <form className="page-editor__form" onSubmit={savePage}>
         <label>
           Title
-          <input value={title} onChange={(e) => setTitle(e.target.value)} required />
+          <input
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            required
+          />
         </label>
 
         <label>
           Slug
-          <input value={slug} onChange={(e) => setSlug(normalizeSlug(e.target.value))} required />
+          <input
+            value={slug}
+            onChange={(e) => setSlug(normalizeSlug(e.target.value))}
+            required
+          />
+          <small className="page-editor__field-help">
+            URL preview: /page/{normalizeSlug(slug) || "your-page"}
+          </small>
         </label>
 
         <label className="page-editor__checkbox">
@@ -289,75 +405,144 @@ export function PageEditorClient({ initialPage }: { initialPage: AdminPage | nul
 
         <div className="page-editor__blocks">
           <div className="page-editor__blocks-header">
-            <h2>Blocks</h2>
+            <h2>Page blocks ({blocks.length})</h2>
             <div className="page-editor__block-type-buttons">
               {BLOCK_TYPES.map((type) => (
-                <button key={type} type="button" onClick={() => addBlock(type)}>
-                  + {type}
+                <button
+                  key={type.value}
+                  type="button"
+                  onClick={() => addBlock(type.value)}
+                >
+                  + {type.label}
                 </button>
               ))}
             </div>
           </div>
 
-          {blocks.length === 0 && <p>No blocks yet. Add one to start.</p>}
+          <p className="page-editor__help">
+            Reorder blocks with arrows. Select a block from the list to edit its
+            type and JSON payload.
+          </p>
 
-          {blocks.map((block, index) => (
-            <article key={block.id} className="page-editor__block">
-              <div className="page-editor__block-toolbar">
-                <strong>#{index + 1}</strong>
-                <div>
-                  <button type="button" onClick={() => moveBlock(index, -1)}>
-                    ↑
-                  </button>
-                  <button type="button" onClick={() => moveBlock(index, 1)}>
-                    ↓
-                  </button>
-                  <button type="button" onClick={() => removeBlock(index)}>
-                    Delete
-                  </button>
-                </div>
-              </div>
+          <div className="page-editor__block-layout">
+            <div
+              className="page-editor__block-list"
+              role="list"
+              aria-label="Block list"
+            >
+              {blocks.length === 0 && <p>No blocks yet. Add one to start.</p>}
 
-              <label>
-                Type
-                <select
-                  value={block.type}
-                  onChange={(e) =>
-                    updateBlock(index, { type: e.target.value as AdminPageBlockType })
-                  }
-                >
-                  {BLOCK_TYPES.map((type) => (
-                    <option key={type} value={type}>
-                      {type}
-                    </option>
-                  ))}
-                </select>
-              </label>
+              {blocks.map((block, index) => {
+                const isActive = activeBlock?.id === block.id;
 
-              <label>
-                Data (JSON)
-                <textarea
-                  rows={8}
-                  value={block.dataJson}
-                  onChange={(e) => updateBlock(index, { dataJson: e.target.value })}
-                />
-              </label>
+                return (
+                  <article
+                    key={block.id}
+                    className={`page-editor__block ${isActive ? "page-editor__block--active" : ""}`}
+                    role="listitem"
+                  >
+                    <button
+                      type="button"
+                      className="page-editor__block-summary"
+                      onClick={() => setActiveBlockId(block.id)}
+                    >
+                      <strong>
+                        #{index + 1} {getBlockTypeLabel(block.type)}
+                      </strong>
+                      <span>{isActive ? "Editing" : "Select"}</span>
+                    </button>
+                    <div className="page-editor__block-toolbar">
+                      <div>
+                        <button
+                          type="button"
+                          onClick={() => moveBlock(index, -1)}
+                          disabled={index === 0}
+                        >
+                          Move up
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => moveBlock(index, 1)}
+                          disabled={index === blocks.length - 1}
+                        >
+                          Move down
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => removeBlock(index)}
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
 
-              {(block.type === "image" || block.type === "hero") && (
+            {activeBlock && (
+              <div className="page-editor__block-editor">
+                <h3>
+                  Editing block #{activeBlockIndex + 1}:{" "}
+                  {getBlockTypeLabel(activeBlock.type)}
+                </h3>
+
                 <label>
-                  Select media
-                  <select defaultValue="" onChange={(e) => setBlockMedia(index, e.target.value)}>
-                    <option value="">Choose from media library</option>
-                    {media.map((item) => (
-                      <option key={item.id} value={item.id}>
-                        {item.alt || item.url}
+                  Type
+                  <select
+                    value={activeBlock.type}
+                    onChange={(e) =>
+                      updateBlock(activeBlockIndex, {
+                        type: e.target.value as AdminPageBlockType,
+                        dataJson: defaultBlockJson(
+                          e.target.value as AdminPageBlockType,
+                        ),
+                      })
+                    }
+                  >
+                    {BLOCK_TYPES.map((type) => (
+                      <option key={type.value} value={type.value}>
+                        {type.label}
                       </option>
                     ))}
                   </select>
                 </label>
-              )}
-            </article>
-          ))}
+
+                <label>
+                  Data (JSON)
+                  <textarea
+                    rows={14}
+                    value={activeBlock.dataJson}
+                    onChange={(e) =>
+                      updateBlock(activeBlockIndex, {
+                        dataJson: e.target.value,
+                      })
+                    }
+                  />
+                </label>
+
+                {(activeBlock.type === "image" ||
+                  activeBlock.type === "hero") && (
+                  <label>
+                    Select media
+                    <select
+                      defaultValue=""
+                      onChange={(e) =>
+                        setBlockMedia(activeBlockIndex, e.target.value)
+                      }
+                    >
+                      <option value="">Choose from media library</option>
+                      {media.map((item) => (
+                        <option key={item.id} value={item.id}>
+                          {item.alt || item.url}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                )}
+              </div>
+            )}
+          </div>
         </div>
 
         {error && <p className="page-editor__error">{error}</p>}
