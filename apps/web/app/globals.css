@@ -359,6 +359,8 @@ button:focus-visible {
 
 .hero {
   max-width: var(--site-container-md, var(--container-md));
+  container-type: inline-size;
+  container-name: hero;
 }
 
 .hero__eyebrow {
@@ -394,6 +396,26 @@ button:focus-visible {
   display: flex;
   gap: var(--space-s);
   flex-wrap: wrap;
+}
+
+@container hero (min-width: 36rem) {
+  .hero__title {
+    font-size: var(--text-3xl);
+  }
+
+  .hero__actions {
+    align-items: center;
+  }
+}
+
+@container hero (min-width: 52rem) {
+  .hero__inner {
+    gap: var(--space-m);
+  }
+
+  .hero__actions {
+    gap: var(--space-m);
+  }
 }
 
 .hero__cta-row {
@@ -1034,6 +1056,8 @@ button:focus-visible {
 .public-block--image {
   gap: var(--space-xs);
   margin: var(--space-l) 0;
+  container-type: inline-size;
+  container-name: block-image;
 }
 
 .public-block__image {
@@ -1056,6 +1080,8 @@ button:focus-visible {
   border-radius: var(--site-radius-md, var(--radius-m));
   padding: var(--site-space-4, var(--space-l));
   margin: var(--space-l) 0;
+  container-type: inline-size;
+  container-name: block-cta;
 }
 
 .public-block__content--cta {
@@ -1064,6 +1090,60 @@ button:focus-visible {
 
 .public-block__button {
   width: fit-content;
+}
+
+.public-block--news,
+.public-block--news-page {
+  container-type: inline-size;
+  container-name: block-news;
+}
+
+@container block-image (min-width: 44rem) {
+  .public-block--image {
+    grid-template-columns: minmax(0, 2fr) minmax(12rem, 1fr);
+    align-items: end;
+    gap: var(--space-m);
+  }
+
+  .public-block__caption {
+    font-size: var(--text-s);
+  }
+}
+
+@container block-cta (min-width: 40rem) {
+  .public-block--cta {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    column-gap: var(--space-l);
+  }
+
+  .public-block--cta .public-block__title,
+  .public-block--cta .public-block__content {
+    grid-column: 1;
+  }
+
+  .public-block--cta .public-block__button {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+    justify-self: end;
+  }
+}
+
+@container block-news (min-width: 42rem) {
+  .news-list--block,
+  .news-list--page {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .news-list__item {
+    height: 100%;
+  }
+}
+
+@container block-news (min-width: 64rem) {
+  .news-list--page {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
 }
 
 .admin-pages {
