@@ -401,6 +401,11 @@ button:focus-visible {
   max-width: var(--site-container-md, var(--container-md));
 }
 
+.hero--public {
+  container-type: inline-size;
+  container-name: public-hero;
+}
+
 .hero__eyebrow {
   font-size: var(--text-xs);
   text-transform: uppercase;
@@ -1076,6 +1081,84 @@ button:focus-visible {
   width: fit-content;
 }
 
+
+.public-block--rich-text,
+.public-block--image,
+.public-block--cta,
+.public-block--news {
+  container-type: inline-size;
+}
+
+@container public-hero (min-width: 42rem) {
+  .hero--public .hero__inner {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: end;
+    column-gap: var(--space-l);
+    row-gap: var(--space-s);
+  }
+
+  .hero--public .hero__eyebrow,
+  .hero--public .hero__title,
+  .hero--public .hero__text {
+    grid-column: 1;
+  }
+
+  .hero--public .hero__actions {
+    grid-column: 2;
+    grid-row: 1 / span 3;
+    align-self: center;
+    justify-self: end;
+    flex-direction: column;
+    align-items: stretch;
+    width: max-content;
+  }
+}
+
+@container (min-width: 36rem) {
+  .public-block--rich-text .public-block__content--rich-text {
+    columns: 2;
+    column-gap: var(--site-space-4, var(--space-l));
+  }
+
+  .public-block--rich-text .public-block__paragraph {
+    break-inside: avoid;
+  }
+
+  .public-block--cta {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    column-gap: var(--site-space-4, var(--space-l));
+    align-items: center;
+  }
+
+  .public-block--cta .public-block__title,
+  .public-block--cta .public-block__content {
+    grid-column: 1;
+  }
+
+  .public-block--cta .public-block__button {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+    justify-self: end;
+    align-self: center;
+  }
+
+  .public-block--news .news-list {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--site-space-3, var(--space-m));
+  }
+
+  .public-block--news .news-list__item {
+    height: 100%;
+  }
+}
+
+@container (min-width: 52rem) {
+  .public-block--news .news-list {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
 
 @media (min-width: 768px) {
   .public-header__inner {
