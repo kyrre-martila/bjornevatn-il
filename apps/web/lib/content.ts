@@ -131,6 +131,16 @@ type ApiSiteSetting = {
   value: string;
 };
 
+type ApiSlugRedirect = {
+  redirectTo: string;
+  permanent: boolean;
+};
+
+function isApiSlugRedirect(value: unknown): value is ApiSlugRedirect {
+  const record = asRecord(value);
+  return typeof record.redirectTo === "string";
+}
+
 const PUBLIC_SITE_SETTING_KEYS: SiteSettingKey[] = [
   "site_title",
   "site_tagline",
@@ -399,57 +409,90 @@ export async function getNewsListing(): Promise<NewsItem[]> {
   return items.map(mapApiContentItem);
 }
 
-export async function getNewsItemBySlug(
+export async function resolveNewsItemBySlug(
   slug: string,
-): Promise<NewsDetailItem | null> {
-  const item = await fetchContent<ApiContentItem>(
+): Promise<{ redirectTo: string | null; item: NewsDetailItem | null }> {
+  const response = await fetchContent<ApiContentItem | ApiSlugRedirect>(
     `/content/items/type-slug/news/${encodeURIComponent(slug)}`,
   );
+
+  if (isApiSlugRedirect(response)) {
+    return { redirectTo: response.redirectTo, item: null };
+  }
+
+  const item = response;
 
   if (!item || !item.published) {
     if (shouldUseDemoContentFallback()) {
       const demoItem = DEMO_NEWS_ITEMS.find((entry) => entry.slug === slug);
-      return demoItem
-        ? {
-            ...demoItem,
-            canonicalUrl: null,
-            noIndex: false,
-            body: demoItem.summary,
-          }
-        : null;
+      return {
+        redirectTo: null,
+        item: demoItem
+          ? {
+              ...demoItem,
+              canonicalUrl: null,
+              noIndex: false,
+              body: demoItem.summary,
+            }
+          : null,
+      };
     }
 
-    return null;
+    return { redirectTo: null, item: null };
   }
 
-  return mapApiContentItemDetail(item);
+  return { redirectTo: null, item: mapApiContentItemDetail(item) };
+}
+
+export async function getNewsItemBySlug(
+  slug: string,
+): Promise<NewsDetailItem | null> {
+  const result = await resolveNewsItemBySlug(slug);
+  return result.item;
+}
+
+export async function resolvePageContentBySlug(
+  slug: string,
+): Promise<{ redirectTo: string | null; page: ContentPage | null }> {
+  const response = await fetchContent<ApiPage | ApiSlugRedirect>(
+    `/content/pages/slug/${encodeURIComponent(slug)}`,
+  );
+
+  if (isApiSlugRedirect(response)) {
+    return { redirectTo: response.redirectTo, page: null };
+  }
+
+  const page = response;
+
+  if (!page || !page.published) {
+    if (shouldUseDemoContentFallback()) {
+      const demo = DEMO_PAGE_BY_SLUG.get(slug);
+      return {
+        redirectTo: null,
+        page: demo
+          ? {
+              ...demo,
+              seoTitle: null,
+              seoDescription: null,
+              seoImage: null,
+              canonicalUrl: null,
+              noIndex: false,
+            }
+          : null,
+      };
+    }
+
+    return { redirectTo: null, page: null };
+  }
+
+  return { redirectTo: null, page: mapApiPage(page) };
 }
 
 export async function getPageContentBySlug(
   slug: string,
 ): Promise<ContentPage | null> {
-  const page = await fetchContent<ApiPage>(
-    `/content/pages/slug/${encodeURIComponent(slug)}`,
-  );
-  if (!page || !page.published) {
-    if (shouldUseDemoContentFallback()) {
-      const demo = DEMO_PAGE_BY_SLUG.get(slug);
-      return demo
-        ? {
-            ...demo,
-            seoTitle: null,
-            seoDescription: null,
-            seoImage: null,
-            canonicalUrl: null,
-            noIndex: false,
-          }
-        : null;
-    }
-
-    return null;
-  }
-
-  return mapApiPage(page);
+  const result = await resolvePageContentBySlug(slug);
+  return result.page;
 }
 
 export async function getPublicSiteSettings(): Promise<PublicSiteSettings> {

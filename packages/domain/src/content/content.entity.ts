@@ -6,6 +6,10 @@ export type SeoFields = {
   noIndex: boolean;
 };
 
+export type SlugLookupResult<T> =
+  | { kind: "current"; entity: T }
+  | { kind: "redirect"; destinationSlug: string };
+
 export type Page = {
   id: string;
   slug: string;

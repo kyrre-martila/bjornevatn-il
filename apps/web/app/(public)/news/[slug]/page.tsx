@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
 
-import { getNewsItemBySlug } from "../../../../lib/content";
+import { resolveNewsItemBySlug } from "../../../../lib/content";
 
 export async function generateMetadata({
   params,
@@ -9,7 +9,13 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
   const { slug } = await params;
-  const item = await getNewsItemBySlug(slug);
+  const resolved = await resolveNewsItemBySlug(slug);
+
+  if (resolved.redirectTo) {
+    return { title: "Redirecting" };
+  }
+
+  const item = resolved.item;
 
   if (!item) {
     return { title: "Not found" };
@@ -29,7 +35,13 @@ export default async function NewsItemPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const item = await getNewsItemBySlug(slug);
+  const resolved = await resolveNewsItemBySlug(slug);
+
+  if (resolved.redirectTo) {
+    permanentRedirect(resolved.redirectTo);
+  }
+
+  const item = resolved.item;
 
   if (!item) {
     notFound();

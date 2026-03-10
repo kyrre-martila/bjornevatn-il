@@ -6,12 +6,14 @@ import type {
   Page,
   PageBlock,
   SiteSetting,
+  SlugLookupResult,
 } from "./content.entity";
 
 export interface PagesRepository {
   findMany(): Promise<Page[]>;
   findById(id: string): Promise<Page | null>;
   findBySlug(slug: string): Promise<Page | null>;
+  findBySlugOrRedirect(slug: string): Promise<SlugLookupResult<Page> | null>;
   create(data: Omit<Page, "id" | "createdAt" | "updatedAt">): Promise<Page>;
   update(
     id: string,
@@ -48,6 +50,10 @@ export interface ContentItemsRepository {
   findManyByContentTypeSlug(contentTypeSlug: string): Promise<ContentItem[]>;
   findById(id: string): Promise<ContentItem | null>;
   findBySlug(contentTypeSlug: string, slug: string): Promise<ContentItem | null>;
+  findBySlugOrRedirect(
+    contentTypeSlug: string,
+    slug: string,
+  ): Promise<SlugLookupResult<ContentItem> | null>;
   create(data: Omit<ContentItem, "id" | "createdAt" | "updatedAt">): Promise<ContentItem>;
   update(
     id: string,

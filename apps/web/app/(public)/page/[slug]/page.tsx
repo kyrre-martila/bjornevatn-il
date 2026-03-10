@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
 
-import { getPageContentBySlug } from "../../../../lib/content";
+import { resolvePageContentBySlug } from "../../../../lib/content";
 import { renderBlock } from "./block-renderer";
 
 function stripHtml(value: string): string {
@@ -34,7 +34,13 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
   const { slug } = await params;
-  const page = await getPageContentBySlug(slug);
+  const resolved = await resolvePageContentBySlug(slug);
+
+  if (resolved.redirectTo) {
+    return {};
+  }
+
+  const page = resolved.page;
 
   if (!page) {
     return {};
@@ -69,7 +75,13 @@ export default async function GenericPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const content = await getPageContentBySlug(slug);
+  const resolved = await resolvePageContentBySlug(slug);
+
+  if (resolved.redirectTo) {
+    permanentRedirect(resolved.redirectTo);
+  }
+
+  const content = resolved.page;
 
   if (!content) {
     notFound();

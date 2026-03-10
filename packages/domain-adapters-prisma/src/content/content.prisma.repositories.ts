@@ -1,4 +1,5 @@
 import { Prisma } from "@prisma/client";
+import { DomainError } from "@org/domain";
 import type {
   ContentItem,
   ContentItemsRepository,
@@ -213,9 +214,39 @@ export class PagesPrismaRepository implements PagesRepository {
     return page ? mapPage(page) : null;
   }
 
+  async findBySlugOrRedirect(slug: string) {
+    const current = await this.findBySlug(slug);
+    if (current) {
+      return { kind: "current" as const, entity: current };
+    }
+
+    const redirect = await this.prisma.pageSlugRedirect.findUnique({
+      where: { sourceSlug: slug },
+      include: {
+        page: {
+          include: { blocks: { orderBy: { order: "asc" } } },
+        },
+      },
+    });
+
+    if (!redirect) {
+      return null;
+    }
+
+    return { kind: "redirect" as const, destinationSlug: redirect.page.slug };
+  }
+
   async create(
     data: Omit<Page, "id" | "createdAt" | "updatedAt">,
   ): Promise<Page> {
+    const redirectConflict = await this.prisma.pageSlugRedirect.findUnique({
+      where: { sourceSlug: data.slug },
+      select: { id: true },
+    });
+    if (redirectConflict) {
+      throw new DomainError("DUPLICATE_RESOURCE", "Slug is already used as a redirect source.");
+    }
+
     const page = await this.prisma.page.create({
       data: {
         slug: data.slug,
@@ -242,24 +273,64 @@ export class PagesPrismaRepository implements PagesRepository {
   ): Promise<Page> {
     const { blocks, ...pageData } = data;
 
-    if (blocks) {
-      await this.prisma.pageBlock.deleteMany({ where: { pageId: id } });
-    }
+    return this.prisma.$transaction(async (tx) => {
+      const existing = await tx.page.findUnique({ where: { id } });
+      if (!existing) {
+        throw new DomainError("VALIDATION_ERROR", "Page not found.");
+      }
 
-    const page = await this.prisma.page.update({
-      where: { id },
-      data: {
-        ...pageData,
-        blocks: blocks
-          ? {
-              create: mapInputBlocks(blocks),
-            }
-          : undefined,
-      },
-      include: { blocks: { orderBy: { order: "asc" } } },
+      const nextSlug = typeof pageData.slug === "string" ? pageData.slug : existing.slug;
+
+      if (nextSlug !== existing.slug) {
+        const activeConflict = await tx.page.findFirst({
+          where: { slug: nextSlug, id: { not: id } },
+          select: { id: true },
+        });
+        if (activeConflict) {
+          throw new DomainError("DUPLICATE_RESOURCE", "Slug is already in use by another page.");
+        }
+
+        const redirectConflict = await tx.pageSlugRedirect.findFirst({
+          where: { sourceSlug: nextSlug, pageId: { not: id } },
+          select: { id: true },
+        });
+        if (redirectConflict) {
+          throw new DomainError("DUPLICATE_RESOURCE", "Slug is already used as a redirect source.");
+        }
+
+        await tx.pageSlugRedirect.deleteMany({ where: { pageId: id, sourceSlug: nextSlug } });
+
+        const existingRedirect = await tx.pageSlugRedirect.findUnique({
+          where: { sourceSlug: existing.slug },
+          select: { id: true },
+        });
+
+        if (!existingRedirect) {
+          await tx.pageSlugRedirect.create({
+            data: { pageId: id, sourceSlug: existing.slug },
+          });
+        }
+      }
+
+      if (blocks) {
+        await tx.pageBlock.deleteMany({ where: { pageId: id } });
+      }
+
+      const page = await tx.page.update({
+        where: { id },
+        data: {
+          ...pageData,
+          blocks: blocks
+            ? {
+                create: mapInputBlocks(blocks),
+              }
+            : undefined,
+        },
+        include: { blocks: { orderBy: { order: "asc" } } },
+      });
+
+      return mapPage(page);
     });
-
-    return mapPage(page);
   }
 
   async delete(id: string): Promise<void> {
@@ -405,9 +476,38 @@ export class ContentItemsPrismaRepository implements ContentItemsRepository {
     return item ? mapContentItem(item) : null;
   }
 
+  async findBySlugOrRedirect(contentTypeSlug: string, slug: string) {
+    const current = await this.findBySlug(contentTypeSlug, slug);
+    if (current) {
+      return { kind: "current" as const, entity: current };
+    }
+
+    const redirect = await this.prisma.contentItemSlugRedirect.findFirst({
+      where: { sourceSlug: slug, contentType: { slug: contentTypeSlug } },
+      include: { contentItem: true },
+    });
+
+    if (!redirect) {
+      return null;
+    }
+
+    return {
+      kind: "redirect" as const,
+      destinationSlug: redirect.contentItem.slug,
+    };
+  }
+
   async create(
     data: Omit<ContentItem, "id" | "createdAt" | "updatedAt">,
   ): Promise<ContentItem> {
+    const redirectConflict = await this.prisma.contentItemSlugRedirect.findFirst({
+      where: { contentTypeId: data.contentTypeId, sourceSlug: data.slug },
+      select: { id: true },
+    });
+    if (redirectConflict) {
+      throw new DomainError("DUPLICATE_RESOURCE", "Slug is already used as a redirect source.");
+    }
+
     const item = await this.prisma.contentItem.create({
       data: {
         ...data,
@@ -421,14 +521,69 @@ export class ContentItemsPrismaRepository implements ContentItemsRepository {
     id: string,
     data: Partial<Omit<ContentItem, "id" | "createdAt" | "updatedAt">>,
   ): Promise<ContentItem> {
-    const item = await this.prisma.contentItem.update({
-      where: { id },
-      data: {
-        ...data,
-        data: data.data ? (data.data as Prisma.InputJsonValue) : undefined,
-      },
+    return this.prisma.$transaction(async (tx) => {
+      const existing = await tx.contentItem.findUnique({ where: { id } });
+      if (!existing) {
+        throw new DomainError("VALIDATION_ERROR", "Content item not found.");
+      }
+
+      const nextSlug = typeof data.slug === "string" ? data.slug : existing.slug;
+      const nextContentTypeId = data.contentTypeId ?? existing.contentTypeId;
+
+      if (nextSlug !== existing.slug || nextContentTypeId !== existing.contentTypeId) {
+        const activeConflict = await tx.contentItem.findFirst({
+          where: {
+            id: { not: id },
+            contentTypeId: nextContentTypeId,
+            slug: nextSlug,
+          },
+          select: { id: true },
+        });
+        if (activeConflict) {
+          throw new DomainError("DUPLICATE_RESOURCE", "Slug is already in use by another content item.");
+        }
+
+        const redirectConflict = await tx.contentItemSlugRedirect.findFirst({
+          where: {
+            contentTypeId: nextContentTypeId,
+            sourceSlug: nextSlug,
+            contentItemId: { not: id },
+          },
+          select: { id: true },
+        });
+        if (redirectConflict) {
+          throw new DomainError("DUPLICATE_RESOURCE", "Slug is already used as a redirect source.");
+        }
+
+        await tx.contentItemSlugRedirect.deleteMany({
+          where: { contentItemId: id, contentTypeId: nextContentTypeId, sourceSlug: nextSlug },
+        });
+
+        const existingRedirect = await tx.contentItemSlugRedirect.findFirst({
+          where: { contentTypeId: existing.contentTypeId, sourceSlug: existing.slug },
+          select: { id: true },
+        });
+
+        if (!existingRedirect) {
+          await tx.contentItemSlugRedirect.create({
+            data: {
+              contentItemId: id,
+              contentTypeId: existing.contentTypeId,
+              sourceSlug: existing.slug,
+            },
+          });
+        }
+      }
+
+      const item = await tx.contentItem.update({
+        where: { id },
+        data: {
+          ...data,
+          data: data.data ? (data.data as Prisma.InputJsonValue) : undefined,
+        },
+      });
+      return mapContentItem(item);
     });
-    return mapContentItem(item);
   }
 
   async delete(id: string): Promise<void> {
