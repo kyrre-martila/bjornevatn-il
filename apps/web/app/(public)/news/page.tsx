@@ -6,9 +6,9 @@ export default async function NewsPage() {
   const newsItems = await getNewsListing();
 
   return (
-    <section className="section">
-      <h1 className="public-page__title section__title">News</h1>
-      <ul className="news-list section__content">
+    <section className="public-block public-block--news-page section">
+      <h1 className="public-block__title">News</h1>
+      <ul className="news-list news-list--page">
         {newsItems.map((item) => (
           <li key={item.slug} className="news-list__item">
             <p className="news-list__meta">{item.publishedAt}</p>
