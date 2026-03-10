@@ -1,12 +1,21 @@
 import Link from "next/link";
 import * as React from "react";
 
-import type { ContentBlockType, HeroContent, NewsItem } from "../../../../../lib/content";
+import type {
+  ContentBlockType,
+  HeroContent,
+  NewsItem,
+} from "../../../../../lib/content";
 import { getNewsListing } from "../../../../../lib/content";
 
 type RichTextData = { paragraphs: string[] };
 type ImageData = { src: string; alt: string; caption?: string };
-type CtaData = { title?: string; description?: string; href: string; label: string };
+type CtaData = {
+  title?: string;
+  description?: string;
+  href: string;
+  label: string;
+};
 type NewsListData = { title?: string; count?: number };
 
 export type BlockRenderResult = React.ReactNode | Promise<React.ReactNode>;
@@ -26,7 +35,6 @@ type RegisteredBlock = {
   schema: BlockSchema<unknown>;
   renderer: (data: unknown) => BlockRenderResult;
 };
-
 
 function HeroBlock({ data }: { data: HeroContent }) {
   return (
@@ -52,10 +60,12 @@ function HeroBlock({ data }: { data: HeroContent }) {
 
 function RichTextBlock({ data }: { data: RichTextData }) {
   return (
-    <section className="public-page__body section">
-      <div className="section__content">
+    <section className="public-block public-block--rich-text section">
+      <div className="public-block__content public-block__content--rich-text">
         {data.paragraphs.map((paragraph) => (
-          <p key={paragraph}>{paragraph}</p>
+          <p key={paragraph} className="public-block__paragraph">
+            {paragraph}
+          </p>
         ))}
       </div>
     </section>
@@ -64,35 +74,47 @@ function RichTextBlock({ data }: { data: RichTextData }) {
 
 function ImageBlock({ data }: { data: ImageData }) {
   return (
-    <figure className="section__content media-block section">
-      <img src={data.src} alt={data.alt} />
-      {data.caption ? <figcaption>{data.caption}</figcaption> : null}
+    <figure className="public-block public-block--image section">
+      <img src={data.src} alt={data.alt} className="public-block__image" />
+      {data.caption ? (
+        <figcaption className="public-block__caption">
+          {data.caption}
+        </figcaption>
+      ) : null}
     </figure>
   );
 }
 
 function CtaBlock({ data }: { data: CtaData }) {
   return (
-    <section className="cta section">
-      {data.title ? <h2 className="section__title">{data.title}</h2> : null}
-      <div className="cta__text section__content">
+    <section className="public-block public-block--cta section">
+      {data.title ? (
+        <h2 className="public-block__title">{data.title}</h2>
+      ) : null}
+      <div className="public-block__content public-block__content--cta">
         {data.description ? <p>{data.description}</p> : null}
       </div>
-      <Link href={data.href} className="button-primary cta__button">
+      <Link href={data.href} className="button-primary public-block__button">
         {data.label}
       </Link>
     </section>
   );
 }
 
-function NewsListBlock({ data, items }: { data: NewsListData; items: NewsItem[] }) {
+function NewsListBlock({
+  data,
+  items,
+}: {
+  data: NewsListData;
+  items: NewsItem[];
+}) {
   const itemCount = typeof data.count === "number" ? data.count : items.length;
   const visibleItems = items.slice(0, itemCount);
 
   return (
-    <section className="section">
-      <h2 className="section__title public-page__title">{data.title ?? "News"}</h2>
-      <ul className="news-list section__content">
+    <section className="public-block public-block--news section">
+      <h2 className="public-block__title">{data.title ?? "News"}</h2>
+      <ul className="news-list news-list--block">
         {visibleItems.map((item) => (
           <li key={item.slug} className="news-list__item">
             <p className="news-list__meta">{item.publishedAt}</p>
@@ -162,7 +184,9 @@ const richTextSchema: BlockSchema<RichTextData> = {
       return { valid: false };
     }
 
-    const paragraphs = record.paragraphs.filter((value): value is string => typeof value === "string");
+    const paragraphs = record.paragraphs.filter(
+      (value): value is string => typeof value === "string",
+    );
     return { valid: true, data: { paragraphs } };
   },
 };
@@ -198,7 +222,9 @@ const ctaSchema: BlockSchema<CtaData> = {
         href: record.href,
         label: record.label,
         title: isString(record.title) ? record.title : undefined,
-        description: isString(record.description) ? record.description : undefined,
+        description: isString(record.description)
+          ? record.description
+          : undefined,
       },
     };
   },
@@ -265,11 +291,16 @@ const blockRegistryInternal = {
   news_list: newsListBlock,
 };
 
-function registerBlock<TData>(definition: BlockDefinition<TData>): RegisteredBlock {
+function registerBlock<TData>(
+  definition: BlockDefinition<TData>,
+): RegisteredBlock {
   return {
     type: definition.type,
     schema: {
-      validate: (data) => definition.schema.validate(data) as { valid: true; data: unknown } | { valid: false },
+      validate: (data) =>
+        definition.schema.validate(data) as
+          | { valid: true; data: unknown }
+          | { valid: false },
     },
     renderer: (data) => definition.renderer(data as TData),
   };

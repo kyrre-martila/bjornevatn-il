@@ -922,7 +922,8 @@ button:focus-visible {
 
 .public-main {
   flex: 1;
-  padding: var(--site-space-5, var(--space-xl)) var(--site-space-4, var(--space-l));
+  padding: var(--site-space-5, var(--space-xl))
+    var(--site-space-4, var(--space-l));
 }
 
 .public-main__inner {
@@ -970,35 +971,37 @@ button:focus-visible {
   color: var(--color-muted, var(--color-neutral-600));
 }
 
-.public-page__title {
-  font-size: var(--text-2xl);
-  margin-bottom: var(--space-m);
-}
-
-.section__title {
-  font-size: var(--text-2xl);
-  margin-bottom: var(--space-m);
-}
-
-.public-page__intro {
-  color: var(--site-color-text-muted, var(--color-muted, var(--color-neutral-600)));
-  margin-bottom: var(--site-space-4, var(--space-l));
-}
-
-.public-page__body {
+.public-block {
   display: grid;
   gap: var(--space-s);
 }
 
-.section__content {
+.public-block__title {
+  font-size: var(--text-2xl);
+  margin-bottom: var(--space-m);
+}
+
+.public-block__content {
   display: grid;
   gap: var(--space-s);
+}
+
+.public-block__paragraph {
+  color: var(
+    --site-color-text-muted,
+    var(--color-muted, var(--color-neutral-600))
+  );
 }
 
 .news-list {
   display: grid;
   gap: var(--space-m);
   list-style: none;
+}
+
+.news-list--block,
+.news-list--page {
+  gap: var(--space-m);
 }
 
 .news-list__item {
@@ -1028,28 +1031,26 @@ button:focus-visible {
   font-weight: 500;
 }
 
-.media-block {
-  display: grid;
+.public-block--image {
   gap: var(--space-xs);
   margin: var(--space-l) 0;
 }
 
-.media-block img {
+.public-block__image {
   max-width: 100%;
   height: auto;
   border: 1px solid var(--site-color-border, var(--color-border-subtle));
-  border-radius: var(--radius-m);
-  padding: var(--space-m);
+  border-radius: var(--site-radius-md, var(--radius-m));
+  padding: var(--site-space-3, var(--space-m));
   background: var(--site-color-surface, var(--color-neutral-soft));
 }
 
-.media-block figcaption {
+.public-block__caption {
   font-size: var(--text-xs);
   color: var(--color-muted, var(--color-neutral-500));
 }
 
-.cta {
-  display: grid;
+.public-block--cta {
   gap: var(--site-space-2, var(--space-s));
   border: 1px solid var(--site-color-border, var(--color-border-subtle));
   border-radius: var(--site-radius-md, var(--radius-m));
@@ -1057,11 +1058,11 @@ button:focus-visible {
   margin: var(--space-l) 0;
 }
 
-.cta__text {
+.public-block__content--cta {
   color: var(--color-muted, var(--color-neutral-600));
 }
 
-.cta__button {
+.public-block__button {
   width: fit-content;
 }
 
