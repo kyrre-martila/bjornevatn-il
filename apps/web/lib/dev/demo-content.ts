@@ -1,4 +1,4 @@
-import type { ContentPage, NavigationItem, NewsItem } from "./content";
+import type { ContentPage, NavigationItem, NewsItem } from "../content";
 
 export const DEMO_NEWS_ITEMS: NewsItem[] = [
   {

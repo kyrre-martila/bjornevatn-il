@@ -1,9 +1,4 @@
 import { resolveApiUrl } from "./api";
-import {
-  DEMO_NAVIGATION_ITEMS,
-  DEMO_NEWS_ITEMS,
-  DEMO_PAGE_BY_SLUG,
-} from "./demo-content";
 
 export type HeroContent = {
   eyebrow: string;
@@ -153,20 +148,6 @@ const PUBLIC_SITE_SETTING_KEYS: SiteSettingKey[] = [
   "robots_noindex",
   "robots_disallow_all",
 ];
-
-function shouldUseDemoContentFallback(): boolean {
-  const configuredMode = process.env.CONTENT_DEMO_MODE?.trim().toLowerCase();
-
-  if (configuredMode === "true" || configuredMode === "1") {
-    return true;
-  }
-
-  if (configuredMode === "false" || configuredMode === "0") {
-    return false;
-  }
-
-  return process.env.NODE_ENV !== "production";
-}
 
 function asRecord(value: unknown): Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value)
@@ -363,14 +344,6 @@ function mapHeroFromPage(page: ContentPage): HeroContent | null {
 export async function getHomepageContent(): Promise<HeroContent> {
   const apiPage = await fetchContent<ApiPage>("/content/pages/slug/home");
   if (!apiPage || !apiPage.published) {
-    const fallbackPage = shouldUseDemoContentFallback()
-      ? DEMO_PAGE_BY_SLUG.get("home")
-      : null;
-    const fallbackHero = fallbackPage ? mapHeroFromPage(fallbackPage) : null;
-    if (fallbackHero) {
-      return fallbackHero;
-    }
-
     return {
       eyebrow: "",
       title: "",
@@ -397,13 +370,7 @@ export async function getNewsListing(): Promise<NewsItem[]> {
     "/content/items/type-slug/news",
   );
   if (!items) {
-    return shouldUseDemoContentFallback()
-      ? DEMO_NEWS_ITEMS.map((item) => ({
-          ...item,
-          canonicalUrl: null,
-          noIndex: false,
-        }))
-      : [];
+    return [];
   }
 
   return items.map(mapApiContentItem);
@@ -423,21 +390,6 @@ export async function resolveNewsItemBySlug(
   const item = response;
 
   if (!item || !item.published) {
-    if (shouldUseDemoContentFallback()) {
-      const demoItem = DEMO_NEWS_ITEMS.find((entry) => entry.slug === slug);
-      return {
-        redirectTo: null,
-        item: demoItem
-          ? {
-              ...demoItem,
-              canonicalUrl: null,
-              noIndex: false,
-              body: demoItem.summary,
-            }
-          : null,
-      };
-    }
-
     return { redirectTo: null, item: null };
   }
 
@@ -465,23 +417,6 @@ export async function resolvePageContentBySlug(
   const page = response;
 
   if (!page || !page.published) {
-    if (shouldUseDemoContentFallback()) {
-      const demo = DEMO_PAGE_BY_SLUG.get(slug);
-      return {
-        redirectTo: null,
-        page: demo
-          ? {
-              ...demo,
-              seoTitle: null,
-              seoDescription: null,
-              seoImage: null,
-              canonicalUrl: null,
-              noIndex: false,
-            }
-          : null,
-      };
-    }
-
     return { redirectTo: null, page: null };
   }
 
@@ -633,9 +568,7 @@ export function getContentItemPath(contentTypeSlug: string, slug: string): strin
 export async function getPublicNavigationTree(): Promise<NavigationTreeItem[]> {
   const items = await fetchContent<unknown[]>("/content/navigation-items");
   if (!Array.isArray(items)) {
-    return shouldUseDemoContentFallback()
-      ? buildNavigationTree(DEMO_NAVIGATION_ITEMS)
-      : [];
+    return [];
   }
 
   const mappedItems = items
@@ -643,9 +576,7 @@ export async function getPublicNavigationTree(): Promise<NavigationTreeItem[]> {
     .filter((item): item is NavigationItem => item !== null);
 
   if (mappedItems.length === 0) {
-    return shouldUseDemoContentFallback()
-      ? buildNavigationTree(DEMO_NAVIGATION_ITEMS)
-      : [];
+    return [];
   }
 
   return buildNavigationTree(mappedItems);
