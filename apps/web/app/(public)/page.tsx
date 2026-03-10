@@ -10,7 +10,7 @@ export default async function Homepage() {
     const hero = await getHomepageContent();
 
     return (
-      <section aria-labelledby="hero-heading" className="hero">
+      <section aria-labelledby="hero-heading" className="hero section">
         <p className="hero__eyebrow">{hero.eyebrow}</p>
         <h1 id="hero-heading" className="hero__title">
           {hero.title}

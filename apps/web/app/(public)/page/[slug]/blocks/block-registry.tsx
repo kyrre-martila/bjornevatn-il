@@ -30,7 +30,7 @@ type RegisteredBlock = {
 
 function HeroBlock({ data }: { data: HeroContent }) {
   return (
-    <section aria-labelledby="hero-heading" className="hero">
+    <section aria-labelledby="hero-heading" className="hero section">
       <p className="hero__eyebrow">{data.eyebrow}</p>
       <h1 id="hero-heading" className="hero__title">
         {data.title}
@@ -50,7 +50,7 @@ function HeroBlock({ data }: { data: HeroContent }) {
 
 function RichTextBlock({ data }: { data: RichTextData }) {
   return (
-    <section className="public-page__body">
+    <section className="public-page__body section">
       {data.paragraphs.map((paragraph) => (
         <p key={paragraph}>{paragraph}</p>
       ))}
@@ -69,7 +69,7 @@ function ImageBlock({ data }: { data: ImageData }) {
 
 function CtaBlock({ data }: { data: CtaData }) {
   return (
-    <section className="public-block__cta">
+    <section className="public-block__cta section">
       {data.title ? <h2>{data.title}</h2> : null}
       {data.description ? <p>{data.description}</p> : null}
       <Link href={data.href} className="button-primary">
@@ -84,7 +84,7 @@ function NewsListBlock({ data, items }: { data: NewsListData; items: NewsItem[] 
   const visibleItems = items.slice(0, itemCount);
 
   return (
-    <section>
+    <section className="section">
       <h2 className="public-page__title">{data.title ?? "News"}</h2>
       <ul className="public-list">
         {visibleItems.map((item) => (

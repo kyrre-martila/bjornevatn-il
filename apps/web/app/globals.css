@@ -1,5 +1,50 @@
 :root {
   color-scheme: light dark;
+
+  /* Global design tokens */
+  --color-primary: #bc6266;
+  --color-secondary: #ce8490;
+  --color-surface: #ffffff;
+  --color-surface-muted: #e7b9ab;
+  --color-text: #33312e;
+  --color-text-muted: #6f6c67;
+  --color-border: rgba(0, 0, 0, 0.06);
+
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 12px;
+  --space-lg: 16px;
+  --space-xl: 24px;
+
+  --font-size-sm: 0.875rem;
+  --font-size-md: 1rem;
+  --font-size-lg: clamp(1.1rem, 1rem + 0.4vw, 1.3rem);
+  --font-size-xl: clamp(1.3rem, 1.1rem + 0.8vw, 1.6rem);
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.18);
+  --shadow-md: 0 10px 40px rgba(0, 0, 0, 0.32);
+
+  --container-sm: 640px;
+  --container-md: 720px;
+  --container-lg: 1120px;
+
+  /* Backward-compatible aliases */
+  --space-s: var(--space-sm);
+  --space-m: var(--space-md);
+  --space-l: var(--space-lg);
+  --text-s: var(--font-size-sm);
+  --text-m: var(--font-size-md);
+  --text-l: var(--font-size-lg);
+  --text-xl: var(--font-size-xl);
+  --radius-s: var(--radius-sm);
+  --radius-m: var(--radius-md);
+  --radius-l: var(--radius-lg);
+  --shadow-1: var(--shadow-sm);
+  --shadow-2: var(--shadow-md);
 }
 * {
   box-sizing: border-box;
@@ -62,6 +107,16 @@ button:focus-visible {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+}
+
+.container {
+  width: 100%;
+  max-width: var(--container-lg);
+  margin: 0 auto;
+}
+
+.section {
+  margin-block: var(--space-xl);
 }
 
 .app-layout {
@@ -290,7 +345,7 @@ button:focus-visible {
 }
 
 .hero {
-  max-width: 720px;
+  max-width: var(--container-md);
 }
 
 .hero__eyebrow {
@@ -780,8 +835,6 @@ button:focus-visible {
 }
 
 .public-header__inner {
-  max-width: 1120px;
-  margin: 0 auto;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -846,8 +899,7 @@ button:focus-visible {
 }
 
 .public-main__inner {
-  max-width: 1120px;
-  margin: 0 auto;
+  max-width: var(--container-lg);
 }
 
 
@@ -858,8 +910,6 @@ button:focus-visible {
 }
 
 .public-footer__inner {
-  max-width: 1120px;
-  margin: 0 auto;
   display: grid;
   gap: var(--space-m);
 }

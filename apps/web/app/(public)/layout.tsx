@@ -48,7 +48,7 @@ export default async function PublicLayout({ children }: { children: ReactNode }
   return (
     <div className="public-shell">
       <header className="public-header" aria-label="Public website header">
-        <div className="public-header__inner">
+        <div className="public-header__inner container">
           <Link href="/" aria-label="Go to homepage" className="public-brand">
             {logoUrl ? (
               <img src={logoUrl} alt={siteTitle} width={160} height={40} className="public-brand__logo" />
@@ -73,12 +73,12 @@ export default async function PublicLayout({ children }: { children: ReactNode }
         </div>
       </header>
 
-      <main className="public-main" id="main-content">
-        <div className="public-main__inner">{children}</div>
+      <main className="public-main section" id="main-content">
+        <div className="public-main__inner container">{children}</div>
       </main>
 
       <footer className="public-footer">
-        <div className="public-footer__inner">
+        <div className="public-footer__inner container">
           <div className="public-footer__brand">
             <strong>{siteTitle}</strong>
             {siteTagline ? <p>{siteTagline}</p> : null}

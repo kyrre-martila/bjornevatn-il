@@ -6,7 +6,7 @@ export default async function NewsPage() {
   const newsItems = await getNewsListing();
 
   return (
-    <section>
+    <section className="section">
       <h1 className="public-page__title">News</h1>
       <ul className="public-list">
         {newsItems.map((item) => (
