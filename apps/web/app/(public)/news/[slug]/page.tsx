@@ -48,7 +48,7 @@ export default async function NewsItemPage({
   }
 
   return (
-    <article className="public-block section">
+    <article className="public-block section stack">
       <p className="news-list__meta">{item.publishedAt}</p>
       <h1 className="public-block__title">{item.title}</h1>
       {item.body ? <p>{item.body}</p> : <p>{item.summary}</p>}

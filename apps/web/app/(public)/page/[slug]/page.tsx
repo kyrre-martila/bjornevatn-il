@@ -95,7 +95,7 @@ export default async function GenericPage({
   );
 
   return (
-    <article>
+    <article className="stack">
       {renderedBlocks.map((block) => (
         <div key={block.id}>{block.node}</div>
       ))}

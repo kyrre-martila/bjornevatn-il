@@ -50,14 +50,14 @@ type RegisteredBlock = {
 
 function HeroBlock({ data }: { data: HeroContent }) {
   return (
-    <section aria-labelledby="hero-heading" className="hero section">
-      <div className="hero__inner">
+    <section aria-labelledby="hero-heading" className="hero section stack">
+      <div className="hero__inner stack">
         <p className="hero__eyebrow">{data.eyebrow}</p>
         <h1 id="hero-heading" className="hero__title">
           {data.title}
         </h1>
         <p className="hero__text">{data.subtitle}</p>
-        <div className="hero__actions">
+        <div className="hero__actions cluster">
           <Link href={data.primaryCta.href} className="button-primary">
             {data.primaryCta.label}
           </Link>
@@ -72,8 +72,8 @@ function HeroBlock({ data }: { data: HeroContent }) {
 
 function RichTextBlock({ data }: { data: RichTextData }) {
   return (
-    <section className="public-block public-block--rich-text section">
-      <div className="public-block__content public-block__content--rich-text">
+    <section className="public-block public-block--rich-text section stack">
+      <div className="public-block__content public-block__content--rich-text stack">
         {data.paragraphs.map((paragraph) => (
           <p key={paragraph} className="public-block__paragraph">
             {paragraph}
@@ -92,7 +92,7 @@ function ImageBlock({
   fallbackAltText: string;
 }) {
   return (
-    <figure className="public-block public-block--image section">
+    <figure className="public-block public-block--image section stack">
       <img
         src={data.src}
         alt={(data.alt && data.alt.trim()) || fallbackAltText || "Image"}
@@ -112,11 +112,11 @@ function ImageBlock({
 
 function CtaBlock({ data }: { data: CtaData }) {
   return (
-    <section className="public-block public-block--cta section">
+    <section className="public-block public-block--cta section stack">
       {data.title ? (
         <h2 className="public-block__title">{data.title}</h2>
       ) : null}
-      <div className="public-block__content public-block__content--cta">
+      <div className="public-block__content public-block__content--cta stack">
         {data.description ? <p>{data.description}</p> : null}
       </div>
       <Link href={data.href} className="button-primary public-block__button">
@@ -137,11 +137,11 @@ function NewsListBlock({
   const visibleItems = items.slice(0, itemCount);
 
   return (
-    <section className="public-block public-block--news section">
+    <section className="public-block public-block--news section stack">
       <h2 className="public-block__title">{data.title ?? "News"}</h2>
-      <ul className="news-list news-list--block">
+      <ul className="news-list news-list--block stack">
         {visibleItems.map((item) => (
-          <li key={item.slug} className="news-list__item">
+          <li key={item.slug} className="news-list__item stack">
             <p className="news-list__meta">{item.publishedAt}</p>
             <h3 className="news-list__title">{item.title}</h3>
             <p className="news-list__excerpt">{item.summary}</p>

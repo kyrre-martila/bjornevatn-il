@@ -48,7 +48,7 @@ export default async function PublicLayout({ children }: { children: ReactNode }
   return (
     <div className="public-shell">
       <header className="public-header" aria-label="Public website header">
-        <div className="public-header__inner container">
+        <div className="public-header__inner container section stack stack--sm">
           <Link href="/" aria-label="Go to homepage" className="public-brand">
             {logoUrl ? (
               <img src={logoUrl} alt={siteTitle} width={160} height={40} className="public-brand__logo" />
@@ -61,7 +61,7 @@ export default async function PublicLayout({ children }: { children: ReactNode }
             </span>
           </Link>
 
-          <nav className="public-nav" aria-label="Public navigation">
+          <nav className="public-nav cluster" aria-label="Public navigation">
             {navigation.length > 0 ? (
               renderNavigationLinks(navigation, "public-nav__link")
             ) : (
@@ -73,23 +73,23 @@ export default async function PublicLayout({ children }: { children: ReactNode }
         </div>
       </header>
 
-      <main className="public-main section" id="main-content">
-        <div className="public-main__inner container">{children}</div>
+      <main className="public-main" id="main-content">
+        <div className="public-main__inner container section stack">{children}</div>
       </main>
 
       <footer className="public-footer">
-        <div className="public-footer__inner container">
+        <div className="public-footer__inner container section grid grid--2">
           <div className="public-footer__brand">
             <strong>{siteTitle}</strong>
             {siteTagline ? <p>{siteTagline}</p> : null}
             <p>{footerText}</p>
           </div>
 
-          <nav className="public-footer__nav" aria-label="Footer navigation">
+          <nav className="public-footer__nav cluster" aria-label="Footer navigation">
             {navigation.length > 0 ? renderNavigationLinks(navigation, "public-footer__link") : null}
           </nav>
 
-          <div className="public-footer__social" aria-label="Social links">
+          <div className="public-footer__social cluster" aria-label="Social links">
             {siteSettings.facebook_url ? externalLink(siteSettings.facebook_url, "Facebook") : null}
             {siteSettings.instagram_url ? externalLink(siteSettings.instagram_url, "Instagram") : null}
             {siteSettings.youtube_url ? externalLink(siteSettings.youtube_url, "YouTube") : null}
