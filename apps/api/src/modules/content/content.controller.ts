@@ -175,9 +175,26 @@ const CONTENT_FIELD_TYPES = [
   "textarea",
   "rich_text",
   "image",
+  "relation",
+  "media",
+  "contentItem",
   "date",
   "boolean",
 ] as const;
+
+const RELATION_TARGET_TYPES = ["contentType", "page", "media"] as const;
+
+class ContentFieldRelationDto {
+  @ApiProperty({ enum: RELATION_TARGET_TYPES })
+  @IsString()
+  @IsIn(RELATION_TARGET_TYPES)
+  targetType!: (typeof RELATION_TARGET_TYPES)[number];
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  targetSlug?: string;
+}
 
 class ContentFieldDefinitionDto {
   @ApiProperty()
@@ -198,6 +215,12 @@ class ContentFieldDefinitionDto {
   @ApiProperty()
   @IsBoolean()
   required!: boolean;
+
+  @ApiProperty({ required: false, type: ContentFieldRelationDto })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => ContentFieldRelationDto)
+  relation?: ContentFieldRelationDto;
 }
 
 class CreateContentTypeDto {
@@ -695,15 +718,20 @@ export class ContentController {
   }
 
   @Post("types")
-  createContentType(@Body() body: CreateContentTypeDto) {
+  async createContentType(@Body() body: CreateContentTypeDto) {
+    await this.validateContentTypeFields(body.fields);
     return this.contentTypes.create(body);
   }
 
   @Patch("types/:id")
-  updateContentType(
+  async updateContentType(
     @Param("id") id: string,
     @Body() body: UpdateContentTypeDto,
   ) {
+    if (body.fields) {
+      await this.validateContentTypeFields(body.fields);
+    }
+
     return this.contentTypes.update(id, body);
   }
 
@@ -977,6 +1005,40 @@ export class ContentController {
     );
   }
 
+  private async validateContentTypeFields(
+    fields: ContentFieldDefinition[],
+  ): Promise<void> {
+    for (const field of fields) {
+      if (field.type !== "relation") {
+        continue;
+      }
+
+      if (!field.relation) {
+        throw new BadRequestException(
+          `Field ${field.key} requires relation configuration.`,
+        );
+      }
+
+      if (
+        field.relation.targetType === "contentType" &&
+        (!field.relation.targetSlug || !field.relation.targetSlug.trim())
+      ) {
+        throw new BadRequestException(
+          `Field ${field.key} requires relation.targetSlug when targetType is contentType.`,
+        );
+      }
+
+      if (field.relation.targetType === "contentType") {
+        const target = await this.contentTypes.findBySlug(field.relation.targetSlug!);
+        if (!target) {
+          throw new BadRequestException(
+            `Field ${field.key} references unknown content type slug: ${field.relation.targetSlug}.`,
+          );
+        }
+      }
+    }
+  }
+
   private async validateContentItemData(
     fields: ContentFieldDefinition[],
     data: Record<string, unknown>,
@@ -996,8 +1058,21 @@ export class ContentController {
         continue;
       }
 
-      if (field.type === "image" && typeof value === "string") {
-        const matchedMedia = mediaByUrl.get(value.trim());
+      if (field.type === "boolean") {
+        if (typeof value !== "boolean") {
+          throw new BadRequestException(`Field ${field.key} must be a boolean.`);
+        }
+        continue;
+      }
+
+      if (typeof value !== "string") {
+        throw new BadRequestException(`Field ${field.key} must be a string.`);
+      }
+
+      const normalized = value.trim();
+
+      if (field.type === "image") {
+        const matchedMedia = mediaByUrl.get(normalized);
         if (matchedMedia && !matchedMedia.alt.trim()) {
           throw new BadRequestException(
             `Field ${field.key} references media without alt text. Update that media item before saving.`,
@@ -1005,12 +1080,70 @@ export class ContentController {
         }
       }
 
-      if (field.type === "boolean" && typeof value !== "boolean") {
-        throw new BadRequestException(`Field ${field.key} must be a boolean.`);
+      if (field.type === "media") {
+        const media = await this.media.findById(normalized);
+        if (!media) {
+          throw new BadRequestException(`Field ${field.key} references missing media.`);
+        }
+        if (!media.alt.trim()) {
+          throw new BadRequestException(
+            `Field ${field.key} references media without alt text. Update that media item before saving.`,
+          );
+        }
       }
 
-      if (field.type !== "boolean" && typeof value !== "string") {
-        throw new BadRequestException(`Field ${field.key} must be a string.`);
+      if (field.type === "contentItem") {
+        const referencedItem = await this.contentItems.findById(normalized);
+        if (!referencedItem) {
+          throw new BadRequestException(
+            `Field ${field.key} references missing content item.`,
+          );
+        }
+      }
+
+      if (field.type === "relation") {
+        if (!field.relation) {
+          throw new BadRequestException(
+            `Field ${field.key} requires relation configuration.`,
+          );
+        }
+
+        if (field.relation.targetType === "page") {
+          const page = await this.pages.findById(normalized);
+          if (!page) {
+            throw new BadRequestException(`Field ${field.key} references missing page.`);
+          }
+        }
+
+        if (field.relation.targetType === "media") {
+          const media = await this.media.findById(normalized);
+          if (!media) {
+            throw new BadRequestException(`Field ${field.key} references missing media.`);
+          }
+        }
+
+        if (field.relation.targetType === "contentType") {
+          const targetSlug = field.relation.targetSlug?.trim();
+          if (!targetSlug) {
+            throw new BadRequestException(
+              `Field ${field.key} requires relation.targetSlug when targetType is contentType.`,
+            );
+          }
+
+          const targetContentType = await this.contentTypes.findBySlug(targetSlug);
+          if (!targetContentType) {
+            throw new BadRequestException(
+              `Field ${field.key} references unknown content type slug: ${targetSlug}.`,
+            );
+          }
+
+          const referencedItem = await this.contentItems.findById(normalized);
+          if (!referencedItem || referencedItem.contentTypeId !== targetContentType.id) {
+            throw new BadRequestException(
+              `Field ${field.key} must reference an item from content type: ${targetSlug}.`,
+            );
+          }
+        }
       }
     }
   }

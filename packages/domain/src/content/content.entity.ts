@@ -63,14 +63,30 @@ export type ContentFieldType =
   | "textarea"
   | "rich_text"
   | "image"
+  | "relation"
+  | "media"
+  | "contentItem"
   | "date"
   | "boolean";
+
+export type ContentFieldRelationTargetType = "contentType" | "page" | "media";
+
+export type ContentFieldRelationConfig = {
+  targetType: ContentFieldRelationTargetType;
+  targetSlug?: string;
+};
 
 export type ContentFieldDefinition = {
   key: string;
   label: string;
   type: ContentFieldType;
   required: boolean;
+  relation?: ContentFieldRelationConfig;
+};
+
+export type ResolvedContentFieldReference = {
+  targetType: "contentItem" | "page" | "media";
+  value: ContentItem | Page | Media | null;
 };
 
 export type ContentItem = {
@@ -86,6 +102,7 @@ export type ContentItem = {
   canonicalUrl: string | null;
   noIndex: boolean;
   data: Record<string, unknown>;
+  resolvedReferences?: Record<string, ResolvedContentFieldReference>;
   published: boolean;
   createdAt: Date;
   updatedAt: Date;
