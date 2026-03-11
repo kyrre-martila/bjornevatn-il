@@ -156,8 +156,39 @@ type ApiContentItemTree = ApiContentItem & {
 };
 
 type ApiContentType = {
+  id?: string;
+  name?: string;
   slug: string;
+  description?: string;
+  fields?: unknown;
   templateKey?: string | null;
+};
+
+export type PublicContentType = {
+  slug: string;
+  name: string;
+  templateKey: string;
+};
+
+export type GenericContentArchiveItem = {
+  id: string;
+  slug: string;
+  title: string;
+  summary: string;
+  publishedAt: string;
+};
+
+export type GenericContentDetailItem = {
+  id: string;
+  slug: string;
+  title: string;
+  summary: string;
+  body: string;
+  templateKey: string;
+  canonicalUrl: string | null;
+  noIndex: boolean;
+  publishedAt: string;
+  data: Record<string, unknown>;
 };
 
 type ApiTaxonomy = {
@@ -483,13 +514,140 @@ export async function getServicesListing(): Promise<ServiceListItem[]> {
 }
 
 async function getContentTypeTemplateKey(slug: string): Promise<string> {
-  const types = await fetchContent<ApiContentType[]>("/content/types");
-  const type = types?.find((entry) => entry.slug === slug);
-  if (typeof type?.templateKey === "string" && type.templateKey.trim()) {
-    return type.templateKey;
+  const type = await getPublicContentTypeBySlug(slug);
+  return type?.templateKey ?? "index";
+}
+
+function mapPublicContentType(type: ApiContentType): PublicContentType | null {
+  if (typeof type.slug !== "string" || !type.slug.trim()) {
+    return null;
   }
 
-  return "index";
+  return {
+    slug: type.slug,
+    name:
+      typeof type.name === "string" && type.name.trim()
+        ? type.name
+        : type.slug,
+    templateKey:
+      typeof type.templateKey === "string" && type.templateKey.trim()
+        ? type.templateKey
+        : "index",
+  };
+}
+
+export async function getPublicContentTypes(): Promise<PublicContentType[]> {
+  const types = await fetchContent<ApiContentType[]>("/content/types");
+  if (!types) {
+    return [];
+  }
+
+  return types
+    .map(mapPublicContentType)
+    .filter((type): type is PublicContentType => type !== null);
+}
+
+export async function getPublicContentTypeBySlug(
+  slug: string,
+): Promise<PublicContentType | null> {
+  const types = await getPublicContentTypes();
+  return types.find((type) => type.slug === slug) ?? null;
+}
+
+function mapGenericArchiveItem(item: ApiContentItem): GenericContentArchiveItem {
+  const data = asRecord(item.data);
+  const publishedAt =
+    typeof data.publishedAt === "string" ? data.publishedAt : item.updatedAt;
+  const summary =
+    typeof data.excerpt === "string"
+      ? data.excerpt
+      : typeof data.summary === "string"
+        ? data.summary
+        : typeof data.shortDescription === "string"
+          ? data.shortDescription
+          : "";
+
+  return {
+    id: item.id,
+    slug: item.slug,
+    title: item.title,
+    summary,
+    publishedAt: new Date(publishedAt).toISOString().slice(0, 10),
+  };
+}
+
+export async function getContentTypeArchiveItems(
+  contentTypeSlug: string,
+): Promise<GenericContentArchiveItem[]> {
+  const items = await fetchContent<ApiContentItem[]>(
+    `/content/items/type-slug/${encodeURIComponent(contentTypeSlug)}`,
+  );
+
+  if (!items) {
+    return [];
+  }
+
+  return items.filter((item) => item.published).map(mapGenericArchiveItem);
+}
+
+function mapGenericDetailItem(
+  item: ApiContentItem,
+  fallbackTemplateKey: string,
+): GenericContentDetailItem {
+  const data = asRecord(item.data);
+  const publishedAt =
+    typeof data.publishedAt === "string" ? data.publishedAt : item.updatedAt;
+
+  return {
+    id: item.id,
+    slug: item.slug,
+    title: item.title,
+    summary:
+      typeof data.excerpt === "string"
+        ? data.excerpt
+        : typeof data.summary === "string"
+          ? data.summary
+          : typeof data.shortDescription === "string"
+            ? data.shortDescription
+            : "",
+    body: typeof data.body === "string" ? data.body : "",
+    templateKey:
+      typeof item.templateKey === "string" && item.templateKey.trim()
+        ? item.templateKey
+        : fallbackTemplateKey,
+    canonicalUrl: item.canonicalUrl ?? null,
+    noIndex: Boolean(item.noIndex),
+    publishedAt: new Date(publishedAt).toISOString().slice(0, 10),
+    data,
+  };
+}
+
+export async function resolveContentItemBySlug(
+  contentTypeSlug: string,
+  slug: string,
+): Promise<{ redirectTo: string | null; item: GenericContentDetailItem | null }> {
+  const contentType = await getPublicContentTypeBySlug(contentTypeSlug);
+  if (!contentType) {
+    return { redirectTo: null, item: null };
+  }
+
+  const response = await fetchContent<ApiContentItem | ApiSlugRedirect>(
+    `/content/items/type-slug/${encodeURIComponent(contentTypeSlug)}/${encodeURIComponent(slug)}`,
+  );
+
+  if (isApiSlugRedirect(response)) {
+    return { redirectTo: response.redirectTo, item: null };
+  }
+
+  const item = response;
+  if (!item || !item.published) {
+    return { redirectTo: null, item: null };
+  }
+
+  return {
+    redirectTo: null,
+    item: mapGenericDetailItem(item, contentType.templateKey),
+  };
 }
 
 async function getServiceTaxonomyTermNames(
@@ -759,15 +917,11 @@ export async function getSitemapPages(): Promise<SitemapPageEntry[]> {
 }
 
 function contentItemPath(contentTypeSlug: string, slug: string): string | null {
-  if (contentTypeSlug === "news") {
-    return `/news/${slug}`;
+  if (!contentTypeSlug.trim() || !slug.trim()) {
+    return null;
   }
 
-  if (contentTypeSlug === "services") {
-    return `/services/${slug}`;
-  }
-
-  return null;
+  return `/${contentTypeSlug}/${slug}`;
 }
 
 export async function getSitemapContentItems(): Promise<
