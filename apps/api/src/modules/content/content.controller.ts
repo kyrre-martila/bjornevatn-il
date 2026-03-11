@@ -9,6 +9,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
 } from "@nestjs/common";
 import { ApiProperty, ApiTags } from "@nestjs/swagger";
 import {
@@ -33,6 +34,8 @@ import type {
   PagesRepository,
   SiteSettingsRepository,
   ContentFieldDefinition,
+  ContentItem,
+  ContentItemTreeNode,
 } from "@org/domain";
 import { MediaService } from "./media.service";
 
@@ -272,6 +275,16 @@ class CreateContentItemDto {
   @IsBoolean()
   noIndex?: boolean;
 
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  parentId?: string;
+
+  @ApiProperty({ required: false, default: 0 })
+  @IsOptional()
+  @IsInt()
+  sortOrder?: number;
+
   @ApiProperty({ type: Object })
   @IsObject()
   data!: Record<string, unknown>;
@@ -322,6 +335,16 @@ class UpdateContentItemDto {
   @IsBoolean()
   noIndex?: boolean;
 
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  parentId?: string;
+
+  @ApiProperty({ required: false, default: 0 })
+  @IsOptional()
+  @IsInt()
+  sortOrder?: number;
+
   @ApiProperty({ required: false, type: Object })
   @IsOptional()
   @IsObject()
@@ -331,6 +354,14 @@ class UpdateContentItemDto {
   @IsOptional()
   @IsBoolean()
   published?: boolean;
+}
+
+class ListContentItemsQueryDto {
+  @ApiProperty({ required: false, enum: ["flat", "tree"], default: "flat" })
+  @IsOptional()
+  @IsString()
+  @IsIn(["flat", "tree"])
+  mode?: "flat" | "tree";
 }
 
 class CreateNavigationItemDto {
@@ -579,8 +610,13 @@ export class ContentController {
   }
 
   @Get("items")
-  listContentItems() {
-    return this.contentItems.findMany();
+  async listContentItems(@Query() query: ListContentItemsQueryDto) {
+    const items = await this.contentItems.findMany();
+    if (query.mode === "tree") {
+      return this.toContentItemTree(items);
+    }
+
+    return items;
   }
 
   @Get("items/:id")
@@ -589,12 +625,27 @@ export class ContentController {
   }
 
   @Get("items/type/:contentTypeId")
-  listContentItemsByTypeId(@Param("contentTypeId") contentTypeId: string) {
+  listContentItemsByTypeId(
+    @Param("contentTypeId") contentTypeId: string,
+    @Query() query: ListContentItemsQueryDto,
+  ) {
+    if (query.mode === "tree") {
+      return this.contentItems.findTreeByContentTypeId(contentTypeId);
+    }
+
     return this.contentItems.findManyByContentTypeId(contentTypeId);
   }
 
   @Get("items/type-slug/:slug")
-  async listContentItemsByTypeSlug(@Param("slug") slug: string) {
+  async listContentItemsByTypeSlug(
+    @Param("slug") slug: string,
+    @Query() query: ListContentItemsQueryDto,
+  ) {
+    if (query.mode === "tree") {
+      const items = await this.contentItems.findTreeByContentTypeSlug(slug);
+      return this.filterPublishedContentItemTree(items);
+    }
+
     const items = await this.contentItems.findManyByContentTypeSlug(slug);
     return items.filter((item) => item.published);
   }
@@ -620,6 +671,61 @@ export class ContentController {
     }
 
     return result.entity;
+  }
+
+  private toContentItemTree(items: ContentItem[]): ContentItemTreeNode[] {
+    const nodes = new Map<string, ContentItemTreeNode>();
+    const roots: ContentItemTreeNode[] = [];
+
+    for (const item of items) {
+      nodes.set(item.id, { ...item, children: [] });
+    }
+
+    for (const item of items) {
+      const node = nodes.get(item.id);
+      if (!node) {
+        continue;
+      }
+
+      if (!item.parentId) {
+        roots.push(node);
+        continue;
+      }
+
+      const parent = nodes.get(item.parentId);
+      if (!parent) {
+        roots.push(node);
+        continue;
+      }
+
+      parent.children.push(node);
+    }
+
+    const sortNodes = (entries: ContentItemTreeNode[]) => {
+      entries.sort((a, b) => {
+        if (a.sortOrder !== b.sortOrder) {
+          return a.sortOrder - b.sortOrder;
+        }
+
+        return b.createdAt.getTime() - a.createdAt.getTime();
+      });
+
+      for (const entry of entries) {
+        sortNodes(entry.children);
+      }
+    };
+
+    sortNodes(roots);
+    return roots;
+  }
+
+  private filterPublishedContentItemTree(nodes: ContentItemTreeNode[]): ContentItemTreeNode[] {
+    return nodes
+      .filter((node) => node.published)
+      .map((node) => ({
+        ...node,
+        children: this.filterPublishedContentItemTree(node.children),
+      }));
   }
 
   private extractPageBlockMediaUrls(block: {
@@ -785,6 +891,8 @@ export class ContentController {
     await this.validateContentItemData(contentType.fields, body.data);
     return this.contentItems.create({
       ...body,
+      parentId: body.parentId ?? null,
+      sortOrder: body.sortOrder ?? 0,
       noIndex: body.noIndex ?? false,
     });
   }

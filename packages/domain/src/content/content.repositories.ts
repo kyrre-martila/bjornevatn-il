@@ -1,6 +1,7 @@
 import type {
   ContentItem,
   ContentType,
+  ContentItemTreeNode,
   Media,
   NavigationItem,
   Page,
@@ -48,6 +49,8 @@ export interface ContentItemsRepository {
   findMany(): Promise<ContentItem[]>;
   findManyByContentTypeId(contentTypeId: string): Promise<ContentItem[]>;
   findManyByContentTypeSlug(contentTypeSlug: string): Promise<ContentItem[]>;
+  findTreeByContentTypeId(contentTypeId: string): Promise<ContentItemTreeNode[]>;
+  findTreeByContentTypeSlug(contentTypeSlug: string): Promise<ContentItemTreeNode[]>;
   findById(id: string): Promise<ContentItem | null>;
   findBySlug(contentTypeSlug: string, slug: string): Promise<ContentItem | null>;
   findBySlugOrRedirect(

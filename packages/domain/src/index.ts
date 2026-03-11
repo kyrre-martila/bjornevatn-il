@@ -25,6 +25,7 @@ export type {
   ContentFieldDefinition,
   ContentFieldType,
   ContentItem,
+  ContentItemTreeNode,
   NavigationItem,
   SiteSetting,
   Media,

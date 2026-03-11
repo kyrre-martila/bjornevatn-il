@@ -134,6 +134,10 @@ model ContentItem {
   id             String      @id @default(cuid())
   contentTypeId  String
   contentType    ContentType @relation(fields: [contentTypeId], references: [id], onDelete: Cascade)
+  parentId       String?
+  parent         ContentItem? @relation("ContentItemTree", fields: [parentId], references: [id], onDelete: SetNull)
+  children       ContentItem[] @relation("ContentItemTree")
+  sortOrder      Int         @default(0)
   slug           String
   title          String
   seoTitle       String?
@@ -149,6 +153,8 @@ model ContentItem {
 
   @@unique([contentTypeId, slug])
   @@index([contentTypeId])
+  @@index([parentId])
+  @@index([contentTypeId, parentId, sortOrder])
   @@index([published])
 }
 

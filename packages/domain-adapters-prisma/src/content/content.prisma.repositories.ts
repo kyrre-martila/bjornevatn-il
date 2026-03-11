@@ -2,6 +2,7 @@ import { DomainError } from "@org/domain";
 import type {
   ContentItem,
   ContentItemsRepository,
+  ContentItemTreeNode,
   ContentType,
   ContentFieldDefinition,
   ContentFieldType,
@@ -152,6 +153,8 @@ function mapContentType(type: {
 function mapContentItem(item: {
   id: string;
   contentTypeId: string;
+  parentId: string | null;
+  sortOrder: number;
   slug: string;
   title: string;
   seoTitle: string | null;
@@ -171,6 +174,47 @@ function mapContentItem(item: {
         ? (item.data as Record<string, unknown>)
         : {},
   };
+}
+
+function mapContentItemTree(items: ContentItem[]): ContentItemTreeNode[] {
+  const nodes = new Map<string, ContentItemTreeNode>();
+  const roots: ContentItemTreeNode[] = [];
+
+  for (const item of items) {
+    nodes.set(item.id, { ...item, children: [] });
+  }
+
+  for (const item of items) {
+    const node = nodes.get(item.id)!;
+    if (!item.parentId) {
+      roots.push(node);
+      continue;
+    }
+
+    const parent = nodes.get(item.parentId);
+    if (!parent) {
+      roots.push(node);
+      continue;
+    }
+
+    parent.children.push(node);
+  }
+
+  const sortTree = (entries: ContentItemTreeNode[]) => {
+    entries.sort((a, b) => {
+      if (a.sortOrder !== b.sortOrder) {
+        return a.sortOrder - b.sortOrder;
+      }
+      return b.createdAt.getTime() - a.createdAt.getTime();
+    });
+
+    for (const entry of entries) {
+      sortTree(entry.children);
+    }
+  };
+
+  sortTree(roots);
+  return roots;
 }
 
 function mapMedia(media: {
@@ -439,7 +483,7 @@ export class ContentItemsPrismaRepository implements ContentItemsRepository {
 
   async findMany(): Promise<ContentItem[]> {
     const items = await this.prisma.contentItem.findMany({
-      orderBy: { createdAt: "desc" },
+      orderBy: [{ sortOrder: "asc" }, { createdAt: "desc" }],
     });
     return items.map(mapContentItem);
   }
@@ -447,7 +491,7 @@ export class ContentItemsPrismaRepository implements ContentItemsRepository {
   async findManyByContentTypeId(contentTypeId: string): Promise<ContentItem[]> {
     const items = await this.prisma.contentItem.findMany({
       where: { contentTypeId },
-      orderBy: { createdAt: "desc" },
+      orderBy: [{ sortOrder: "asc" }, { createdAt: "desc" }],
     });
     return items.map(mapContentItem);
   }
@@ -457,9 +501,19 @@ export class ContentItemsPrismaRepository implements ContentItemsRepository {
   ): Promise<ContentItem[]> {
     const items = await this.prisma.contentItem.findMany({
       where: { contentType: { slug: contentTypeSlug } },
-      orderBy: { createdAt: "desc" },
+      orderBy: [{ sortOrder: "asc" }, { createdAt: "desc" }],
     });
     return items.map(mapContentItem);
+  }
+
+  async findTreeByContentTypeId(contentTypeId: string): Promise<ContentItemTreeNode[]> {
+    const items = await this.findManyByContentTypeId(contentTypeId);
+    return mapContentItemTree(items);
+  }
+
+  async findTreeByContentTypeSlug(contentTypeSlug: string): Promise<ContentItemTreeNode[]> {
+    const items = await this.findManyByContentTypeSlug(contentTypeSlug);
+    return mapContentItemTree(items);
   }
 
   async findById(id: string): Promise<ContentItem | null> {
@@ -512,6 +566,8 @@ export class ContentItemsPrismaRepository implements ContentItemsRepository {
     const item = await this.prisma.contentItem.create({
       data: {
         ...data,
+        parentId: data.parentId ?? null,
+        sortOrder: data.sortOrder ?? 0,
         data: data.data as any,
       },
     });
@@ -580,6 +636,8 @@ export class ContentItemsPrismaRepository implements ContentItemsRepository {
         where: { id },
         data: {
           ...data,
+          parentId: data.parentId === undefined ? undefined : data.parentId,
+          sortOrder: data.sortOrder,
           data: data.data ? (data.data as any) : undefined,
         },
       });
