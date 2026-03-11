@@ -70,6 +70,41 @@ type EditableBlock = {
   dataJson: string;
 };
 
+type BlockFieldMeta = {
+  label: string;
+  description?: string;
+  placeholder?: string;
+};
+
+const BLOCK_FIELD_META: Record<AdminPageBlockType, Record<string, BlockFieldMeta>> = {
+  hero: {
+    heading: { label: "Heading", placeholder: "Welcome to our site" },
+    text: { label: "Supporting text", placeholder: "One short paragraph" },
+    imageUrl: { label: "Hero image URL", description: "Use media library to fill this automatically." },
+    imageWidth: { label: "Image width" },
+    imageHeight: { label: "Image height" },
+  },
+  rich_text: {
+    body: { label: "Body content", placeholder: "Add page copy here" },
+  },
+  image: {
+    src: { label: "Image URL", description: "Use media library to avoid copy/paste errors." },
+    alt: { label: "Image description (alt text)", placeholder: "Describe the image for accessibility" },
+    width: { label: "Width" },
+    height: { label: "Height" },
+  },
+  cta: {
+    heading: { label: "Heading" },
+    text: { label: "Supporting text" },
+    buttonText: { label: "Button label", placeholder: "Read more" },
+    href: { label: "Button link", placeholder: "/contact" },
+  },
+  news_list: {
+    heading: { label: "Section heading", placeholder: "Latest news" },
+    limit: { label: "Number of articles", description: "How many recent news items to show." },
+  },
+};
+
 function normalizeSlug(value: string): string {
   return value
     .trim()
@@ -124,8 +159,10 @@ function defaultBlockJson(type: AdminPageBlockType): string {
 
 export function PageEditorClient({
   initialPage,
+  canManageStructure,
 }: {
   initialPage: AdminPage | null;
+  canManageStructure: boolean;
 }) {
   const router = useRouter();
   const [title, setTitle] = React.useState(initialPage?.title ?? "");
@@ -254,8 +291,8 @@ export function PageEditorClient({
     }
   }
 
-  function getFieldLabel(type: AdminPageBlockType, key: string): string {
-    return BLOCK_FIELD_LABELS[type][key] ?? key;
+  function getFieldMeta(type: AdminPageBlockType, key: string): BlockFieldMeta {
+    return BLOCK_FIELD_META[type][key] ?? { label: BLOCK_FIELD_LABELS[type][key] ?? key };
   }
 
   function setBlockMedia(index: number, selectedMediaId: string) {
@@ -485,8 +522,8 @@ export function PageEditorClient({
         </Link>
         <h1>{initialPage ? "Edit page" : "Create page"}</h1>
         <p className="page-editor__help">
-          Use guided fields for common edits, and JSON only when you need
-          advanced options.
+          Use guided fields to edit what visitors see. Advanced structure
+          controls are available only to admins.
         </p>
       </div>
 
@@ -567,28 +604,30 @@ export function PageEditorClient({
         <div className="page-editor__blocks">
           <div className="page-editor__blocks-header">
             <h2>Page blocks ({blocks.length})</h2>
-            <div className="page-editor__block-type-buttons">
-              <select
-                value={nextBlockType}
-                onChange={(e) =>
-                  setNextBlockType(e.target.value as AdminPageBlockType)
-                }
-              >
-                {BLOCK_TYPES.map((type) => (
-                  <option key={type.value} value={type.value}>
-                    {type.label}
-                  </option>
-                ))}
-              </select>
-              <button type="button" onClick={() => addBlock(nextBlockType)}>
-                Add block
-              </button>
-            </div>
+            {canManageStructure && (
+              <div className="page-editor__block-type-buttons">
+                <select
+                  value={nextBlockType}
+                  onChange={(e) =>
+                    setNextBlockType(e.target.value as AdminPageBlockType)
+                  }
+                >
+                  {BLOCK_TYPES.map((type) => (
+                    <option key={type.value} value={type.value}>
+                      {type.label}
+                    </option>
+                  ))}
+                </select>
+                <button type="button" onClick={() => addBlock(nextBlockType)}>
+                  Add block
+                </button>
+              </div>
+            )}
           </div>
 
           <p className="page-editor__help">
-            Blocks render from top to bottom in this order. Select a block to
-            edit guided fields, block type, or raw JSON.
+            Blocks render top to bottom. Select a block to edit visitor-facing
+            content.
           </p>
 
           <div className="page-editor__block-layout">
@@ -616,31 +655,37 @@ export function PageEditorClient({
                       <strong>
                         Position {index + 1} of {blocks.length}
                       </strong>
-                      <small>{getBlockTypeLabel(block.type)}</small>
+                      <small>
+                        {getBlockTypeLabel(block.type)} · {BLOCK_TYPE_DESCRIPTIONS[block.type]}
+                      </small>
                       <span>{isActive ? "Editing" : "Select"}</span>
                     </button>
                     <div className="page-editor__block-toolbar">
                       <div>
-                        <button
-                          type="button"
-                          onClick={() => moveBlock(index, -1)}
-                          disabled={index === 0}
-                        >
-                          Move up
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => moveBlock(index, 1)}
-                          disabled={index === blocks.length - 1}
-                        >
-                          Move down
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => removeBlock(index)}
-                        >
-                          Remove block
-                        </button>
+                        {canManageStructure && (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => moveBlock(index, -1)}
+                              disabled={index === 0}
+                            >
+                              Move up
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => moveBlock(index, 1)}
+                              disabled={index === blocks.length - 1}
+                            >
+                              Move down
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => removeBlock(index)}
+                            >
+                              Remove block
+                            </button>
+                          </>
+                        )}
                       </div>
                     </div>
                   </article>
@@ -663,7 +708,12 @@ export function PageEditorClient({
                     <legend>Guided fields</legend>
                     {Object.entries(activeBlockData).map(([key, value]) => (
                       <label key={key}>
-                        {getFieldLabel(activeBlock.type, key)}
+                        {getFieldMeta(activeBlock.type, key).label}
+                        {getFieldMeta(activeBlock.type, key).description ? (
+                          <small className="page-editor__field-help">
+                            {getFieldMeta(activeBlock.type, key).description}
+                          </small>
+                        ) : null}
                         <input
                           value={String(value ?? "")}
                           onChange={(e) =>
@@ -673,6 +723,7 @@ export function PageEditorClient({
                               e.target.value,
                             )
                           }
+                          placeholder={getFieldMeta(activeBlock.type, key).placeholder}
                         />
                       </label>
                     ))}
@@ -686,39 +737,43 @@ export function PageEditorClient({
                   </p>
                 )}
 
-                <label>
-                  Type
-                  <select
-                    value={activeBlock.type}
-                    onChange={(e) =>
-                      updateBlock(activeBlockIndex, {
-                        type: e.target.value as AdminPageBlockType,
-                        dataJson: defaultBlockJson(
-                          e.target.value as AdminPageBlockType,
-                        ),
-                      })
-                    }
-                  >
-                    {BLOCK_TYPES.map((type) => (
-                      <option key={type.value} value={type.value}>
-                        {type.label}
-                      </option>
-                    ))}
-                  </select>
-                </label>
+                {canManageStructure && (
+                  <>
+                    <label>
+                      Block type
+                      <select
+                        value={activeBlock.type}
+                        onChange={(e) =>
+                          updateBlock(activeBlockIndex, {
+                            type: e.target.value as AdminPageBlockType,
+                            dataJson: defaultBlockJson(
+                              e.target.value as AdminPageBlockType,
+                            ),
+                          })
+                        }
+                      >
+                        {BLOCK_TYPES.map((type) => (
+                          <option key={type.value} value={type.value}>
+                            {type.label}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
 
-                <label>
-                  Advanced data (JSON)
-                  <textarea
-                    rows={14}
-                    value={activeBlock.dataJson}
-                    onChange={(e) =>
-                      updateBlock(activeBlockIndex, {
-                        dataJson: e.target.value,
-                      })
-                    }
-                  />
-                </label>
+                    <label>
+                      Advanced data (JSON)
+                      <textarea
+                        rows={14}
+                        value={activeBlock.dataJson}
+                        onChange={(e) =>
+                          updateBlock(activeBlockIndex, {
+                            dataJson: e.target.value,
+                          })
+                        }
+                      />
+                    </label>
+                  </>
+                )}
 
                 {(activeBlock.type === "image" ||
                   activeBlock.type === "hero") && (
