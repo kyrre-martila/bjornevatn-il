@@ -346,7 +346,7 @@ class CreateContentItemDto {
   @ApiProperty({ required: false })
   @IsOptional()
   @IsString()
-  parentId?: string;
+  parentId?: string | null;
 
   @ApiProperty({ required: false, default: 0 })
   @IsOptional()
@@ -406,7 +406,7 @@ class UpdateContentItemDto {
   @ApiProperty({ required: false })
   @IsOptional()
   @IsString()
-  parentId?: string;
+  parentId?: string | null;
 
   @ApiProperty({ required: false, default: 0 })
   @IsOptional()
@@ -1220,6 +1220,10 @@ export class ContentController {
     }
 
     await this.validateContentItemData(contentType.fields, body.data);
+    await this.validateContentItemParent(
+      body.contentTypeId,
+      body.parentId ?? null,
+    );
     return this.contentItems.create({
       ...body,
       parentId: body.parentId ?? null,
@@ -1248,7 +1252,55 @@ export class ContentController {
 
     const data = body.data ?? existing.data;
     await this.validateContentItemData(contentType.fields, data);
+    await this.validateContentItemParent(
+      contentTypeId,
+      body.parentId === undefined ? existing.parentId : body.parentId,
+      existing.id,
+    );
     return this.contentItems.update(id, body);
+  }
+
+  private async validateContentItemParent(
+    contentTypeId: string,
+    parentId: string | null,
+    itemId?: string,
+  ): Promise<void> {
+    if (!parentId) {
+      return;
+    }
+
+    if (itemId && parentId === itemId) {
+      throw new BadRequestException("Content item cannot be its own parent.");
+    }
+
+    const parent = await this.contentItems.findById(parentId);
+    if (!parent) {
+      throw new BadRequestException("Parent content item not found.");
+    }
+
+    if (parent.contentTypeId !== contentTypeId) {
+      throw new BadRequestException(
+        "Parent content item must belong to the same content type.",
+      );
+    }
+
+    if (!itemId) {
+      return;
+    }
+
+    const visited = new Set<string>([itemId]);
+    let current: ContentItem | null = parent;
+
+    while (current?.parentId) {
+      if (visited.has(current.id)) {
+        throw new BadRequestException(
+          "Invalid hierarchy: parent relationship would create a cycle.",
+        );
+      }
+
+      visited.add(current.id);
+      current = await this.contentItems.findById(current.parentId);
+    }
   }
 
   @Delete("items/:id")
