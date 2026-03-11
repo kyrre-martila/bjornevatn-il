@@ -80,7 +80,9 @@ export type ContentFieldRelationConfig = {
 
 export type ContentFieldDefinition = {
   key: string;
-  label: string;
+  label?: string;
+  description?: string;
+  placeholder?: string;
   type: ContentFieldType;
   required: boolean;
   relation?: ContentFieldRelationConfig;

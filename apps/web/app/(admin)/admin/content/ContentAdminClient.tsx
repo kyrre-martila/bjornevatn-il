@@ -38,6 +38,10 @@ function normalizeSlug(value: string): string {
     .replace(/-+/g, "-");
 }
 
+function getFieldLabel(field: AdminContentFieldDefinition) {
+  return field.label?.trim() || field.key;
+}
+
 function fieldTypeInputType(type: AdminContentFieldDefinition["type"]) {
   if (type === "date") return "date";
   return "text";
@@ -255,7 +259,8 @@ function ContentItemEditor({
       {contentType.fields.length > 0 ? (
         contentType.fields.map((field) => (
           <label key={field.key}>
-            {field.label}
+            {getFieldLabel(field)}
+            {field.description ? <small>{field.description}</small> : null}
             {field.type === "textarea" || field.type === "rich_text" ? (
               <textarea
                 value={values[field.key] ?? ""}
@@ -267,6 +272,7 @@ function ContentItemEditor({
                 }
                 required={field.required}
                 rows={field.type === "rich_text" ? 6 : 3}
+                placeholder={field.placeholder}
               />
             ) : field.type === "boolean" ? (
               <select
@@ -292,6 +298,7 @@ function ContentItemEditor({
                   }))
                 }
                 required={field.required}
+                placeholder={field.placeholder}
               />
             )}
           </label>
@@ -716,7 +723,10 @@ export function ContentAdminClient({
             {selectedType.fields.length > 0 ? (
               selectedType.fields.map((field) => (
                 <label key={field.key}>
-                  {field.label}
+                  {getFieldLabel(field)}
+                  {field.description ? (
+                    <small>{field.description}</small>
+                  ) : null}
                   {field.type === "textarea" || field.type === "rich_text" ? (
                     <textarea
                       value={createDraft.values[field.key] ?? ""}
@@ -734,6 +744,7 @@ export function ContentAdminClient({
                       }
                       required={field.required}
                       rows={field.type === "rich_text" ? 6 : 3}
+                      placeholder={field.placeholder}
                     />
                   ) : field.type === "boolean" ? (
                     <select
@@ -771,6 +782,7 @@ export function ContentAdminClient({
                         }))
                       }
                       required={field.required}
+                      placeholder={field.placeholder}
                     />
                   )}
                 </label>

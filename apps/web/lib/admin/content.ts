@@ -10,7 +10,9 @@ export type AdminContentFieldType =
 
 export type AdminContentFieldDefinition = {
   key: string;
-  label: string;
+  label?: string;
+  description?: string;
+  placeholder?: string;
   type: AdminContentFieldType;
   required: boolean;
 };

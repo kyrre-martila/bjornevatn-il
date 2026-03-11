@@ -130,11 +130,16 @@ function mapContentFields(fields: unknown): ContentFieldDefinition[] {
 
       const record = field as Record<string, unknown>;
       const key = typeof record.key === "string" ? record.key.trim() : "";
-      const label = typeof record.label === "string" ? record.label.trim() : "";
 
-      if (!key || !label) {
+      if (!key) {
         return null;
       }
+
+      const labelRaw = typeof record.label === "string" ? record.label.trim() : "";
+      const descriptionRaw =
+        typeof record.description === "string" ? record.description.trim() : "";
+      const placeholderRaw =
+        typeof record.placeholder === "string" ? record.placeholder.trim() : "";
 
       const type = toContentFieldType(record.type);
       const relationValue =
@@ -167,7 +172,9 @@ function mapContentFields(fields: unknown): ContentFieldDefinition[] {
 
       return {
         key,
-        label,
+        ...(labelRaw ? { label: labelRaw } : {}),
+        ...(descriptionRaw ? { description: descriptionRaw } : {}),
+        ...(placeholderRaw ? { placeholder: placeholderRaw } : {}),
         type,
         required: Boolean(record.required),
         ...(relation ? { relation } : {}),
