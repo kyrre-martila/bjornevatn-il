@@ -91,6 +91,30 @@ export type ContentItem = {
   updatedAt: Date;
 };
 
+export type Taxonomy = {
+  id: string;
+  name: string;
+  slug: string;
+  description: string;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+export type Term = {
+  id: string;
+  taxonomyId: string;
+  name: string;
+  slug: string;
+  description: string;
+  parentId: string | null;
+  createdAt: Date;
+};
+
+export type ContentItemTerm = {
+  contentItemId: string;
+  termId: string;
+};
+
 export type NavigationItem = {
   id: string;
   label: string;
@@ -116,7 +140,6 @@ export type Media = {
   storageKey: string | null;
   createdAt: Date;
 };
-
 
 export type ContentItemTreeNode = ContentItem & {
   children: ContentItemTreeNode[];

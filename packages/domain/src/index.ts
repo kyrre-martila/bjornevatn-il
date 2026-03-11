@@ -29,6 +29,9 @@ export type {
   NavigationItem,
   SiteSetting,
   Media,
+  Taxonomy,
+  Term,
+  ContentItemTerm,
 } from "./content/content.entity.js";
 export type {
   PagesRepository,
@@ -38,6 +41,9 @@ export type {
   NavigationItemsRepository,
   SiteSettingsRepository,
   MediaRepository,
+  TaxonomiesRepository,
+  TermsRepository,
+  ContentItemTermsRepository,
 } from "./content/content.repositories.js";
 
 export type {

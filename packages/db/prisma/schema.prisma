@@ -150,6 +150,7 @@ model ContentItem {
   createdAt      DateTime    @default(now())
   updatedAt      DateTime    @updatedAt
   slugRedirects  ContentItemSlugRedirect[]
+  terms          ContentItemTerm[]
 
   @@unique([contentTypeId, slug])
   @@index([contentTypeId])
@@ -200,4 +201,45 @@ model Media {
   originalFilename String?
   storageKey       String?
   createdAt        DateTime @default(now())
+}
+
+
+model Taxonomy {
+  id          String @id @default(cuid())
+  name        String
+  slug        String @unique
+  description String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  terms       Term[]
+
+  @@index([slug])
+}
+
+model Term {
+  id          String @id @default(cuid())
+  taxonomyId  String
+  taxonomy    Taxonomy @relation(fields: [taxonomyId], references: [id], onDelete: Cascade)
+  name        String
+  slug        String
+  description String
+  parentId    String?
+  parent      Term? @relation("TermTree", fields: [parentId], references: [id], onDelete: SetNull)
+  children    Term[] @relation("TermTree")
+  createdAt   DateTime @default(now())
+  contentItems ContentItemTerm[]
+
+  @@unique([taxonomyId, slug])
+  @@index([taxonomyId])
+  @@index([parentId])
+}
+
+model ContentItemTerm {
+  contentItemId String
+  contentItem   ContentItem @relation(fields: [contentItemId], references: [id], onDelete: Cascade)
+  termId        String
+  term          Term @relation(fields: [termId], references: [id], onDelete: Cascade)
+
+  @@id([contentItemId, termId])
+  @@index([termId])
 }

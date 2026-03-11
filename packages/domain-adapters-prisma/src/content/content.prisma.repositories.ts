@@ -9,6 +9,12 @@ import type {
   ContentTypesRepository,
   Media,
   MediaRepository,
+  Taxonomy,
+  Term,
+  ContentItemTerm,
+  TaxonomiesRepository,
+  TermsRepository,
+  ContentItemTermsRepository,
   NavigationItem,
   NavigationItemsRepository,
   Page,
@@ -217,6 +223,36 @@ function mapContentItemTree(items: ContentItem[]): ContentItemTreeNode[] {
   return roots;
 }
 
+function mapTaxonomy(taxonomy: {
+  id: string;
+  name: string;
+  slug: string;
+  description: string;
+  createdAt: Date;
+  updatedAt: Date;
+}): Taxonomy {
+  return taxonomy;
+}
+
+function mapTerm(term: {
+  id: string;
+  taxonomyId: string;
+  name: string;
+  slug: string;
+  description: string;
+  parentId: string | null;
+  createdAt: Date;
+}): Term {
+  return term;
+}
+
+function mapContentItemTerm(entry: {
+  contentItemId: string;
+  termId: string;
+}): ContentItemTerm {
+  return entry;
+}
+
 function mapMedia(media: {
   id: string;
   url: string;
@@ -289,7 +325,10 @@ export class PagesPrismaRepository implements PagesRepository {
       select: { id: true },
     });
     if (redirectConflict) {
-      throw new DomainError("DUPLICATE_RESOURCE", "Slug is already used as a redirect source.");
+      throw new DomainError(
+        "DUPLICATE_RESOURCE",
+        "Slug is already used as a redirect source.",
+      );
     }
 
     const page = await this.prisma.page.create({
@@ -324,7 +363,8 @@ export class PagesPrismaRepository implements PagesRepository {
         throw new DomainError("VALIDATION_ERROR", "Page not found.");
       }
 
-      const nextSlug = typeof pageData.slug === "string" ? pageData.slug : existing.slug;
+      const nextSlug =
+        typeof pageData.slug === "string" ? pageData.slug : existing.slug;
 
       if (nextSlug !== existing.slug) {
         const activeConflict = await tx.page.findFirst({
@@ -332,7 +372,10 @@ export class PagesPrismaRepository implements PagesRepository {
           select: { id: true },
         });
         if (activeConflict) {
-          throw new DomainError("DUPLICATE_RESOURCE", "Slug is already in use by another page.");
+          throw new DomainError(
+            "DUPLICATE_RESOURCE",
+            "Slug is already in use by another page.",
+          );
         }
 
         const redirectConflict = await tx.pageSlugRedirect.findFirst({
@@ -340,10 +383,15 @@ export class PagesPrismaRepository implements PagesRepository {
           select: { id: true },
         });
         if (redirectConflict) {
-          throw new DomainError("DUPLICATE_RESOURCE", "Slug is already used as a redirect source.");
+          throw new DomainError(
+            "DUPLICATE_RESOURCE",
+            "Slug is already used as a redirect source.",
+          );
         }
 
-        await tx.pageSlugRedirect.deleteMany({ where: { pageId: id, sourceSlug: nextSlug } });
+        await tx.pageSlugRedirect.deleteMany({
+          where: { pageId: id, sourceSlug: nextSlug },
+        });
 
         const existingRedirect = await tx.pageSlugRedirect.findUnique({
           where: { sourceSlug: existing.slug },
@@ -465,9 +513,7 @@ export class ContentTypesPrismaRepository implements ContentTypesRepository {
       where: { id },
       data: {
         ...data,
-        fields: data.fields
-          ? (data.fields as any)
-          : undefined,
+        fields: data.fields ? (data.fields as any) : undefined,
       },
     });
     return mapContentType(type);
@@ -506,12 +552,16 @@ export class ContentItemsPrismaRepository implements ContentItemsRepository {
     return items.map(mapContentItem);
   }
 
-  async findTreeByContentTypeId(contentTypeId: string): Promise<ContentItemTreeNode[]> {
+  async findTreeByContentTypeId(
+    contentTypeId: string,
+  ): Promise<ContentItemTreeNode[]> {
     const items = await this.findManyByContentTypeId(contentTypeId);
     return mapContentItemTree(items);
   }
 
-  async findTreeByContentTypeSlug(contentTypeSlug: string): Promise<ContentItemTreeNode[]> {
+  async findTreeByContentTypeSlug(
+    contentTypeSlug: string,
+  ): Promise<ContentItemTreeNode[]> {
     const items = await this.findManyByContentTypeSlug(contentTypeSlug);
     return mapContentItemTree(items);
   }
@@ -555,12 +605,16 @@ export class ContentItemsPrismaRepository implements ContentItemsRepository {
   async create(
     data: Omit<ContentItem, "id" | "createdAt" | "updatedAt">,
   ): Promise<ContentItem> {
-    const redirectConflict = await this.prisma.contentItemSlugRedirect.findFirst({
-      where: { contentTypeId: data.contentTypeId, sourceSlug: data.slug },
-      select: { id: true },
-    });
+    const redirectConflict =
+      await this.prisma.contentItemSlugRedirect.findFirst({
+        where: { contentTypeId: data.contentTypeId, sourceSlug: data.slug },
+        select: { id: true },
+      });
     if (redirectConflict) {
-      throw new DomainError("DUPLICATE_RESOURCE", "Slug is already used as a redirect source.");
+      throw new DomainError(
+        "DUPLICATE_RESOURCE",
+        "Slug is already used as a redirect source.",
+      );
     }
 
     const item = await this.prisma.contentItem.create({
@@ -584,10 +638,14 @@ export class ContentItemsPrismaRepository implements ContentItemsRepository {
         throw new DomainError("VALIDATION_ERROR", "Content item not found.");
       }
 
-      const nextSlug = typeof data.slug === "string" ? data.slug : existing.slug;
+      const nextSlug =
+        typeof data.slug === "string" ? data.slug : existing.slug;
       const nextContentTypeId = data.contentTypeId ?? existing.contentTypeId;
 
-      if (nextSlug !== existing.slug || nextContentTypeId !== existing.contentTypeId) {
+      if (
+        nextSlug !== existing.slug ||
+        nextContentTypeId !== existing.contentTypeId
+      ) {
         const activeConflict = await tx.contentItem.findFirst({
           where: {
             id: { not: id },
@@ -597,7 +655,10 @@ export class ContentItemsPrismaRepository implements ContentItemsRepository {
           select: { id: true },
         });
         if (activeConflict) {
-          throw new DomainError("DUPLICATE_RESOURCE", "Slug is already in use by another content item.");
+          throw new DomainError(
+            "DUPLICATE_RESOURCE",
+            "Slug is already in use by another content item.",
+          );
         }
 
         const redirectConflict = await tx.contentItemSlugRedirect.findFirst({
@@ -609,15 +670,25 @@ export class ContentItemsPrismaRepository implements ContentItemsRepository {
           select: { id: true },
         });
         if (redirectConflict) {
-          throw new DomainError("DUPLICATE_RESOURCE", "Slug is already used as a redirect source.");
+          throw new DomainError(
+            "DUPLICATE_RESOURCE",
+            "Slug is already used as a redirect source.",
+          );
         }
 
         await tx.contentItemSlugRedirect.deleteMany({
-          where: { contentItemId: id, contentTypeId: nextContentTypeId, sourceSlug: nextSlug },
+          where: {
+            contentItemId: id,
+            contentTypeId: nextContentTypeId,
+            sourceSlug: nextSlug,
+          },
         });
 
         const existingRedirect = await tx.contentItemSlugRedirect.findFirst({
-          where: { contentTypeId: existing.contentTypeId, sourceSlug: existing.slug },
+          where: {
+            contentTypeId: existing.contentTypeId,
+            sourceSlug: existing.slug,
+          },
           select: { id: true },
         });
 
@@ -647,6 +718,128 @@ export class ContentItemsPrismaRepository implements ContentItemsRepository {
 
   async delete(id: string): Promise<void> {
     await this.prisma.contentItem.delete({ where: { id } });
+  }
+}
+
+export class TaxonomiesPrismaRepository implements TaxonomiesRepository {
+  private readonly prisma = getPrisma();
+
+  async findMany(): Promise<Taxonomy[]> {
+    const taxonomies = await this.prisma.taxonomy.findMany({
+      orderBy: { createdAt: "desc" },
+    });
+    return taxonomies.map(mapTaxonomy);
+  }
+
+  async findById(id: string): Promise<Taxonomy | null> {
+    const taxonomy = await this.prisma.taxonomy.findUnique({ where: { id } });
+    return taxonomy ? mapTaxonomy(taxonomy) : null;
+  }
+
+  async create(
+    data: Omit<Taxonomy, "id" | "createdAt" | "updatedAt">,
+  ): Promise<Taxonomy> {
+    const taxonomy = await this.prisma.taxonomy.create({ data });
+    return mapTaxonomy(taxonomy);
+  }
+
+  async update(
+    id: string,
+    data: Partial<Omit<Taxonomy, "id" | "createdAt" | "updatedAt">>,
+  ): Promise<Taxonomy> {
+    const taxonomy = await this.prisma.taxonomy.update({ where: { id }, data });
+    return mapTaxonomy(taxonomy);
+  }
+
+  async delete(id: string): Promise<void> {
+    await this.prisma.taxonomy.delete({ where: { id } });
+  }
+}
+
+export class TermsPrismaRepository implements TermsRepository {
+  private readonly prisma = getPrisma();
+
+  async findMany(): Promise<Term[]> {
+    const terms = await this.prisma.term.findMany({
+      orderBy: { createdAt: "desc" },
+    });
+    return terms.map(mapTerm);
+  }
+
+  async findManyByTaxonomyId(taxonomyId: string): Promise<Term[]> {
+    const terms = await this.prisma.term.findMany({
+      where: { taxonomyId },
+      orderBy: [{ createdAt: "desc" }],
+    });
+    return terms.map(mapTerm);
+  }
+
+  async findById(id: string): Promise<Term | null> {
+    const term = await this.prisma.term.findUnique({ where: { id } });
+    return term ? mapTerm(term) : null;
+  }
+
+  async create(data: Omit<Term, "id" | "createdAt">): Promise<Term> {
+    const term = await this.prisma.term.create({
+      data: {
+        ...data,
+        parentId: data.parentId ?? null,
+      },
+    });
+    return mapTerm(term);
+  }
+
+  async update(
+    id: string,
+    data: Partial<Omit<Term, "id" | "createdAt">>,
+  ): Promise<Term> {
+    const term = await this.prisma.term.update({ where: { id }, data });
+    return mapTerm(term);
+  }
+
+  async delete(id: string): Promise<void> {
+    await this.prisma.term.delete({ where: { id } });
+  }
+}
+
+export class ContentItemTermsPrismaRepository
+  implements ContentItemTermsRepository
+{
+  private readonly prisma = getPrisma();
+
+  async findManyByContentItemId(
+    contentItemId: string,
+  ): Promise<ContentItemTerm[]> {
+    const entries = await this.prisma.contentItemTerm.findMany({
+      where: { contentItemId },
+      orderBy: { termId: "asc" },
+    });
+    return entries.map(mapContentItemTerm);
+  }
+
+  async assign(
+    contentItemId: string,
+    termIds: string[],
+  ): Promise<ContentItemTerm[]> {
+    return this.prisma.$transaction(async (tx: any) => {
+      await tx.contentItemTerm.deleteMany({ where: { contentItemId } });
+      if (termIds.length > 0) {
+        await tx.contentItemTerm.createMany({
+          data: termIds.map((termId) => ({ contentItemId, termId })),
+          skipDuplicates: true,
+        });
+      }
+      const entries = await tx.contentItemTerm.findMany({
+        where: { contentItemId },
+      });
+      return entries.map(mapContentItemTerm);
+    });
+  }
+
+  async remove(contentItemId: string, termId: string): Promise<void> {
+    await this.prisma.contentItemTerm.delete({
+      where: { contentItemId_termId: { contentItemId, termId } },
+    });
   }
 }
 

@@ -9,6 +9,7 @@ import {
   Param,
   Patch,
   Post,
+  Put,
   Query,
 } from "@nestjs/common";
 import { ApiProperty, ApiTags } from "@nestjs/swagger";
@@ -36,14 +37,20 @@ import type {
   ContentFieldDefinition,
   ContentItem,
   ContentItemTreeNode,
+  TaxonomiesRepository,
+  TermsRepository,
+  ContentItemTermsRepository,
 } from "@org/domain";
 import { MediaService } from "./media.service";
 
-
-
 type MediaUsageContext =
   | { kind: "page"; pageTitle: string; blockIndex: number; blockType: string }
-  | { kind: "content"; contentType: string; itemTitle: string; fieldKey: string };
+  | {
+      kind: "content";
+      contentType: string;
+      itemTitle: string;
+      fieldKey: string;
+    };
 
 const PAGE_BLOCK_TYPES = [
   "hero",
@@ -356,6 +363,101 @@ class UpdateContentItemDto {
   published?: boolean;
 }
 
+class CreateTaxonomyDto {
+  @ApiProperty()
+  @IsString()
+  name!: string;
+
+  @ApiProperty()
+  @IsString()
+  slug!: string;
+
+  @ApiProperty()
+  @IsString()
+  description!: string;
+}
+
+class UpdateTaxonomyDto {
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  name?: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  slug?: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  description?: string;
+}
+
+class CreateTermDto {
+  @ApiProperty()
+  @IsString()
+  taxonomyId!: string;
+
+  @ApiProperty()
+  @IsString()
+  name!: string;
+
+  @ApiProperty()
+  @IsString()
+  slug!: string;
+
+  @ApiProperty()
+  @IsString()
+  description!: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  parentId?: string;
+}
+
+class UpdateTermDto {
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  taxonomyId?: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  name?: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  slug?: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  description?: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  parentId?: string;
+}
+
+class AssignTermsDto {
+  @ApiProperty({ type: [String] })
+  @IsArray()
+  @IsString({ each: true })
+  termIds!: string[];
+}
+
+class ListTermsQueryDto {
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  taxonomyId?: string;
+}
+
 class ListContentItemsQueryDto {
   @ApiProperty({ required: false, enum: ["flat", "tree"], default: "flat" })
   @IsOptional()
@@ -515,6 +617,12 @@ export class ContentController {
     private readonly contentTypes: ContentTypesRepository,
     @Inject("ContentItemsRepository")
     private readonly contentItems: ContentItemsRepository,
+    @Inject("TaxonomiesRepository")
+    private readonly taxonomies: TaxonomiesRepository,
+    @Inject("TermsRepository")
+    private readonly terms: TermsRepository,
+    @Inject("ContentItemTermsRepository")
+    private readonly contentItemTerms: ContentItemTermsRepository,
     @Inject("NavigationItemsRepository")
     private readonly navigation: NavigationItemsRepository,
     @Inject("SiteSettingsRepository")
@@ -561,7 +669,10 @@ export class ContentController {
       if (!page) {
         throw new BadRequestException("Page not found.");
       }
-      await this.validatePageBlocksMediaAlt(body.title ?? page.title, body.blocks);
+      await this.validatePageBlocksMediaAlt(
+        body.title ?? page.title,
+        body.blocks,
+      );
     }
 
     return this.pages.update(id, body);
@@ -655,14 +766,20 @@ export class ContentController {
     @Param("contentTypeSlug") contentTypeSlug: string,
     @Param("slug") slug: string,
   ) {
-    const result = await this.contentItems.findBySlugOrRedirect(contentTypeSlug, slug);
+    const result = await this.contentItems.findBySlugOrRedirect(
+      contentTypeSlug,
+      slug,
+    );
     if (!result) {
       return null;
     }
 
     if (result.kind === "redirect") {
       if (contentTypeSlug === "news") {
-        return { redirectTo: `/news/${result.destinationSlug}`, permanent: true };
+        return {
+          redirectTo: `/news/${result.destinationSlug}`,
+          permanent: true,
+        };
       }
       return {
         redirectTo: `/content/${encodeURIComponent(contentTypeSlug)}/${encodeURIComponent(result.destinationSlug)}`,
@@ -719,7 +836,9 @@ export class ContentController {
     return roots;
   }
 
-  private filterPublishedContentItemTree(nodes: ContentItemTreeNode[]): ContentItemTreeNode[] {
+  private filterPublishedContentItemTree(
+    nodes: ContentItemTreeNode[],
+  ): ContentItemTreeNode[] {
     return nodes
       .filter((node) => node.published)
       .map((node) => ({
@@ -739,15 +858,21 @@ export class ContentController {
 
     if (block.type === "hero") {
       const imageUrl = block.data.imageUrl;
-      return typeof imageUrl === "string" && imageUrl.trim() ? [imageUrl.trim()] : [];
+      return typeof imageUrl === "string" && imageUrl.trim()
+        ? [imageUrl.trim()]
+        : [];
     }
 
     return [];
   }
 
-  private async getMediaByUrlMap(): Promise<Map<string, { id: string; alt: string }>> {
+  private async getMediaByUrlMap(): Promise<
+    Map<string, { id: string; alt: string }>
+  > {
     const media = await this.media.findMany();
-    return new Map(media.map((item) => [item.url, { id: item.id, alt: item.alt }]));
+    return new Map(
+      media.map((item) => [item.url, { id: item.id, alt: item.alt }]),
+    );
   }
 
   private async validatePageBlocksMediaAlt(
@@ -769,7 +894,9 @@ export class ContentController {
     }
   }
 
-  private async getReferencedMediaUsage(): Promise<Map<string, MediaUsageContext[]>> {
+  private async getReferencedMediaUsage(): Promise<
+    Map<string, MediaUsageContext[]>
+  > {
     const usage = new Map<string, MediaUsageContext[]>();
 
     const pages = await this.pages.findMany();
@@ -795,12 +922,16 @@ export class ContentController {
 
     const contentTypes = await this.contentTypes.findMany();
     for (const contentType of contentTypes) {
-      const imageFields = contentType.fields.filter((field: ContentFieldDefinition) => field.type === "image");
+      const imageFields = contentType.fields.filter(
+        (field: ContentFieldDefinition) => field.type === "image",
+      );
       if (imageFields.length === 0) {
         continue;
       }
 
-      const items = await this.contentItems.findManyByContentTypeId(contentType.id);
+      const items = await this.contentItems.findManyByContentTypeId(
+        contentType.id,
+      );
       for (const item of items) {
         for (const field of imageFields) {
           const value = item.data[field.key];
@@ -823,7 +954,10 @@ export class ContentController {
     return usage;
   }
 
-  private async validateMediaAltBeforeUpdate(mediaId: string, nextAlt: string | undefined) {
+  private async validateMediaAltBeforeUpdate(
+    mediaId: string,
+    nextAlt: string | undefined,
+  ) {
     if (nextAlt === undefined || nextAlt.trim()) {
       return;
     }
@@ -921,6 +1055,88 @@ export class ContentController {
   @Delete("items/:id")
   async deleteContentItem(@Param("id") id: string) {
     await this.contentItems.delete(id);
+    return { ok: true };
+  }
+
+  @Get("taxonomies")
+  listTaxonomies() {
+    return this.taxonomies.findMany();
+  }
+
+  @Get("taxonomies/:id")
+  getTaxonomy(@Param("id") id: string) {
+    return this.taxonomies.findById(id);
+  }
+
+  @Post("taxonomies")
+  createTaxonomy(@Body() body: CreateTaxonomyDto) {
+    return this.taxonomies.create(body);
+  }
+
+  @Patch("taxonomies/:id")
+  updateTaxonomy(@Param("id") id: string, @Body() body: UpdateTaxonomyDto) {
+    return this.taxonomies.update(id, body);
+  }
+
+  @Delete("taxonomies/:id")
+  async deleteTaxonomy(@Param("id") id: string) {
+    await this.taxonomies.delete(id);
+    return { ok: true };
+  }
+
+  @Get("terms")
+  listTerms(@Query() query: ListTermsQueryDto) {
+    if (query.taxonomyId) {
+      return this.terms.findManyByTaxonomyId(query.taxonomyId);
+    }
+    return this.terms.findMany();
+  }
+
+  @Get("terms/:id")
+  getTerm(@Param("id") id: string) {
+    return this.terms.findById(id);
+  }
+
+  @Post("terms")
+  createTerm(@Body() body: CreateTermDto) {
+    return this.terms.create({ ...body, parentId: body.parentId ?? null });
+  }
+
+  @Patch("terms/:id")
+  updateTerm(@Param("id") id: string, @Body() body: UpdateTermDto) {
+    return this.terms.update(id, body);
+  }
+
+  @Delete("terms/:id")
+  async deleteTerm(@Param("id") id: string) {
+    await this.terms.delete(id);
+    return { ok: true };
+  }
+
+  @Get("items/:id/terms")
+  listContentItemTerms(@Param("id") id: string) {
+    return this.contentItemTerms.findManyByContentItemId(id);
+  }
+
+  @Put("items/:id/terms")
+  async assignContentItemTerms(
+    @Param("id") id: string,
+    @Body() body: AssignTermsDto,
+  ) {
+    const item = await this.contentItems.findById(id);
+    if (!item) {
+      throw new BadRequestException("Content item not found.");
+    }
+
+    return this.contentItemTerms.assign(id, body.termIds);
+  }
+
+  @Delete("items/:id/terms/:termId")
+  async removeContentItemTerm(
+    @Param("id") id: string,
+    @Param("termId") termId: string,
+  ) {
+    await this.contentItemTerms.remove(id, termId);
     return { ok: true };
   }
 

@@ -6,6 +6,9 @@ import {
   PagesPrismaRepository,
   ContentTypesPrismaRepository,
   ContentItemsPrismaRepository,
+  TaxonomiesPrismaRepository,
+  TermsPrismaRepository,
+  ContentItemTermsPrismaRepository,
   SiteSettingsPrismaRepository,
 } from "@org/domain-adapters-prisma";
 import { ContentController } from "./content.controller";
@@ -31,6 +34,18 @@ import { MediaService } from "./media.service";
     {
       provide: "PageBlocksRepository",
       useClass: PageBlocksPrismaRepository,
+    },
+    {
+      provide: "TaxonomiesRepository",
+      useClass: TaxonomiesPrismaRepository,
+    },
+    {
+      provide: "TermsRepository",
+      useClass: TermsPrismaRepository,
+    },
+    {
+      provide: "ContentItemTermsRepository",
+      useClass: ContentItemTermsPrismaRepository,
     },
     {
       provide: "NavigationItemsRepository",
