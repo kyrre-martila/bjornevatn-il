@@ -26,6 +26,7 @@ This repository is a **content website blueprint**: a reusable monorepo for buil
 - **ContentType + ContentItem model**
   - `ContentType` defines schema-like `fields`.
   - `ContentItem` stores entries for a type (for lists like news, case studies, etc.).
+  - The seeded **Services** example is the reference implementation for hierarchy (`parentId`), taxonomy (`Service Category`), relationships (`relatedServices`), archive rendering (`/services`), and single-item template usage (`/services/[slug]` with `service` template and `index` fallback).
 
 Use these models first before introducing ad-hoc storage patterns.
 

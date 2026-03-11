@@ -22,3 +22,15 @@ This blueprint is structured for content-driven websites: a public website exper
 
 - [docs/ADRS/0001-auth-model.md](ADRS/0001-auth-model.md)
 - [docs/ADRS/0002-storage-choice.md](ADRS/0002-storage-choice.md)
+
+## Reference content pattern: Services
+
+The seeded `services` ContentType is the canonical blueprint example for extending structured content:
+
+- `ContentType`: `Services` (`slug: services`, `templateKey: service`) with instructional field definitions, including a self-referencing `relatedServices` relation field.
+- `ContentItem` data: five demo services (`Accounting`, `Payroll`, `Invoicing`, `Annual Reports`, `Advisory`).
+- Hierarchy: `Accounting` is a parent with `Payroll` and `Invoicing` as children.
+- Taxonomy: `Service Category` taxonomy with `Finance`, `Operations`, and `Advisory` terms assigned to service items.
+- Rendering pattern: `/services` archive lists published services; `/services/[slug]` resolves template from content type and falls back to `IndexTemplate` when missing.
+
+Use this pattern when adding additional collections like case studies, team profiles, or portfolios.

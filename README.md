@@ -26,6 +26,7 @@ Set up environment variables first (see [docs/OPERATIONS.md](docs/OPERATIONS.md#
 - Stack: NestJS API, Next.js web, Prisma ORM, Turborepo monorepo.
 - Product shape: public website frontend + admin/editor area backed by authenticated APIs.
 - Content model: pages/page blocks plus reusable ContentType and ContentItem collections stored in PostgreSQL.
+- Reference example: seeded `Services` ContentType demonstrates hierarchy, taxonomy, relationship fields, archive page (`/services`), and template fallback behavior for single items.
 - Contracts: OpenAPI under `packages/contracts`.
 - Infra: Docker Compose for local + prod simulation, GitHub Actions CI/CD.
 

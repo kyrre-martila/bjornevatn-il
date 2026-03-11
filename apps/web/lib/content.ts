@@ -22,6 +22,31 @@ export type NewsDetailItem = NewsItem & {
   body: string;
 };
 
+export type ServiceListItem = {
+  id: string;
+  slug: string;
+  title: string;
+  shortDescription: string;
+  childCount: number;
+};
+
+export type ServiceDetailItem = {
+  id: string;
+  slug: string;
+  title: string;
+  shortDescription: string;
+  body: string;
+  featuredImage: string | null;
+  callToActionLabel: string;
+  callToActionUrl: string;
+  relatedServices: Array<{ slug: string; title: string }>;
+  childServices: Array<{ slug: string; title: string }>;
+  taxonomyTerms: string[];
+  templateKey: string;
+  canonicalUrl: string | null;
+  noIndex: boolean;
+};
+
 export type ContentBlockType =
   | "hero"
   | "rich_text"
@@ -125,8 +150,25 @@ type ApiContentItem = {
   updatedAt: string;
 };
 
+type ApiContentItemTree = ApiContentItem & {
+  parentId?: string | null;
+  children?: ApiContentItemTree[];
+};
+
 type ApiContentType = {
   slug: string;
+  templateKey?: string | null;
+};
+
+type ApiTaxonomy = {
+  id: string;
+  slug: string;
+};
+
+type ApiTerm = {
+  id: string;
+  name: string;
+  taxonomyId: string;
 };
 
 type ApiSiteSetting = {
@@ -403,6 +445,147 @@ export async function getNewsListing(): Promise<NewsItem[]> {
   return items.map(mapApiContentItem);
 }
 
+function mapServiceListItem(
+  item: ApiContentItem,
+  childCount: number,
+): ServiceListItem {
+  const data = asRecord(item.data);
+
+  return {
+    id: item.id,
+    slug: item.slug,
+    title: item.title,
+    shortDescription:
+      typeof data.shortDescription === "string" ? data.shortDescription : "",
+    childCount,
+  };
+}
+
+function flattenServiceTree(items: ApiContentItemTree[]): ApiContentItemTree[] {
+  return items.flatMap((item) => [
+    item,
+    ...flattenServiceTree(item.children ?? []),
+  ]);
+}
+
+export async function getServicesListing(): Promise<ServiceListItem[]> {
+  const tree = await fetchContent<ApiContentItemTree[]>(
+    "/content/items/type-slug/services?mode=tree",
+  );
+
+  if (!tree) {
+    return [];
+  }
+
+  return flattenServiceTree(tree).map((item) =>
+    mapServiceListItem(item, item.children?.length ?? 0),
+  );
+}
+
+async function getContentTypeTemplateKey(slug: string): Promise<string> {
+  const types = await fetchContent<ApiContentType[]>("/content/types");
+  const type = types?.find((entry) => entry.slug === slug);
+  if (typeof type?.templateKey === "string" && type.templateKey.trim()) {
+    return type.templateKey;
+  }
+
+  return "index";
+}
+
+async function getServiceTaxonomyTermNames(
+  contentItemId: string,
+): Promise<string[]> {
+  const [terms, taxonomies] = await Promise.all([
+    fetchContent<ApiTerm[]>(
+      `/content/items/${encodeURIComponent(contentItemId)}/terms`,
+    ),
+    fetchContent<ApiTaxonomy[]>("/content/taxonomies"),
+  ]);
+
+  if (!terms || !taxonomies) {
+    return [];
+  }
+
+  const taxonomyIds = new Set(
+    taxonomies
+      .filter((taxonomy) => taxonomy.slug === "service-category")
+      .map((taxonomy) => taxonomy.id),
+  );
+
+  return terms
+    .filter((term) => taxonomyIds.has(term.taxonomyId))
+    .map((term) => term.name);
+}
+
+export async function resolveServiceBySlug(
+  slug: string,
+): Promise<{ redirectTo: string | null; item: ServiceDetailItem | null }> {
+  const [response, services, templateKey] = await Promise.all([
+    fetchContent<ApiContentItem | ApiSlugRedirect>(
+      `/content/items/type-slug/services/${encodeURIComponent(slug)}`,
+    ),
+    fetchContent<ApiContentItemTree[]>(
+      "/content/items/type-slug/services?mode=tree",
+    ),
+    getContentTypeTemplateKey("services"),
+  ]);
+
+  if (isApiSlugRedirect(response)) {
+    return { redirectTo: response.redirectTo, item: null };
+  }
+
+  const item = response;
+  if (!item || !item.published) {
+    return { redirectTo: null, item: null };
+  }
+
+  const tree = services ?? [];
+  const allServices = flattenServiceTree(tree);
+  const data = asRecord(item.data);
+  const relatedIds = Array.isArray(data.relatedServices)
+    ? data.relatedServices.filter(
+        (entry): entry is string => typeof entry === "string",
+      )
+    : [];
+
+  const relatedServices = relatedIds
+    .map((id) => allServices.find((entry) => entry.id === id))
+    .filter((entry): entry is ApiContentItemTree => Boolean(entry))
+    .map((entry) => ({ slug: entry.slug, title: entry.title }));
+
+  const childServices = allServices
+    .filter((entry) => entry.parentId === item.id)
+    .map((entry) => ({ slug: entry.slug, title: entry.title }));
+
+  const taxonomyTerms = await getServiceTaxonomyTermNames(item.id);
+
+  return {
+    redirectTo: null,
+    item: {
+      id: item.id,
+      slug: item.slug,
+      title: item.title,
+      shortDescription:
+        typeof data.shortDescription === "string" ? data.shortDescription : "",
+      body: typeof data.body === "string" ? data.body : "",
+      featuredImage:
+        typeof data.featuredImage === "string" ? data.featuredImage : null,
+      callToActionLabel:
+        typeof data.callToActionLabel === "string"
+          ? data.callToActionLabel
+          : "",
+      callToActionUrl:
+        typeof data.callToActionUrl === "string" ? data.callToActionUrl : "",
+      relatedServices,
+      childServices,
+      taxonomyTerms,
+      templateKey,
+      canonicalUrl: item.canonicalUrl ?? null,
+      noIndex: Boolean(item.noIndex),
+    },
+  };
+}
+
 export async function resolveNewsItemBySlug(
   slug: string,
 ): Promise<{ redirectTo: string | null; item: NewsDetailItem | null }> {
@@ -571,10 +754,16 @@ function contentItemPath(contentTypeSlug: string, slug: string): string | null {
     return `/news/${slug}`;
   }
 
+  if (contentTypeSlug === "services") {
+    return `/services/${slug}`;
+  }
+
   return null;
 }
 
-export async function getSitemapContentItems(): Promise<SitemapContentItemEntry[]> {
+export async function getSitemapContentItems(): Promise<
+  SitemapContentItemEntry[]
+> {
   const types = await fetchContent<ApiContentType[]>("/content/types");
   if (!types) {
     return [];
@@ -604,7 +793,11 @@ export async function getSitemapContentItems(): Promise<SitemapContentItemEntry[
 
   return allItems
     .flat()
-    .filter((item) => Boolean(item.canonicalUrl || contentItemPath(item.contentTypeSlug, item.slug)));
+    .filter((item) =>
+      Boolean(
+        item.canonicalUrl || contentItemPath(item.contentTypeSlug, item.slug),
+      ),
+    );
 }
 
 export async function getRobotsSettings(): Promise<{
@@ -619,7 +812,10 @@ export async function getRobotsSettings(): Promise<{
   };
 }
 
-export function getContentItemPath(contentTypeSlug: string, slug: string): string | null {
+export function getContentItemPath(
+  contentTypeSlug: string,
+  slug: string,
+): string | null {
   return contentItemPath(contentTypeSlug, slug);
 }
 
