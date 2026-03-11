@@ -83,6 +83,7 @@ model Page {
   canonicalUrl   String?
   noIndex        Boolean     @default(false)
   published      Boolean     @default(false)
+  templateKey    String?
   createdAt      DateTime    @default(now())
   updatedAt      DateTime    @updatedAt
   blocks         PageBlock[]
@@ -122,6 +123,7 @@ model ContentType {
   slug        String        @unique
   description String
   fields      Json          @default("[]")
+  templateKey String?
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
   items       ContentItem[]

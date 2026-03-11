@@ -119,6 +119,11 @@ class CreatePageDto {
   @ApiProperty()
   @IsBoolean()
   published!: boolean;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  templateKey?: string;
 }
 
 class UpdatePageDto {
@@ -168,6 +173,11 @@ class UpdatePageDto {
   @IsOptional()
   @IsBoolean()
   published?: boolean;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  templateKey?: string;
 }
 
 const CONTENT_FIELD_TYPES = [
@@ -241,6 +251,11 @@ class CreateContentTypeDto {
   @ValidateNested({ each: true })
   @Type(() => ContentFieldDefinitionDto)
   fields!: ContentFieldDefinitionDto[];
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  templateKey?: string;
 }
 
 class UpdateContentTypeDto {
@@ -265,6 +280,11 @@ class UpdateContentTypeDto {
   @ValidateNested({ each: true })
   @Type(() => ContentFieldDefinitionDto)
   fields?: ContentFieldDefinitionDto[];
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  templateKey?: string;
 }
 
 class CreateContentItemDto {
@@ -682,7 +702,11 @@ export class ContentController {
   @Post("pages")
   async createPage(@Body() body: CreatePageDto) {
     await this.validatePageBlocksMediaAlt(body.title, body.blocks);
-    return this.pages.create({ ...body, noIndex: body.noIndex ?? false });
+    return this.pages.create({
+      ...body,
+      templateKey: body.templateKey ?? null,
+      noIndex: body.noIndex ?? false,
+    });
   }
 
   @Patch("pages/:id")
@@ -720,7 +744,10 @@ export class ContentController {
   @Post("types")
   async createContentType(@Body() body: CreateContentTypeDto) {
     await this.validateContentTypeFields(body.fields);
-    return this.contentTypes.create(body);
+    return this.contentTypes.create({
+      ...body,
+      templateKey: body.templateKey ?? null,
+    });
   }
 
   @Patch("types/:id")

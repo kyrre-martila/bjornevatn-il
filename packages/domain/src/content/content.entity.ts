@@ -20,6 +20,7 @@ export type Page = {
   canonicalUrl: string | null;
   noIndex: boolean;
   published: boolean;
+  templateKey: string | null;
   createdAt: Date;
   updatedAt: Date;
   blocks: PageBlock[];
@@ -54,6 +55,7 @@ export type ContentType = {
   slug: string;
   description: string;
   fields: ContentFieldDefinition[];
+  templateKey: string | null;
   createdAt: Date;
   updatedAt: Date;
 };

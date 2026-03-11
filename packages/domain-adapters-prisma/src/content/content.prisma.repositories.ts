@@ -71,6 +71,7 @@ function mapPage(page: {
   canonicalUrl: string | null;
   noIndex: boolean;
   published: boolean;
+  templateKey: string | null;
   createdAt: Date;
   updatedAt: Date;
   blocks: Array<{
@@ -181,6 +182,7 @@ function mapContentType(type: {
   slug: string;
   description: string;
   fields: unknown;
+  templateKey: string | null;
   createdAt: Date;
   updatedAt: Date;
 }): ContentType {
@@ -375,6 +377,7 @@ export class PagesPrismaRepository implements PagesRepository {
         canonicalUrl: data.canonicalUrl,
         noIndex: data.noIndex,
         published: data.published,
+        templateKey: data.templateKey,
         blocks: {
           create: mapInputBlocks(data.blocks),
         },
