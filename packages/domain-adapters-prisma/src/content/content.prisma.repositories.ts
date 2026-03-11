@@ -6,6 +6,7 @@ import type {
   ContentType,
   ContentFieldDefinition,
   ContentFieldType,
+  ContentFieldRelationTargetType,
   ContentTypesRepository,
   Media,
   MediaRepository,
@@ -101,6 +102,9 @@ const CONTENT_FIELD_TYPES: ContentFieldType[] = [
   "textarea",
   "rich_text",
   "image",
+  "relation",
+  "media",
+  "contentItem",
   "date",
   "boolean",
 ];
@@ -131,11 +135,41 @@ function mapContentFields(fields: unknown): ContentFieldDefinition[] {
         return null;
       }
 
+      const type = toContentFieldType(record.type);
+      const relationValue =
+        record.relation &&
+        typeof record.relation === "object" &&
+        !Array.isArray(record.relation)
+          ? (record.relation as Record<string, unknown>)
+          : null;
+
+      const rawTargetType = relationValue?.targetType;
+      const targetType: ContentFieldRelationTargetType | undefined =
+        rawTargetType === "contentType" ||
+        rawTargetType === "page" ||
+        rawTargetType === "media"
+          ? rawTargetType
+          : undefined;
+      const targetSlugRaw = relationValue?.targetSlug;
+      const targetSlug =
+        typeof targetSlugRaw === "string" && targetSlugRaw.trim()
+          ? targetSlugRaw.trim()
+          : undefined;
+
+      const relation =
+        type === "relation" && targetType
+          ? {
+              targetType,
+              ...(targetSlug ? { targetSlug } : {}),
+            }
+          : undefined;
+
       return {
         key,
         label,
-        type: toContentFieldType(record.type),
+        type,
         required: Boolean(record.required),
+        ...(relation ? { relation } : {}),
       } satisfies ContentFieldDefinition;
     })
     .filter((field): field is ContentFieldDefinition => Boolean(field));
@@ -531,7 +565,7 @@ export class ContentItemsPrismaRepository implements ContentItemsRepository {
     const items = await this.prisma.contentItem.findMany({
       orderBy: [{ sortOrder: "asc" }, { createdAt: "desc" }],
     });
-    return items.map(mapContentItem);
+    return this.resolveReferences(items.map(mapContentItem));
   }
 
   async findManyByContentTypeId(contentTypeId: string): Promise<ContentItem[]> {
@@ -539,7 +573,7 @@ export class ContentItemsPrismaRepository implements ContentItemsRepository {
       where: { contentTypeId },
       orderBy: [{ sortOrder: "asc" }, { createdAt: "desc" }],
     });
-    return items.map(mapContentItem);
+    return this.resolveReferences(items.map(mapContentItem));
   }
 
   async findManyByContentTypeSlug(
@@ -549,7 +583,7 @@ export class ContentItemsPrismaRepository implements ContentItemsRepository {
       where: { contentType: { slug: contentTypeSlug } },
       orderBy: [{ sortOrder: "asc" }, { createdAt: "desc" }],
     });
-    return items.map(mapContentItem);
+    return this.resolveReferences(items.map(mapContentItem));
   }
 
   async findTreeByContentTypeId(
@@ -568,7 +602,12 @@ export class ContentItemsPrismaRepository implements ContentItemsRepository {
 
   async findById(id: string): Promise<ContentItem | null> {
     const item = await this.prisma.contentItem.findUnique({ where: { id } });
-    return item ? mapContentItem(item) : null;
+    if (!item) {
+      return null;
+    }
+
+    const [resolved] = await this.resolveReferences([mapContentItem(item)]);
+    return resolved ?? null;
   }
 
   async findBySlug(
@@ -578,7 +617,12 @@ export class ContentItemsPrismaRepository implements ContentItemsRepository {
     const item = await this.prisma.contentItem.findFirst({
       where: { slug, contentType: { slug: contentTypeSlug } },
     });
-    return item ? mapContentItem(item) : null;
+    if (!item) {
+      return null;
+    }
+
+    const [resolved] = await this.resolveReferences([mapContentItem(item)]);
+    return resolved ?? null;
   }
 
   async findBySlugOrRedirect(contentTypeSlug: string, slug: string) {
@@ -600,6 +644,146 @@ export class ContentItemsPrismaRepository implements ContentItemsRepository {
       kind: "redirect" as const,
       destinationSlug: redirect.contentItem.slug,
     };
+  }
+
+  private async resolveReferences(items: ContentItem[]): Promise<ContentItem[]> {
+    if (items.length === 0) {
+      return items;
+    }
+
+    const contentTypeIds = [...new Set(items.map((item) => item.contentTypeId))];
+    const contentTypes = await this.prisma.contentType.findMany({
+      where: { id: { in: contentTypeIds } },
+      select: { id: true, fields: true },
+    });
+
+    const fieldsByTypeId = new Map<string, ContentFieldDefinition[]>(
+      contentTypes.map((contentType: { id: string; fields: unknown }) => [
+        contentType.id,
+        mapContentFields(contentType.fields),
+      ]),
+    );
+
+    const pageIds = new Set<string>();
+    const mediaIds = new Set<string>();
+    const contentItemIds = new Set<string>();
+
+    for (const item of items) {
+      const fields = fieldsByTypeId.get(item.contentTypeId) ?? [];
+      for (const field of fields) {
+        if (
+          field.type !== "relation" &&
+          field.type !== "media" &&
+          field.type !== "contentItem"
+        ) {
+          continue;
+        }
+
+        const rawValue = item.data[field.key];
+        if (typeof rawValue !== "string" || !rawValue.trim()) {
+          continue;
+        }
+
+        const refId = rawValue.trim();
+        if (field.type === "media") {
+          mediaIds.add(refId);
+          continue;
+        }
+
+        if (field.type === "contentItem") {
+          contentItemIds.add(refId);
+          continue;
+        }
+
+        if (field.relation?.targetType === "page") {
+          pageIds.add(refId);
+        } else if (field.relation?.targetType === "media") {
+          mediaIds.add(refId);
+        } else if (field.relation?.targetType === "contentType") {
+          contentItemIds.add(refId);
+        }
+      }
+    }
+
+    const pages = pageIds.size
+      ? await this.prisma.page.findMany({
+          where: { id: { in: [...pageIds] } },
+          include: { blocks: { orderBy: { order: "asc" } } },
+        })
+      : [];
+
+    const media = mediaIds.size
+      ? await this.prisma.media.findMany({ where: { id: { in: [...mediaIds] } } })
+      : [];
+
+    const contentItems = contentItemIds.size
+      ? await this.prisma.contentItem.findMany({
+          where: { id: { in: [...contentItemIds] } },
+        })
+      : [];
+
+    const pageById = new Map<string, Page>(
+      pages.map((entry: any) => [entry.id, mapPage(entry)]),
+    );
+    const mediaById = new Map<string, Media>(
+      media.map((entry: any) => [entry.id, mapMedia(entry)]),
+    );
+    const contentItemById = new Map<string, ContentItem>(
+      contentItems.map((entry: any) => [entry.id, mapContentItem(entry)]),
+    );
+
+    return items.map((item) => {
+      const fields = fieldsByTypeId.get(item.contentTypeId) ?? [];
+      const resolvedReferences: NonNullable<ContentItem["resolvedReferences"]> = {};
+
+      for (const field of fields) {
+        const rawValue = item.data[field.key];
+        if (typeof rawValue !== "string" || !rawValue.trim()) {
+          continue;
+        }
+
+        const refId = rawValue.trim();
+        if (field.type === "media") {
+          resolvedReferences[field.key] = {
+            targetType: "media",
+            value: mediaById.get(refId) ?? null,
+          };
+          continue;
+        }
+
+        if (field.type === "contentItem") {
+          resolvedReferences[field.key] = {
+            targetType: "contentItem",
+            value: contentItemById.get(refId) ?? null,
+          };
+          continue;
+        }
+
+        if (field.type === "relation") {
+          if (field.relation?.targetType === "page") {
+            resolvedReferences[field.key] = {
+              targetType: "page",
+              value: pageById.get(refId) ?? null,
+            };
+          } else if (field.relation?.targetType === "media") {
+            resolvedReferences[field.key] = {
+              targetType: "media",
+              value: mediaById.get(refId) ?? null,
+            };
+          } else if (field.relation?.targetType === "contentType") {
+            resolvedReferences[field.key] = {
+              targetType: "contentItem",
+              value: contentItemById.get(refId) ?? null,
+            };
+          }
+        }
+      }
+
+      return {
+        ...item,
+        resolvedReferences,
+      };
+    });
   }
 
   async create(
