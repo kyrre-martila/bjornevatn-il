@@ -23,7 +23,7 @@ class InMemoryUsersRepository implements UsersRepository {
   async create(data: {
     email: string;
     name?: string;
-    role?: "ADMIN" | "USER";
+    role?: "super_admin" | "admin" | "editor";
     passwordHash?: string;
   }): Promise<User> {
     const id = `user-${this.users.size + 1}`;
@@ -32,7 +32,7 @@ class InMemoryUsersRepository implements UsersRepository {
       id,
       email: data.email,
       name: data.name,
-      role: data.role ?? "USER",
+      role: data.role ?? "editor",
       createdAt: now,
       updatedAt: now,
     };

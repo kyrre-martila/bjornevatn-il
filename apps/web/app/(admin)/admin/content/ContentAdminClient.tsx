@@ -8,6 +8,7 @@ import type {
 } from "../../../../lib/admin/content";
 
 type Props = {
+  canManageContentTypes: boolean;
   initialContentTypes: AdminContentType[];
   initialGroupedItems: Array<{
     contentTypeId: string;
@@ -312,6 +313,7 @@ function ContentItemEditor({
 }
 
 export function ContentAdminClient({
+  canManageContentTypes,
   initialContentTypes,
   initialGroupedItems,
 }: Props) {
@@ -502,45 +504,61 @@ export function ContentAdminClient({
           <input
             name="name"
             defaultValue={type.name}
+            readOnly={!canManageContentTypes}
             placeholder="Name"
             required
           />
           <input
             name="slug"
             defaultValue={type.slug}
+            readOnly={!canManageContentTypes}
             placeholder="slug"
             required
           />
           <input
             name="description"
             defaultValue={type.description}
+            readOnly={!canManageContentTypes}
             placeholder="Description"
             required
           />
           <textarea
             name="fields"
             defaultValue={JSON.stringify(type.fields, null, 2)}
+            readOnly={!canManageContentTypes}
             rows={6}
             required
           />
-          <button type="submit">Save</button>
-          <button type="button" onClick={() => setSelectedTypeId(type.id)}>
-            Items
-          </button>
-          <button type="button" onClick={() => void deleteContentType(type.id)}>
-            Delete
-          </button>
+          {canManageContentTypes ? (
+            <>
+              <button type="submit">Save</button>
+              <button type="button" onClick={() => setSelectedTypeId(type.id)}>
+                Items
+              </button>
+              <button type="button" onClick={() => void deleteContentType(type.id)}>
+                Delete
+              </button>
+            </>
+          ) : (
+            <button type="button" onClick={() => setSelectedTypeId(type.id)}>
+              Items
+            </button>
+          )}
         </form>
       ))}
 
-      <h3>Create content type</h3>
-      <form action={saveContentType}>
-        <input name="name" placeholder="Name" required />
-        <input name="slug" placeholder="slug" required />
-        <input name="description" placeholder="Description" required />
-        <textarea name="fields" defaultValue="[]" rows={6} required />
-        <button type="submit">Create</button>
-      </form>
+      {canManageContentTypes && (
+        <>
+          <h3>Create content type</h3>
+          <form action={saveContentType}>
+            <input name="name" placeholder="Name" required />
+            <input name="slug" placeholder="slug" required />
+            <input name="description" placeholder="Description" required />
+            <textarea name="fields" defaultValue="[]" rows={6} required />
+            <button type="submit">Create</button>
+          </form>
+        </>
+      )}
 
       {selectedType && createDraft && (
         <>

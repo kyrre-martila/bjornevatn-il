@@ -5,14 +5,14 @@ import type { UsersRepository } from "./users.repository";
 export type RegisterUserInput = {
   email: string;
   name?: string;
-  role?: "ADMIN" | "USER";
+  role?: "super_admin" | "admin" | "editor";
   passwordHash?: string;
 };
 
 export type UpdateUserProfileInput = {
   email?: string;
   name?: string;
-  role?: "ADMIN" | "USER";
+  role?: "super_admin" | "admin" | "editor";
   profile?: User["profile"];
   firstName?: string;
   lastName?: string;
@@ -41,7 +41,7 @@ export class UsersService {
         { email },
       );
     }
-    const role = input.role ?? "USER";
+    const role = input.role ?? "editor";
     return this.repository.create({ ...input, email, role });
   }
 

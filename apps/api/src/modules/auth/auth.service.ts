@@ -13,6 +13,7 @@ export type PublicUser = {
   id: string;
   email: string;
   name: string | null;
+  role: string;
 };
 
 type PrismaUser = {
@@ -21,6 +22,7 @@ type PrismaUser = {
   passwordHash: string | null;
   name: string | null;
   displayName: string | null;
+  role: string;
 };
 
 export type AuthResult = {
@@ -129,6 +131,7 @@ export class AuthService {
       id: user.id,
       email: user.email,
       name: user.name ?? user.displayName ?? null,
+      role: user.role,
     };
   }
 }

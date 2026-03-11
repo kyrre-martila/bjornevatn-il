@@ -78,6 +78,7 @@ async function seedUsers() {
       passwordHash: ADMIN_PASSWORD_HASH,
       acceptedTerms: true,
       displayName: "System Administrator",
+      role: "super_admin",
     },
   });
 
@@ -92,6 +93,7 @@ async function seedUsers() {
       passwordHash: DEMO_PASSWORD_HASH,
       acceptedTerms: true,
       displayName: "Demo User",
+      role: "editor",
     },
   });
 

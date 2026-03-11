@@ -1,7 +1,11 @@
 import { NextResponse } from "next/server";
+import { requireSuperAdmin } from "../auth";
 import { buildForwardHeaders, getApiBase } from "../utils";
 
 export async function GET() {
+  const denied = await requireSuperAdmin();
+  if (denied) return denied;
+
   const res = await fetch(`${getApiBase()}/content/types`, {
     headers: buildForwardHeaders(),
     cache: "no-store",
@@ -16,6 +20,9 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  const denied = await requireSuperAdmin();
+  if (denied) return denied;
+
   const body = await request.text();
   const res = await fetch(`${getApiBase()}/content/types`, {
     method: "POST",

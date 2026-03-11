@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
-import { requireAdminOrEditor } from "../../auth";
+import { requireMinimumAdminRole } from "../../auth";
 import { buildForwardHeaders, getApiBase } from "../../utils";
 
 export async function PATCH(request: Request, { params }: { params: { id: string } }) {
-  const denied = await requireAdminOrEditor();
+  const denied = await requireMinimumAdminRole();
   if (denied) {
     return denied;
   }
@@ -24,7 +24,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
 }
 
 export async function DELETE(_request: Request, { params }: { params: { id: string } }) {
-  const denied = await requireAdminOrEditor();
+  const denied = await requireMinimumAdminRole();
   if (denied) {
     return denied;
   }
