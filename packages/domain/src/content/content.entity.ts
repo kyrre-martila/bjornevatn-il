@@ -76,6 +76,8 @@ export type ContentFieldDefinition = {
 export type ContentItem = {
   id: string;
   contentTypeId: string;
+  parentId: string | null;
+  sortOrder: number;
   slug: string;
   title: string;
   seoTitle: string | null;
@@ -113,4 +115,9 @@ export type Media = {
   originalFilename: string | null;
   storageKey: string | null;
   createdAt: Date;
+};
+
+
+export type ContentItemTreeNode = ContentItem & {
+  children: ContentItemTreeNode[];
 };
