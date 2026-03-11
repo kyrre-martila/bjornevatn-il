@@ -1,50 +1,33 @@
 :root {
   color-scheme: light dark;
 
-  /* Global design tokens */
-  --color-primary: #bc6266;
-  --color-secondary: #ce8490;
-  --color-surface: #ffffff;
-  --color-surface-muted: #e7b9ab;
-  --color-text: #33312e;
-  --color-text-muted: #6f6c67;
-  --color-border: rgba(0, 0, 0, 0.06);
+  /* App-level aliases mapped to shared token foundation */
+  --color-surface: var(--site-color-bg, var(--color-neutral-0));
+  --color-surface-muted: var(--site-color-surface, var(--color-neutral-soft));
+  --color-text: var(--site-color-text, var(--color-base));
+  --color-text-muted: var(--site-color-text-muted, var(--color-base-muted));
+  --color-border: var(--site-color-border, var(--color-border-subtle));
+  --color-muted: var(--color-text-muted);
 
-  --space-xs: 4px;
-  --space-sm: 8px;
-  --space-md: 12px;
-  --space-lg: 16px;
-  --space-xl: 24px;
+  --space-sm: var(--space-xs);
+  --space-md: var(--space-s);
+  --space-lg: var(--space-m);
 
-  --font-size-sm: 0.875rem;
-  --font-size-md: 1rem;
-  --font-size-lg: clamp(1.1rem, 1rem + 0.4vw, 1.3rem);
-  --font-size-xl: clamp(1.3rem, 1.1rem + 0.8vw, 1.6rem);
+  --font-size-sm: var(--text-s);
+  --font-size-md: var(--text-m);
+  --font-size-lg: var(--text-l);
+  --font-size-xl: var(--text-xl);
 
-  --radius-sm: 6px;
-  --radius-md: 10px;
-  --radius-lg: 16px;
+  --radius-sm: var(--radius-s);
+  --radius-md: var(--radius-m);
+  --radius-lg: var(--radius-l);
 
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.18);
-  --shadow-md: 0 10px 40px rgba(0, 0, 0, 0.32);
+  --shadow-sm: var(--shadow-1);
+  --shadow-md: var(--shadow-2);
 
   --container-sm: var(--site-container-sm, 640px);
   --container-md: var(--site-container-md, 720px);
   --container-lg: var(--site-container-lg, 1120px);
-
-  /* Backward-compatible aliases */
-  --space-s: var(--space-sm);
-  --space-m: var(--space-md);
-  --space-l: var(--space-lg);
-  --text-s: var(--font-size-sm);
-  --text-m: var(--font-size-md);
-  --text-l: var(--font-size-lg);
-  --text-xl: var(--font-size-xl);
-  --radius-s: var(--radius-sm);
-  --radius-m: var(--radius-md);
-  --radius-l: var(--radius-lg);
-  --shadow-1: var(--shadow-sm);
-  --shadow-2: var(--shadow-md);
 }
 * {
   box-sizing: border-box;
@@ -61,8 +44,8 @@ body.app-root {
     "Segoe UI",
     sans-serif
   );
-  background: var(--color-surface, #ffffff);
-  color: var(--color-base, #111827);
+  background: var(--color-surface, var(--color-neutral-0));
+  color: var(--color-text, var(--color-base));
   line-height: 1.5;
 }
 

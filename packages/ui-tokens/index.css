@@ -1,94 +1,88 @@
 :root {
-  /* Minimal public website tokens */
-
-  /* Brand colors */
-
-  /* Primary & secondary */
-  --color-primary: #BC6266;
-  --color-secondary: #CE8490;
-
-  /* Accent */
-  --color-accent: #D27054;
+  /* Color tokens */
+  --color-primary: #bc6266;
+  --color-secondary: #ce8490;
+  --color-accent: #d27054;
   --color-accent-soft: rgba(210, 112, 84, 0.16);
   --color-accent-contrast: #ffffff;
 
-  /* Base (text / dark base) */
-  --color-base: #33312E;
-  --color-base-muted: #6F6C67;
+  --color-base: #33312e;
+  --color-base-muted: #6f6c67;
 
-  /* Neutral background family */
-  --color-neutral: #D3C4B3;       /* main background */
-  --color-neutral-soft: #E7B9AB;  /* softer background */
+  --color-neutral: #d3c4b3;
+  --color-neutral-soft: #e7b9ab;
 
-  /* Optional grayscale neutrals for borders, etc. */
   --color-neutral-0: #ffffff;
   --color-neutral-50: #fafafa;
   --color-neutral-100: #f5f5f5;
   --color-neutral-200: #e5e5e5;
   --color-neutral-400: #a3a3a3;
+  --color-neutral-500: #737373;
   --color-neutral-600: #525252;
   --color-neutral-900: #171717;
 
-  /* Borders */
+  --color-success: #15803d;
+  --color-danger: #b91c1c;
+
   --color-border-subtle: rgba(0, 0, 0, 0.06);
   --color-border-strong: rgba(0, 0, 0, 0.18);
 
-  /* Spacing (ACSS-style) */
-  --space-xs: 4px;
-  --space-s: 8px;
-  --space-m: 12px;
-  --space-l: 16px;
-  --space-xl: 24px;
-  --space-2xl: 32px;
+  /* Spacing tokens */
+  --space-3xs: 2px;
+  --space-2xs: 6px;
+  --space-xs: 8px;
+  --space-s: 12px;
+  --space-m: 16px;
+  --space-l: 24px;
+  --space-xl: 32px;
+  --space-2xl: 48px;
 
-  /* Public layout spacing aliases */
-  --site-space-1: var(--space-xs);
-  --site-space-2: var(--space-s);
-  --site-space-3: var(--space-m);
-  --site-space-4: var(--space-l);
-  --site-space-5: var(--space-xl);
-
-  /* Radius */
+  /* Radius tokens */
   --radius-s: 6px;
   --radius-m: 10px;
   --radius-l: 16px;
   --radius-pill: 999px;
+
+  /* Shadow tokens */
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.18);
+  --shadow-2: 0 10px 40px rgba(0, 0, 0, 0.32);
+
+  /* Typography tokens */
+  --font-sans:
+    system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+
+  --text-xs: clamp(0.75rem, 0.72rem + 0.15vw, 0.82rem);
+  --text-s: clamp(0.875rem, 0.84rem + 0.2vw, 0.95rem);
+  --text-m: clamp(1rem, 0.94rem + 0.3vw, 1.12rem);
+  --text-l: clamp(1.2rem, 1rem + 0.7vw, 1.5rem);
+  --text-xl: clamp(1.4rem, 1.05rem + 1.2vw, 1.9rem);
+  --text-2xl: clamp(1.8rem, 1.2rem + 2vw, 2.6rem);
+
+  /* Layout and semantic aliases */
+  --site-container-sm: 640px;
+  --site-container-md: 720px;
+  --site-container-lg: 1120px;
+
+  --site-space-1: var(--space-3xs);
+  --site-space-2: var(--space-2xs);
+  --site-space-3: var(--space-xs);
+  --site-space-4: var(--space-m);
+  --site-space-5: var(--space-l);
 
   --site-radius-sm: var(--radius-s);
   --site-radius-md: var(--radius-m);
   --site-radius-lg: var(--radius-l);
   --site-radius-pill: var(--radius-pill);
 
-  /* Shadows */
-  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.18);
-  --shadow-2: 0 10px 40px rgba(0, 0, 0, 0.32);
-
   --site-shadow-sm: var(--shadow-1);
   --site-shadow-md: var(--shadow-2);
-
-  /* Typography */
-
-  /* Body text: static */
-  --text-xs: 0.75rem;   /* 12px */
-  --text-s: 0.875rem;   /* 14px */
-  --text-m: 1rem;       /* 16px */
-
-  /* Display text: hybrid fluid with clamp() */
-  --text-l: clamp(1.1rem, 1.0rem + 0.4vw, 1.3rem);
-  --text-xl: clamp(1.3rem, 1.1rem + 0.8vw, 1.6rem);
-  --text-2xl: clamp(1.6rem, 1.2rem + 1.4vw, 2.2rem);
 
   --site-font-size-sm: var(--text-s);
   --site-font-size-md: var(--text-m);
   --site-font-size-lg: var(--text-l);
   --site-font-size-xl: var(--text-2xl);
 
-  /* Public container widths */
-  --site-container-sm: 640px;
-  --site-container-md: 720px;
-  --site-container-lg: 1120px;
-
-  /* Public color aliases */
   --site-color-bg: var(--color-neutral-0);
   --site-color-surface: var(--color-neutral-soft);
   --site-color-text: var(--color-base);
@@ -96,8 +90,4 @@
   --site-color-primary: var(--color-primary);
   --site-color-primary-contrast: var(--color-accent-contrast);
   --site-color-border: var(--color-border-subtle);
-
-  /* Font family */
-  --font-sans: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
-    Roboto, "Helvetica Neue", Arial, sans-serif;
 }
