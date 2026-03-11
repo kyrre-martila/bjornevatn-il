@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
-import { requireAdminOrEditor } from "../auth";
+import { requireMinimumAdminRole } from "../auth";
 import { buildForwardHeaders, getApiBase } from "../utils";
 
 export async function GET() {
-  const denied = await requireAdminOrEditor();
+  const denied = await requireMinimumAdminRole();
   if (denied) {
     return denied;
   }

@@ -18,6 +18,9 @@ class PublicUserDto {
 
   @ApiProperty({ nullable: true, type: String })
   name!: string | null;
+
+  @ApiProperty()
+  role!: string;
 }
 
 class AuthResponseDto {
@@ -76,6 +79,7 @@ export class AuthController {
         id: user.id,
         email: user.email,
         name: user.name,
+        role: user.role,
       },
       accessToken,
     };

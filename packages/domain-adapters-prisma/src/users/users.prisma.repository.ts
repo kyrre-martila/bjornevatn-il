@@ -13,7 +13,7 @@ function toDomain(user: PrismaUser): User {
     id: user.id,
     email: user.email,
     name: displayName || undefined,
-    role: "USER",
+    role: user.role,
     createdAt: user.createdAt,
     updatedAt: user.updatedAt,
     profile: {
@@ -54,7 +54,7 @@ export class UsersPrismaRepository implements UsersRepository {
   async create(data: {
     email: string;
     name?: string;
-    role?: "ADMIN" | "USER";
+    role?: "super_admin" | "admin" | "editor";
     passwordHash?: string;
   }): Promise<User> {
     const { firstName, lastName } = splitName(data.name);
@@ -66,6 +66,7 @@ export class UsersPrismaRepository implements UsersRepository {
         firstName,
         lastName,
         passwordHash: data.passwordHash ?? null,
+        role: data.role ?? "editor",
       },
     });
     return toDomain(user);
@@ -85,6 +86,9 @@ export class UsersPrismaRepository implements UsersRepository {
       updateData.displayName = data.name ?? null;
       updateData.firstName = firstName;
       updateData.lastName = lastName;
+    }
+    if (data.role) {
+      updateData.role = data.role;
     }
     if (data.profile) {
       if ("phone" in data.profile) {

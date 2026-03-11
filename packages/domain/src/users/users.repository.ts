@@ -6,7 +6,7 @@ export interface UsersRepository {
   create(data: {
     email: string;
     name?: string;
-    role?: "ADMIN" | "USER";
+    role?: "super_admin" | "admin" | "editor";
     passwordHash?: string;
   }): Promise<User>;
   update(

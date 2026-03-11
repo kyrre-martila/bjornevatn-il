@@ -1,7 +1,11 @@
 import { NextResponse } from "next/server";
+import { requireMinimumAdminRole } from "../auth";
 import { buildForwardHeaders, getApiBase } from "../utils";
 
 export async function GET() {
+  const denied = await requireMinimumAdminRole();
+  if (denied) return denied;
+
   const res = await fetch(`${getApiBase()}/content/pages`, {
     headers: buildForwardHeaders(),
     cache: "no-store",
@@ -16,6 +20,9 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  const denied = await requireMinimumAdminRole();
+  if (denied) return denied;
+
   const body = await request.text();
   const res = await fetch(`${getApiBase()}/content/pages`, {
     method: "POST",

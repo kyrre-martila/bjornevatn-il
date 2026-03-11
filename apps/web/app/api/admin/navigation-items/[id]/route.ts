@@ -1,10 +1,14 @@
 import { NextResponse } from "next/server";
+import { requireMinimumAdminRole } from "../../auth";
 import { buildForwardHeaders, getApiBase } from "../../utils";
 
 export async function PATCH(
   request: Request,
   { params }: { params: { id: string } },
 ) {
+  const denied = await requireMinimumAdminRole("admin");
+  if (denied) return denied;
+
   const body = await request.text();
   const res = await fetch(
     `${getApiBase()}/content/navigation-items/${params.id}`,
@@ -30,6 +34,9 @@ export async function DELETE(
   _: Request,
   { params }: { params: { id: string } },
 ) {
+  const denied = await requireMinimumAdminRole("admin");
+  if (denied) return denied;
+
   const res = await fetch(
     `${getApiBase()}/content/navigation-items/${params.id}`,
     {
