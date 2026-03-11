@@ -68,6 +68,7 @@ export type ContentFieldType =
   | "relation"
   | "media"
   | "contentItem"
+  | "page"
   | "date"
   | "boolean";
 
@@ -76,7 +77,15 @@ export type ContentFieldRelationTargetType = "contentType" | "page" | "media";
 export type ContentFieldRelationConfig = {
   targetType: ContentFieldRelationTargetType;
   targetSlug?: string;
+  targetModel?: string;
+  multiple?: boolean;
 };
+
+export type ResolvedContentFieldReferenceValue =
+  | ContentItem
+  | Page
+  | Media
+  | null;
 
 export type ContentFieldDefinition = {
   key: string;
@@ -90,7 +99,10 @@ export type ContentFieldDefinition = {
 
 export type ResolvedContentFieldReference = {
   targetType: "contentItem" | "page" | "media";
-  value: ContentItem | Page | Media | null;
+  multiple?: boolean;
+  value:
+    | ResolvedContentFieldReferenceValue
+    | ResolvedContentFieldReferenceValue[];
 };
 
 export type ContentItem = {

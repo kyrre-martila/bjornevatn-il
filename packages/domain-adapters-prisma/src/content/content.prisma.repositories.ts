@@ -106,6 +106,7 @@ const CONTENT_FIELD_TYPES: ContentFieldType[] = [
   "relation",
   "media",
   "contentItem",
+  "page",
   "date",
   "boolean",
 ];
@@ -162,16 +163,28 @@ function mapContentFields(fields: unknown): ContentFieldDefinition[] {
         typeof targetSlugRaw === "string" && targetSlugRaw.trim()
           ? targetSlugRaw.trim()
           : undefined;
+      const targetModelRaw = relationValue?.targetModel;
+      const targetModel =
+        typeof targetModelRaw === "string" && targetModelRaw.trim()
+          ? targetModelRaw.trim()
+          : undefined;
+      const multiple = Boolean(relationValue?.multiple);
 
-      const relation =
-        type === "relation" && targetType
+      const relation: ContentFieldDefinition["relation"] =
+        (type === "relation" ||
+          type === "media" ||
+          type === "contentItem" ||
+          type === "page") &&
+        targetType
           ? {
               targetType,
               ...(targetSlug ? { targetSlug } : {}),
+              ...(targetModel ? { targetModel } : {}),
+              multiple,
             }
           : undefined;
 
-      return {
+      const mapped: ContentFieldDefinition = {
         key,
         ...(labelRaw ? { label: labelRaw } : {}),
         ...(descriptionRaw ? { description: descriptionRaw } : {}),
@@ -179,7 +192,9 @@ function mapContentFields(fields: unknown): ContentFieldDefinition[] {
         type,
         required: Boolean(record.required),
         ...(relation ? { relation } : {}),
-      } satisfies ContentFieldDefinition;
+      };
+
+      return mapped;
     })
     .filter((field): field is ContentFieldDefinition => Boolean(field));
 }
@@ -679,6 +694,26 @@ export class ContentItemsPrismaRepository implements ContentItemsRepository {
       ]),
     );
 
+    const toReferenceIds = (value: unknown, multiple: boolean): string[] => {
+      if (multiple) {
+        if (!Array.isArray(value)) {
+          return [];
+        }
+
+        return value
+          .filter((entry): entry is string => typeof entry === "string")
+          .map((entry) => entry.trim())
+          .filter(Boolean);
+      }
+
+      if (typeof value !== "string") {
+        return [];
+      }
+
+      const normalized = value.trim();
+      return normalized ? [normalized] : [];
+    };
+
     const pageIds = new Set<string>();
     const mediaIds = new Set<string>();
     const contentItemIds = new Set<string>();
@@ -689,33 +724,33 @@ export class ContentItemsPrismaRepository implements ContentItemsRepository {
         if (
           field.type !== "relation" &&
           field.type !== "media" &&
-          field.type !== "contentItem"
+          field.type !== "contentItem" &&
+          field.type !== "page"
         ) {
           continue;
         }
 
-        const rawValue = item.data[field.key];
-        if (typeof rawValue !== "string" || !rawValue.trim()) {
-          continue;
-        }
+        const relationTargetType =
+          field.type === "media"
+            ? "media"
+            : field.type === "contentItem"
+              ? "contentType"
+              : field.type === "page"
+                ? "page"
+                : field.relation?.targetType;
+        const ids = toReferenceIds(
+          item.data[field.key],
+          Boolean(field.relation?.multiple),
+        );
 
-        const refId = rawValue.trim();
-        if (field.type === "media") {
-          mediaIds.add(refId);
-          continue;
-        }
-
-        if (field.type === "contentItem") {
-          contentItemIds.add(refId);
-          continue;
-        }
-
-        if (field.relation?.targetType === "page") {
-          pageIds.add(refId);
-        } else if (field.relation?.targetType === "media") {
-          mediaIds.add(refId);
-        } else if (field.relation?.targetType === "contentType") {
-          contentItemIds.add(refId);
+        for (const refId of ids) {
+          if (relationTargetType === "page") {
+            pageIds.add(refId);
+          } else if (relationTargetType === "media") {
+            mediaIds.add(refId);
+          } else if (relationTargetType === "contentType") {
+            contentItemIds.add(refId);
+          }
         }
       }
     }
@@ -755,45 +790,48 @@ export class ContentItemsPrismaRepository implements ContentItemsRepository {
         {};
 
       for (const field of fields) {
-        const rawValue = item.data[field.key];
-        if (typeof rawValue !== "string" || !rawValue.trim()) {
+        const multiple = Boolean(field.relation?.multiple);
+        const ids = toReferenceIds(item.data[field.key], multiple);
+        if (ids.length === 0) {
           continue;
         }
 
-        const refId = rawValue.trim();
-        if (field.type === "media") {
+        const relationTargetType =
+          field.type === "media"
+            ? "media"
+            : field.type === "contentItem"
+              ? "contentType"
+              : field.type === "page"
+                ? "page"
+                : field.relation?.targetType;
+
+        if (relationTargetType === "page") {
+          const values = ids.map((refId) => pageById.get(refId) ?? null);
+          resolvedReferences[field.key] = {
+            targetType: "page",
+            ...(multiple ? { multiple: true } : {}),
+            value: multiple ? values : (values[0] ?? null),
+          };
+          continue;
+        }
+
+        if (relationTargetType === "media") {
+          const values = ids.map((refId) => mediaById.get(refId) ?? null);
           resolvedReferences[field.key] = {
             targetType: "media",
-            value: mediaById.get(refId) ?? null,
+            ...(multiple ? { multiple: true } : {}),
+            value: multiple ? values : (values[0] ?? null),
           };
           continue;
         }
 
-        if (field.type === "contentItem") {
+        if (relationTargetType === "contentType") {
+          const values = ids.map((refId) => contentItemById.get(refId) ?? null);
           resolvedReferences[field.key] = {
             targetType: "contentItem",
-            value: contentItemById.get(refId) ?? null,
+            ...(multiple ? { multiple: true } : {}),
+            value: multiple ? values : (values[0] ?? null),
           };
-          continue;
-        }
-
-        if (field.type === "relation") {
-          if (field.relation?.targetType === "page") {
-            resolvedReferences[field.key] = {
-              targetType: "page",
-              value: pageById.get(refId) ?? null,
-            };
-          } else if (field.relation?.targetType === "media") {
-            resolvedReferences[field.key] = {
-              targetType: "media",
-              value: mediaById.get(refId) ?? null,
-            };
-          } else if (field.relation?.targetType === "contentType") {
-            resolvedReferences[field.key] = {
-              targetType: "contentItem",
-              value: contentItemById.get(refId) ?? null,
-            };
-          }
         }
       }
 

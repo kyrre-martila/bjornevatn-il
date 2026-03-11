@@ -196,6 +196,7 @@ const CONTENT_FIELD_TYPES = [
   "relation",
   "media",
   "contentItem",
+  "page",
   "date",
   "boolean",
 ] as const;
@@ -212,6 +213,16 @@ class ContentFieldRelationDto {
   @IsOptional()
   @IsString()
   targetSlug?: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  targetModel?: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsBoolean()
+  multiple?: boolean;
 }
 
 class ContentFieldDefinitionDto {
@@ -1082,32 +1093,52 @@ export class ContentController {
     fields: ContentFieldDefinition[],
   ): Promise<void> {
     for (const field of fields) {
-      if (field.type !== "relation") {
+      if (
+        field.type !== "relation" &&
+        field.type !== "contentItem" &&
+        field.type !== "media" &&
+        field.type !== "page"
+      ) {
         continue;
       }
 
-      if (!field.relation) {
+      const relation =
+        field.type === "relation"
+          ? field.relation
+          : {
+              targetType:
+                field.type === "contentItem"
+                  ? ("contentType" as const)
+                  : field.type,
+              ...(field.relation?.targetSlug
+                ? { targetSlug: field.relation.targetSlug }
+                : {}),
+              ...(field.relation?.targetModel
+                ? { targetModel: field.relation.targetModel }
+                : {}),
+              ...(field.relation?.multiple ? { multiple: true } : {}),
+            };
+
+      if (!relation) {
         throw new BadRequestException(
           `Field ${field.key} requires relation configuration.`,
         );
       }
 
-      if (
-        field.relation.targetType === "contentType" &&
-        (!field.relation.targetSlug || !field.relation.targetSlug.trim())
-      ) {
-        throw new BadRequestException(
-          `Field ${field.key} requires relation.targetSlug when targetType is contentType.`,
-        );
-      }
+      if (relation.targetType === "contentType") {
+        const targetSlug = relation.targetSlug?.trim();
+        const targetModel = relation.targetModel?.trim();
+        const resolvedTarget = targetSlug || targetModel;
+        if (!resolvedTarget) {
+          throw new BadRequestException(
+            `Field ${field.key} requires relation.targetSlug or relation.targetModel when targetType is contentType.`,
+          );
+        }
 
-      if (field.relation.targetType === "contentType") {
-        const target = await this.contentTypes.findBySlug(
-          field.relation.targetSlug!,
-        );
+        const target = await this.contentTypes.findBySlug(resolvedTarget);
         if (!target) {
           throw new BadRequestException(
-            `Field ${field.key} references unknown content type slug: ${field.relation.targetSlug}.`,
+            `Field ${field.key} references unknown content type slug: ${resolvedTarget}.`,
           );
         }
       }
@@ -1119,6 +1150,52 @@ export class ContentController {
     data: Record<string, unknown>,
   ) {
     const mediaByUrl = await this.getMediaByUrlMap();
+
+    const normalizeRelationIds = (
+      field: ContentFieldDefinition,
+      value: unknown,
+    ): string[] => {
+      const multiple = Boolean(field.relation?.multiple);
+
+      if (multiple) {
+        if (!Array.isArray(value)) {
+          throw new BadRequestException(
+            `Field ${field.key} must be an array of reference ids.`,
+          );
+        }
+
+        const ids = value.map((entry) => {
+          if (typeof entry !== "string") {
+            throw new BadRequestException(
+              `Field ${field.key} must contain only string reference ids.`,
+            );
+          }
+
+          return entry.trim();
+        });
+
+        const filtered = ids.filter(Boolean);
+        if (field.required && filtered.length === 0) {
+          throw new BadRequestException(`Missing required field: ${field.key}`);
+        }
+
+        return filtered;
+      }
+
+      if (typeof value !== "string") {
+        throw new BadRequestException(`Field ${field.key} must be a string.`);
+      }
+
+      const normalized = value.trim();
+      if (!normalized) {
+        if (field.required) {
+          throw new BadRequestException(`Missing required field: ${field.key}`);
+        }
+        return [];
+      }
+
+      return [normalized];
+    };
 
     for (const field of fields) {
       const value = data[field.key];
@@ -1142,92 +1219,108 @@ export class ContentController {
         continue;
       }
 
-      if (typeof value !== "string") {
-        throw new BadRequestException(`Field ${field.key} must be a string.`);
-      }
-
-      const normalized = value.trim();
-
       if (field.type === "image") {
+        if (typeof value !== "string") {
+          throw new BadRequestException(`Field ${field.key} must be a string.`);
+        }
+
+        const normalized = value.trim();
         const matchedMedia = mediaByUrl.get(normalized);
         if (matchedMedia && !matchedMedia.alt.trim()) {
           throw new BadRequestException(
             `Field ${field.key} references media without alt text. Update that media item before saving.`,
           );
         }
+        continue;
       }
 
-      if (field.type === "media") {
-        const media = await this.media.findById(normalized);
-        if (!media) {
-          throw new BadRequestException(
-            `Field ${field.key} references missing media.`,
-          );
+      if (
+        field.type !== "relation" &&
+        field.type !== "media" &&
+        field.type !== "contentItem" &&
+        field.type !== "page"
+      ) {
+        if (typeof value !== "string") {
+          throw new BadRequestException(`Field ${field.key} must be a string.`);
         }
-        if (!media.alt.trim()) {
-          throw new BadRequestException(
-            `Field ${field.key} references media without alt text. Update that media item before saving.`,
-          );
-        }
+        continue;
       }
 
-      if (field.type === "contentItem") {
-        const referencedItem = await this.contentItems.findById(normalized);
-        if (!referencedItem) {
-          throw new BadRequestException(
-            `Field ${field.key} references missing content item.`,
-          );
-        }
+      const relation =
+        field.type === "relation"
+          ? field.relation
+          : {
+              targetType:
+                field.type === "contentItem"
+                  ? ("contentType" as const)
+                  : field.type,
+              ...(field.relation?.targetSlug
+                ? { targetSlug: field.relation.targetSlug }
+                : {}),
+              ...(field.relation?.targetModel
+                ? { targetModel: field.relation.targetModel }
+                : {}),
+              ...(field.relation?.multiple ? { multiple: true } : {}),
+            };
+
+      if (!relation) {
+        throw new BadRequestException(
+          `Field ${field.key} requires relation configuration.`,
+        );
       }
 
-      if (field.type === "relation") {
-        if (!field.relation) {
-          throw new BadRequestException(
-            `Field ${field.key} requires relation configuration.`,
-          );
-        }
-
-        if (field.relation.targetType === "page") {
-          const page = await this.pages.findById(normalized);
+      const ids = normalizeRelationIds(field, value);
+      for (const refId of ids) {
+        if (relation.targetType === "page") {
+          const page = await this.pages.findById(refId);
           if (!page) {
             throw new BadRequestException(
               `Field ${field.key} references missing page.`,
             );
           }
+          continue;
         }
 
-        if (field.relation.targetType === "media") {
-          const media = await this.media.findById(normalized);
+        if (relation.targetType === "media") {
+          const media = await this.media.findById(refId);
           if (!media) {
             throw new BadRequestException(
               `Field ${field.key} references missing media.`,
             );
           }
+          if (!media.alt.trim()) {
+            throw new BadRequestException(
+              `Field ${field.key} references media without alt text. Update that media item before saving.`,
+            );
+          }
+          continue;
         }
 
-        if (field.relation.targetType === "contentType") {
-          const targetSlug = field.relation.targetSlug?.trim();
-          if (!targetSlug) {
+        if (relation.targetType === "contentType") {
+          const targetSlug = relation.targetSlug?.trim();
+          const targetModel = relation.targetModel?.trim();
+          const resolvedTarget = targetSlug || targetModel;
+          if (!resolvedTarget) {
             throw new BadRequestException(
-              `Field ${field.key} requires relation.targetSlug when targetType is contentType.`,
+              `Field ${field.key} requires relation.targetSlug or relation.targetModel when targetType is contentType.`,
             );
           }
 
           const targetContentType =
-            await this.contentTypes.findBySlug(targetSlug);
+            await this.contentTypes.findBySlug(resolvedTarget);
           if (!targetContentType) {
             throw new BadRequestException(
-              `Field ${field.key} references unknown content type slug: ${targetSlug}.`,
+              `Field ${field.key} references unknown content type slug: ${resolvedTarget}.`,
             );
           }
 
-          const referencedItem = await this.contentItems.findById(normalized);
+          const referencedItem = await this.contentItems.findById(refId);
           if (
             !referencedItem ||
             referencedItem.contentTypeId !== targetContentType.id
           ) {
             throw new BadRequestException(
-              `Field ${field.key} must reference an item from content type: ${targetSlug}.`,
+              `Field ${field.key} must reference an item from content type: ${resolvedTarget}.`,
             );
           }
         }

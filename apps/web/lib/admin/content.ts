@@ -5,6 +5,10 @@ export type AdminContentFieldType =
   | "textarea"
   | "rich_text"
   | "image"
+  | "relation"
+  | "media"
+  | "contentItem"
+  | "page"
   | "date"
   | "boolean";
 
@@ -15,6 +19,12 @@ export type AdminContentFieldDefinition = {
   placeholder?: string;
   type: AdminContentFieldType;
   required: boolean;
+  relation?: {
+    targetType: "contentType" | "page" | "media";
+    targetSlug?: string;
+    targetModel?: string;
+    multiple?: boolean;
+  };
 };
 
 export type AdminContentType = {

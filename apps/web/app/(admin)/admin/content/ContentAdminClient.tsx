@@ -47,13 +47,34 @@ function fieldTypeInputType(type: AdminContentFieldDefinition["type"]) {
   return "text";
 }
 
+function parseMultiReference(value: string): string[] {
+  return value
+    .split(",")
+    .map((entry) => entry.trim())
+    .filter(Boolean);
+}
+
+function isMultipleReferenceField(field: AdminContentFieldDefinition): boolean {
+  return Boolean(
+    (field.type === "relation" ||
+      field.type === "media" ||
+      field.type === "contentItem" ||
+      field.type === "page") &&
+      field.relation?.multiple,
+  );
+}
+
 function stringifyFieldValue(
   value: unknown,
-  type: AdminContentFieldDefinition["type"],
+  field: AdminContentFieldDefinition,
 ) {
   if (value === undefined || value === null) return "";
-  if (type === "boolean") return value ? "true" : "false";
-  if (type === "date" && typeof value === "string") return value.slice(0, 10);
+  if (field.type === "boolean") return value ? "true" : "false";
+  if (field.type === "date" && typeof value === "string")
+    return value.slice(0, 10);
+  if (isMultipleReferenceField(field) && Array.isArray(value)) {
+    return value.filter((entry) => typeof entry === "string").join(", ");
+  }
   return String(value);
 }
 
@@ -62,7 +83,7 @@ function buildValues(
   data: Record<string, unknown>,
 ): Record<string, string> {
   return fields.reduce<Record<string, string>>((acc, field) => {
-    acc[field.key] = stringifyFieldValue(data[field.key], field.type);
+    acc[field.key] = stringifyFieldValue(data[field.key], field);
     return acc;
   }, {});
 }
@@ -81,6 +102,11 @@ function buildDataFromFields(
 
     if (field.type === "boolean") {
       data[field.key] = value === "true";
+      return;
+    }
+
+    if (isMultipleReferenceField(field)) {
+      data[field.key] = parseMultiReference(value);
       return;
     }
 
@@ -542,7 +568,10 @@ export function ContentAdminClient({
               <button type="button" onClick={() => setSelectedTypeId(type.id)}>
                 Items
               </button>
-              <button type="button" onClick={() => void deleteContentType(type.id)}>
+              <button
+                type="button"
+                onClick={() => void deleteContentType(type.id)}
+              >
                 Delete
               </button>
             </>
