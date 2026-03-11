@@ -7,7 +7,7 @@ import {
   withTitleSuffix,
 } from "../../../../lib/content";
 import { renderBlock } from "./block-renderer";
-import { resolveTemplate } from "../../templates/template-registry";
+import { resolvePageTemplate } from "../../templates/template-registry";
 
 function stripHtml(value: string): string {
   return value
@@ -108,7 +108,7 @@ export default async function GenericPage({
     })),
   );
 
-  const Template = resolveTemplate(content.templateKey);
+  const Template = resolvePageTemplate(content.templateKey);
 
   return (
     <Template title={content.title}>

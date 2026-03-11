@@ -589,9 +589,12 @@ export async function resolveServiceBySlug(
 export async function resolveNewsItemBySlug(
   slug: string,
 ): Promise<{ redirectTo: string | null; item: NewsDetailItem | null }> {
-  const response = await fetchContent<ApiContentItem | ApiSlugRedirect>(
-    `/content/items/type-slug/news/${encodeURIComponent(slug)}`,
-  );
+  const [response, templateKey] = await Promise.all([
+    fetchContent<ApiContentItem | ApiSlugRedirect>(
+      `/content/items/type-slug/news/${encodeURIComponent(slug)}`,
+    ),
+    getContentTypeTemplateKey("news"),
+  ]);
 
   if (isApiSlugRedirect(response)) {
     return { redirectTo: response.redirectTo, item: null };
@@ -603,7 +606,13 @@ export async function resolveNewsItemBySlug(
     return { redirectTo: null, item: null };
   }
 
-  return { redirectTo: null, item: mapApiContentItemDetail(item) };
+  return {
+    redirectTo: null,
+    item: {
+      ...mapApiContentItemDetail(item),
+      templateKey,
+    },
+  };
 }
 
 export async function getNewsItemBySlug(

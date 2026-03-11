@@ -2,7 +2,7 @@ import Link from "next/link";
 
 import { getHomepageContent, getPageContentBySlug } from "../../lib/content";
 import { renderBlock } from "./page/[slug]/block-renderer";
-import { resolveTemplate } from "./templates/template-registry";
+import { resolvePageTemplate } from "./templates/template-registry";
 
 export default async function Homepage() {
   const content = await getPageContentBySlug("home");
@@ -38,7 +38,7 @@ export default async function Homepage() {
     })),
   );
 
-  const Template = resolveTemplate(content.templateKey);
+  const Template = resolvePageTemplate(content.templateKey);
 
   return (
     <Template title={content.title}>

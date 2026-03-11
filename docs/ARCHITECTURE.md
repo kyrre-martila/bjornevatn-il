@@ -31,6 +31,16 @@ The seeded `services` ContentType is the canonical blueprint example for extendi
 - `ContentItem` data: five demo services (`Accounting`, `Payroll`, `Invoicing`, `Annual Reports`, `Advisory`).
 - Hierarchy: `Accounting` is a parent with `Payroll` and `Invoicing` as children.
 - Taxonomy: `Service Category` taxonomy with `Finance`, `Operations`, and `Advisory` terms assigned to service items.
-- Rendering pattern: `/services` archive lists published services; `/services/[slug]` resolves template from content type and falls back to `IndexTemplate` when missing.
+- Rendering pattern: `/services` archive lists published services; `/services/[slug]` resolves template from ContentType via the central web template registry and falls back to `IndexTemplate` when missing.
 
 Use this pattern when adding additional collections like case studies, team profiles, or portfolios.
+
+
+## Public template model
+
+- A template is a complete page component (it may include header, main content, and footer).
+- The web app keeps a central template registry in `apps/web/app/(public)/templates/template-registry.ts`.
+- Public rendering resolves templates by `templateKey` for:
+  - `Page` records (`resolvePageTemplate`)
+  - `ContentType` records (`resolveContentTypeTemplate`)
+- Missing or unknown template keys always fall back to `IndexTemplate`.
