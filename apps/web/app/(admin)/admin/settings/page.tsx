@@ -8,7 +8,7 @@ import { SettingsEditorClient } from "./SettingsEditorClient";
 export default async function AdminSettingsPage() {
   const me = await getMe();
   if (!me?.user || !hasMinimumRole(me.user.role, "admin")) {
-    redirect("/admin");
+    redirect("/access-denied");
   }
 
   const settings = await listAdminSettings();

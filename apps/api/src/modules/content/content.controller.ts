@@ -11,6 +11,8 @@ import {
   Post,
   Put,
   Query,
+  Req,
+  ForbiddenException,
 } from "@nestjs/common";
 import { ApiProperty, ApiTags } from "@nestjs/swagger";
 import {
@@ -42,6 +44,9 @@ import type {
   ContentItemTermsRepository,
 } from "@org/domain";
 import { MediaService } from "./media.service";
+import { AuthService } from "../auth/auth.service";
+import { requireMinimumRole, requireSuperAdmin } from "../../common/auth/admin-access";
+import type { Request } from "express";
 
 type MediaUsageContext =
   | { kind: "page"; pageTitle: string; blockIndex: number; blockType: string }
@@ -686,6 +691,7 @@ export class ContentController {
     @Inject("MediaRepository")
     private readonly media: MediaRepository,
     private readonly mediaService: MediaService,
+    private readonly auth: AuthService,
   ) {}
 
   @Get("pages")
@@ -713,7 +719,11 @@ export class ContentController {
   }
 
   @Post("pages")
-  async createPage(@Body() body: CreatePageDto) {
+  async createPage(@Req() req: Request, @Body() body: CreatePageDto) {
+    const role = await requireMinimumRole(req, this.auth, "editor");
+    if (body.templateKey !== undefined && role !== "super_admin") {
+      throw new ForbiddenException("Access denied: only super_admin can modify page templates.");
+    }
     await this.validatePageBlocksMediaAlt(body.title, body.blocks);
     return this.pages.create({
       ...body,
@@ -723,7 +733,15 @@ export class ContentController {
   }
 
   @Patch("pages/:id")
-  async updatePage(@Param("id") id: string, @Body() body: UpdatePageDto) {
+  async updatePage(
+    @Req() req: Request,
+    @Param("id") id: string,
+    @Body() body: UpdatePageDto,
+  ) {
+    const role = await requireMinimumRole(req, this.auth, "editor");
+    if (body.templateKey !== undefined && role !== "super_admin") {
+      throw new ForbiddenException("Access denied: only super_admin can modify page templates.");
+    }
     if (body.blocks) {
       const page = await this.pages.findById(id);
       if (!page) {
@@ -739,7 +757,8 @@ export class ContentController {
   }
 
   @Delete("pages/:id")
-  async deletePage(@Param("id") id: string) {
+  async deletePage(@Req() req: Request, @Param("id") id: string) {
+    await requireMinimumRole(req, this.auth, "editor");
     await this.pages.delete(id);
     return { ok: true };
   }
@@ -755,7 +774,8 @@ export class ContentController {
   }
 
   @Post("types")
-  async createContentType(@Body() body: CreateContentTypeDto) {
+  async createContentType(@Req() req: Request, @Body() body: CreateContentTypeDto) {
+    await requireSuperAdmin(req, this.auth);
     await this.validateContentTypeFields(body.fields);
     return this.contentTypes.create({
       ...body,
@@ -765,9 +785,11 @@ export class ContentController {
 
   @Patch("types/:id")
   async updateContentType(
+    @Req() req: Request,
     @Param("id") id: string,
     @Body() body: UpdateContentTypeDto,
   ) {
+    await requireSuperAdmin(req, this.auth);
     if (body.fields) {
       await this.validateContentTypeFields(body.fields);
     }
@@ -776,7 +798,8 @@ export class ContentController {
   }
 
   @Delete("types/:id")
-  async deleteContentType(@Param("id") id: string) {
+  async deleteContentType(@Req() req: Request, @Param("id") id: string) {
+    await requireSuperAdmin(req, this.auth);
     const items = await this.contentItems.findManyByContentTypeId(id);
     if (items.length > 0) {
       throw new ConflictException(
@@ -1189,7 +1212,8 @@ export class ContentController {
   }
 
   @Post("items")
-  async createContentItem(@Body() body: CreateContentItemDto) {
+  async createContentItem(@Req() req: Request, @Body() body: CreateContentItemDto) {
+    await requireMinimumRole(req, this.auth, "editor");
     const contentType = await this.contentTypes.findById(body.contentTypeId);
     if (!contentType) {
       throw new BadRequestException("Invalid content type.");
@@ -1206,9 +1230,11 @@ export class ContentController {
 
   @Patch("items/:id")
   async updateContentItem(
+    @Req() req: Request,
     @Param("id") id: string,
     @Body() body: UpdateContentItemDto,
   ) {
+    await requireMinimumRole(req, this.auth, "editor");
     const existing = await this.contentItems.findById(id);
     if (!existing) {
       throw new BadRequestException("Content item not found.");
@@ -1226,7 +1252,8 @@ export class ContentController {
   }
 
   @Delete("items/:id")
-  async deleteContentItem(@Param("id") id: string) {
+  async deleteContentItem(@Req() req: Request, @Param("id") id: string) {
+    await requireMinimumRole(req, this.auth, "editor");
     await this.contentItems.delete(id);
     return { ok: true };
   }
@@ -1242,17 +1269,24 @@ export class ContentController {
   }
 
   @Post("taxonomies")
-  createTaxonomy(@Body() body: CreateTaxonomyDto) {
+  async createTaxonomy(@Req() req: Request, @Body() body: CreateTaxonomyDto) {
+    await requireSuperAdmin(req, this.auth);
     return this.taxonomies.create(body);
   }
 
   @Patch("taxonomies/:id")
-  updateTaxonomy(@Param("id") id: string, @Body() body: UpdateTaxonomyDto) {
+  async updateTaxonomy(
+    @Req() req: Request,
+    @Param("id") id: string,
+    @Body() body: UpdateTaxonomyDto,
+  ) {
+    await requireSuperAdmin(req, this.auth);
     return this.taxonomies.update(id, body);
   }
 
   @Delete("taxonomies/:id")
-  async deleteTaxonomy(@Param("id") id: string) {
+  async deleteTaxonomy(@Req() req: Request, @Param("id") id: string) {
+    await requireSuperAdmin(req, this.auth);
     await this.taxonomies.delete(id);
     return { ok: true };
   }
@@ -1271,17 +1305,24 @@ export class ContentController {
   }
 
   @Post("terms")
-  createTerm(@Body() body: CreateTermDto) {
+  async createTerm(@Req() req: Request, @Body() body: CreateTermDto) {
+    await requireSuperAdmin(req, this.auth);
     return this.terms.create({ ...body, parentId: body.parentId ?? null });
   }
 
   @Patch("terms/:id")
-  updateTerm(@Param("id") id: string, @Body() body: UpdateTermDto) {
+  async updateTerm(
+    @Req() req: Request,
+    @Param("id") id: string,
+    @Body() body: UpdateTermDto,
+  ) {
+    await requireSuperAdmin(req, this.auth);
     return this.terms.update(id, body);
   }
 
   @Delete("terms/:id")
-  async deleteTerm(@Param("id") id: string) {
+  async deleteTerm(@Req() req: Request, @Param("id") id: string) {
+    await requireSuperAdmin(req, this.auth);
     await this.terms.delete(id);
     return { ok: true };
   }
@@ -1293,9 +1334,11 @@ export class ContentController {
 
   @Put("items/:id/terms")
   async assignContentItemTerms(
+    @Req() req: Request,
     @Param("id") id: string,
     @Body() body: AssignTermsDto,
   ) {
+    await requireMinimumRole(req, this.auth, "editor");
     const item = await this.contentItems.findById(id);
     if (!item) {
       throw new BadRequestException("Content item not found.");
@@ -1306,9 +1349,11 @@ export class ContentController {
 
   @Delete("items/:id/terms/:termId")
   async removeContentItemTerm(
+    @Req() req: Request,
     @Param("id") id: string,
     @Param("termId") termId: string,
   ) {
+    await requireMinimumRole(req, this.auth, "editor");
     await this.contentItemTerms.remove(id, termId);
     return { ok: true };
   }
@@ -1319,41 +1364,49 @@ export class ContentController {
   }
 
   @Post("navigation-items")
-  createNavigationItem(@Body() body: CreateNavigationItemDto) {
+  async createNavigationItem(@Req() req: Request, @Body() body: CreateNavigationItemDto) {
+    await requireMinimumRole(req, this.auth, "admin");
     return this.navigation.create({ ...body, parentId: body.parentId ?? null });
   }
 
   @Patch("navigation-items/:id")
-  updateNavigationItem(
+  async updateNavigationItem(
+    @Req() req: Request,
     @Param("id") id: string,
     @Body() body: UpdateNavigationItemDto,
   ) {
+    await requireMinimumRole(req, this.auth, "admin");
     return this.navigation.update(id, body);
   }
 
   @Delete("navigation-items/:id")
-  async deleteNavigationItem(@Param("id") id: string) {
+  async deleteNavigationItem(@Req() req: Request, @Param("id") id: string) {
+    await requireMinimumRole(req, this.auth, "admin");
     await this.navigation.delete(id);
     return { ok: true };
   }
 
   @Get("settings")
-  listSettings() {
+  async listSettings(@Req() req: Request) {
+    await requireMinimumRole(req, this.auth, "admin");
     return this.settings.findMany();
   }
 
   @Get("settings/:key")
-  getSetting(@Param("key") key: string) {
+  async getSetting(@Req() req: Request, @Param("key") key: string) {
+    await requireMinimumRole(req, this.auth, "admin");
     return this.settings.findByKey(key);
   }
 
   @Post("settings")
-  upsertSetting(@Body() body: UpsertSiteSettingDto) {
+  async upsertSetting(@Req() req: Request, @Body() body: UpsertSiteSettingDto) {
+    await requireMinimumRole(req, this.auth, "admin");
     return this.settings.upsert(body);
   }
 
   @Delete("settings/:key")
-  async deleteSetting(@Param("key") key: string) {
+  async deleteSetting(@Req() req: Request, @Param("key") key: string) {
+    await requireMinimumRole(req, this.auth, "admin");
     await this.settings.delete(key);
     return { ok: true };
   }
@@ -1377,7 +1430,8 @@ export class ContentController {
   }
 
   @Post("media")
-  createMedia(@Body() body: CreateMediaDto) {
+  async createMedia(@Req() req: Request, @Body() body: CreateMediaDto) {
+    await requireMinimumRole(req, this.auth, "editor");
     return this.media.create({
       ...body,
       width: body.width ?? null,
@@ -1390,13 +1444,19 @@ export class ContentController {
   }
 
   @Patch("media/:id")
-  async updateMedia(@Param("id") id: string, @Body() body: UpdateMediaDto) {
+  async updateMedia(
+    @Req() req: Request,
+    @Param("id") id: string,
+    @Body() body: UpdateMediaDto,
+  ) {
+    await requireMinimumRole(req, this.auth, "editor");
     await this.validateMediaAltBeforeUpdate(id, body.alt);
     return this.media.update(id, body);
   }
 
   @Delete("media/:id")
-  async deleteMedia(@Param("id") id: string) {
+  async deleteMedia(@Req() req: Request, @Param("id") id: string) {
+    await requireMinimumRole(req, this.auth, "editor");
     await this.mediaService.delete(id);
     return { ok: true };
   }

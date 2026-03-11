@@ -8,6 +8,7 @@ import {
   Param,
   Patch,
   Post,
+  Req,
   UploadedFile,
   UseInterceptors,
 } from "@nestjs/common";
@@ -20,6 +21,9 @@ import type {
   PagesRepository,
 } from "@org/domain";
 import { MediaService } from "./media.service";
+import { AuthService } from "../auth/auth.service";
+import { requireMinimumRole } from "../../common/auth/admin-access";
+import type { Request } from "express";
 
 class UploadMediaDto {
   @ApiProperty()
@@ -45,6 +49,7 @@ export class MediaController {
     private readonly contentTypes: ContentTypesRepository,
     @Inject("ContentItemsRepository")
     private readonly contentItems: ContentItemsRepository,
+    private readonly auth: AuthService,
   ) {}
 
   @Get()
@@ -74,11 +79,14 @@ export class MediaController {
     },
   })
   async uploadMedia(
+    @Req() req: Request,
     @UploadedFile() file:
       | { buffer: Buffer; originalname: string; mimetype: string }
       | undefined,
     @Body() body: UploadMediaDto,
   ) {
+    await requireMinimumRole(req, this.auth, "editor");
+
     if (!file) {
       throw new BadRequestException("File is required");
     }
@@ -97,13 +105,19 @@ export class MediaController {
   }
 
   @Delete(":id")
-  async deleteMedia(@Param("id") id: string) {
+  async deleteMedia(@Req() req: Request, @Param("id") id: string) {
+    await requireMinimumRole(req, this.auth, "editor");
     await this.mediaService.delete(id);
     return { ok: true };
   }
 
   @Patch(":id")
-  async updateMedia(@Param("id") id: string, @Body() body: UpdateMediaDto) {
+  async updateMedia(
+    @Req() req: Request,
+    @Param("id") id: string,
+    @Body() body: UpdateMediaDto,
+  ) {
+    await requireMinimumRole(req, this.auth, "editor");
     const nextAlt = body.alt === undefined ? undefined : body.alt.trim();
 
     if (nextAlt !== undefined && !nextAlt) {

@@ -8,7 +8,7 @@ import { NavigationEditorClient } from "./NavigationEditorClient";
 export default async function AdminNavigationPage() {
   const me = await getMe();
   if (!me?.user || !hasMinimumRole(me.user.role, "admin")) {
-    redirect("/admin");
+    redirect("/access-denied");
   }
 
   const items = await listAdminNavigationItems();
