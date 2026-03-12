@@ -1,11 +1,16 @@
-import { notFound } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
 import Link from "next/link";
 
 import {
   getContentTypeArchiveItems,
   getPublicContentTypeBySlug,
+  resolvePageContentBySlug,
 } from "../../../lib/content";
-import { resolveContentTypeTemplate } from "../templates/template-registry";
+import { renderBlock } from "../page/[slug]/block-renderer";
+import {
+  resolveContentTypeTemplate,
+  resolvePageTemplate,
+} from "../templates/template-registry";
 
 export default async function ContentTypeArchivePage({
   params,
@@ -13,6 +18,32 @@ export default async function ContentTypeArchivePage({
   params: Promise<{ contentTypeSlug: string }>;
 }) {
   const { contentTypeSlug } = await params;
+  const pageResolution = await resolvePageContentBySlug(contentTypeSlug);
+
+  if (pageResolution.redirectTo) {
+    permanentRedirect(pageResolution.redirectTo);
+  }
+
+  if (pageResolution.page) {
+    const page = pageResolution.page;
+    const renderedBlocks = await Promise.all(
+      page.blocks.map(async (block) => ({
+        id: block.id,
+        node: await renderBlock(block, { pageTitle: page.title }),
+      })),
+    );
+
+    const Template = resolvePageTemplate(page.templateKey);
+
+    return (
+      <Template title={page.title}>
+        {renderedBlocks.map((block) => (
+          <div key={block.id}>{block.node}</div>
+        ))}
+      </Template>
+    );
+  }
+
   const contentType = await getPublicContentTypeBySlug(contentTypeSlug);
 
   if (!contentType) {

@@ -593,6 +593,11 @@ function mapGenericArchiveItem(item: ApiContentItem): GenericContentArchiveItem 
 export async function getContentTypeArchiveItems(
   contentTypeSlug: string,
 ): Promise<GenericContentArchiveItem[]> {
+  const contentType = await getPublicContentTypeBySlug(contentTypeSlug);
+  if (!contentType) {
+    return [];
+  }
+
   const items = await fetchContent<ApiContentItem[]>(
     `/content/items/type-slug/${encodeURIComponent(contentTypeSlug)}`,
   );
