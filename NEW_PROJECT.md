@@ -107,3 +107,17 @@ For production deployments:
 - Use environment variables from `.env.prod.example`
 - Ensure database migrations have been applied
 - Validate `/health` endpoints after deployment
+
+---
+
+## Common root commands
+
+- `pnpm install`
+- `pnpm db:migrate`
+- `pnpm db:seed`
+- `pnpm db:setup`
+- `pnpm dev`
+- `pnpm build`
+- `pnpm start`
+- `pnpm start:api`
+- `pnpm start:web`

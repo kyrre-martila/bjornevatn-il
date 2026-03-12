@@ -18,6 +18,32 @@ pnpm dev
 
 `pnpm db:setup` runs `pnpm db:migrate` and `pnpm db:seed`.
 
+For production-style local verification:
+
+```bash
+pnpm build
+pnpm start
+```
+
+Run a single service when needed:
+
+```bash
+pnpm start:api
+pnpm start:web
+```
+
+## Common root commands
+
+- `pnpm install`
+- `pnpm db:migrate`
+- `pnpm db:seed`
+- `pnpm db:setup`
+- `pnpm dev`
+- `pnpm build`
+- `pnpm start`
+- `pnpm start:api`
+- `pnpm start:web`
+
 ## 1) Install dependencies
 
 ```bash

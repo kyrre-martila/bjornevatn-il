@@ -22,10 +22,11 @@ if (typeof spec.openapi !== "string" || !spec.openapi.startsWith("3.0.")) {
 }
 
 const paths = spec.paths ?? {};
+const allowedNonVersionedPaths = new Set(["/health"]);
 for (const key of Object.keys(paths)) {
-  if (!key.startsWith("/api/v1")) {
+  if (!key.startsWith("/api/v1") && !allowedNonVersionedPaths.has(key)) {
     throw new Error(
-      `contracts: invalid path '${key}' – all endpoints must be under /api/v1`,
+      `contracts: invalid path '${key}' – endpoints must be under /api/v1 or explicitly allowlisted`,
     );
   }
 }
