@@ -17,7 +17,46 @@
             }
           }
         },
-        "tags": ["me"],
+        "tags": [
+          "me"
+        ],
+        "security": [
+          {
+            "cookie": []
+          },
+          {
+            "bearer": []
+          }
+        ]
+      },
+      "patch": {
+        "operationId": "UsersController_updateMe",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateMeDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "me"
+        ],
         "security": [
           {
             "cookie": []
@@ -28,68 +67,65 @@
         ]
       }
     },
-    "/api/v1/auth/request-magic-link": {
+    "/api/v1/auth/register": {
       "post": {
-        "operationId": "AuthController_requestMagicLink",
+        "operationId": "AuthController_register",
         "parameters": [],
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/MagicLinkResponseDto"
-                }
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterDto"
               }
             }
           }
         },
-        "tags": ["auth"]
-      }
-    },
-    "/api/v1/auth/verify-magic-link": {
-      "post": {
-        "operationId": "AuthController_verifyMagicLink",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/TokenPairResponseDto"
-                }
-              }
-            }
-          }
-        },
-        "tags": ["auth"]
-      }
-    },
-    "/api/v1/auth/refresh": {
-      "post": {
-        "operationId": "AuthController_refresh",
-        "parameters": [],
         "responses": {
           "201": {
             "description": "",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/TokenPairResponseDto"
+                  "$ref": "#/components/schemas/AuthResponseDto"
                 }
               }
             }
           }
         },
-        "tags": ["auth"],
-        "security": [
-          {
-            "cookie": []
-          },
-          {
-            "bearer": []
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/v1/auth/login": {
+      "post": {
+        "operationId": "AuthController_login",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginDto"
+              }
+            }
           }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "auth"
         ]
       }
     },
@@ -98,49 +134,20 @@
         "operationId": "AuthController_logout",
         "parameters": [],
         "responses": {
-          "204": {
-            "description": ""
-          }
-        },
-        "tags": ["auth"]
-      }
-    },
-    "/api/v1/auth/register": {
-      "post": {
-        "operationId": "AuthController_register",
-        "parameters": [],
-        "responses": {
           "200": {
             "description": "",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/TokenPairResponseDto"
+                  "$ref": "#/components/schemas/LogoutResponseDto"
                 }
               }
             }
           }
         },
-        "tags": ["auth"]
-      }
-    },
-    "/api/v1/auth/login": {
-      "post": {
-        "operationId": "AuthController_login",
-        "parameters": [],
-        "responses": {
-          "201": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/TokenPairResponseDto"
-                }
-              }
-            }
-          }
-        },
-        "tags": ["auth"]
+        "tags": [
+          "auth"
+        ]
       }
     },
     "/health": {
@@ -183,7 +190,7 @@
       "cookie": {
         "type": "apiKey",
         "in": "cookie",
-        "name": "sid"
+        "name": "access"
       },
       "bearer": {
         "scheme": "bearer",
@@ -248,33 +255,113 @@
             "$ref": "#/components/schemas/UserProfileDto"
           }
         },
-        "required": ["user"]
+        "required": [
+          "user"
+        ]
       },
-      "MagicLinkResponseDto": {
+      "UpdateMeDto": {
         "type": "object",
         "properties": {
-          "ok": {
-            "type": "boolean",
-            "example": true
+          "firstName": {
+            "type": "string"
+          },
+          "lastName": {
+            "type": "string"
+          },
+          "phone": {
+            "type": "string"
+          },
+          "birthDate": {
+            "type": "string"
+          }
+        }
+      },
+      "PublicUserDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "role": {
+            "type": "string"
           }
         },
-        "required": ["ok"]
+        "required": [
+          "id",
+          "email",
+          "name",
+          "role"
+        ]
       },
-      "TokenPairResponseDto": {
+      "AuthResponseDto": {
         "type": "object",
         "properties": {
-          "ok": {
-            "type": "boolean",
-            "example": true
+          "user": {
+            "$ref": "#/components/schemas/PublicUserDto"
           },
           "accessToken": {
             "type": "string"
+          }
+        },
+        "required": [
+          "user",
+          "accessToken"
+        ]
+      },
+      "LogoutResponseDto": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "success"
+        ]
+      },
+      "RegisterDto": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email"
           },
-          "refreshToken": {
+          "password": {
+            "type": "string",
+            "minLength": 8
+          },
+          "name": {
             "type": "string"
           }
         },
-        "required": ["ok", "accessToken", "refreshToken"]
+        "required": [
+          "email",
+          "password"
+        ]
+      },
+      "LoginDto": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email"
+          },
+          "password": {
+            "type": "string",
+            "minLength": 8
+          }
+        },
+        "required": [
+          "email",
+          "password"
+        ]
       }
     }
   }

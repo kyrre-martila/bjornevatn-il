@@ -10,7 +10,7 @@
 
 1. If auth breach, disable login endpoints via feature flag.
 2. Rotate secrets as per [rotate-secrets.md](rotate-secrets.md).
-3. Invalidate refresh tokens and enforce logout.
+3. Revoke active server-side sessions and enforce logout.
 
 ## Investigation
 

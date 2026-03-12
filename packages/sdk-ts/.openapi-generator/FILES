@@ -1,6 +1,15 @@
-.openapi-generator-ignore
 apis/AuthApi.ts
+apis/DefaultApi.ts
 apis/MeApi.ts
 apis/index.ts
 index.ts
+models/AuthResponseDto.ts
+models/LoginDto.ts
+models/LogoutResponseDto.ts
+models/MeResponseDto.ts
+models/PublicUserDto.ts
+models/RegisterDto.ts
+models/UpdateMeDto.ts
+models/UserProfileDto.ts
+models/index.ts
 runtime.ts

@@ -32,14 +32,15 @@ Security guidance for the content website blueprint (public site + admin/editor 
 
 ## Token Handling
 
-- Access tokens short-lived; refresh tokens rotated on each refresh call.
-- Refresh token rotation persists last valid token hash; revoked tokens are denied on reuse.
-- Web stores tokens in secure cookies.
+- Access tokens are short-lived and include a session id (`sid`).
+- API accepts a token only when JWT verification succeeds **and** the referenced `Session` row is active.
+- Logout and forced sign-out revoke the server-side session immediately.
+- Web can store access tokens in secure cookies and/or send bearer tokens explicitly.
 
 ## Incident Response Checklist
 
 1. Rotate `JWT_SECRET`, `COOKIE_SECRET`, and `ENCRYPTION_KEY`.
-2. Trigger forced logout by clearing refresh token table or versioning session secrets.
+2. Trigger forced logout by revoking active rows in the `Session` table (or rotating JWT secrets for broad invalidation).
 3. Revoke active tokens and invalidate caches.
 4. Update `API_CORS_ORIGINS` if origin compromise suspected.
 5. Redeploy services with new secrets.

@@ -1,11 +1,10 @@
-/* Minimal E2E: magic-link → verify → /me → refresh → logout */
+/* Minimal E2E: register -> login -> me -> logout (no refresh token flow) */
 const origin = process.env.API_URL || "http://localhost:4000";
 const basePath = process.env.API_BASE_PATH || "/api/v1";
 const normalizedBasePath = basePath.endsWith("/")
   ? basePath.slice(0, -1)
   : basePath;
 const base = `${origin}${normalizedBasePath}`;
-const email = "test@example.com";
 const uname = "user" + Math.random().toString(16).slice(2, 7);
 const pw = "S3curePassw0rd!";
 
@@ -23,93 +22,58 @@ async function json(url, opts = {}) {
 }
 
 (async () => {
-  // request magic link
-  const req = await json(`${base}/auth/request-magic-link`, {
-    method: "POST",
-    body: JSON.stringify({ email }),
-  });
-  must(req.status === 201 || req.status === 200, "request-magic-link failed");
-  const token = req.body.devToken;
-  must(token && token.length > 10, "no devToken returned");
-
-  // verify magic link (capture cookies)
-  const ver = await fetch(`${base}/auth/verify-magic-link`, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ email, token }),
-    redirect: "manual",
-  });
-  const setCookie = ver.headers.get("set-cookie") || "";
-  const data = await ver.json();
-  must(ver.status === 201 || ver.status === 200, "verify failed");
-  must(data.accessToken && data.refreshToken, "missing tokens");
-  must(
-    setCookie.includes("sid=") && setCookie.includes("access="),
-    "missing auth cookies",
-  );
-
-  // call /me with cookie
-  const me = await fetch(`${base}/me`, {
-    headers: {
-      cookie: setCookie
-        .split(",")
-        .map((s) => s.split(";")[0])
-        .join("; "),
-    },
-  });
-  const meBody = await me.json();
-  must(me.status === 200 && meBody.user, "/me with cookie failed");
-
-  // call refresh using cookie
-  const ref = await fetch(`${base}/auth/refresh`, {
-    method: "POST",
-    headers: {
-      cookie: setCookie
-        .split(",")
-        .map((s) => s.split(";")[0])
-        .join("; "),
-    },
-  });
-  const refBody = await ref.json();
-  must(ref.status === 201 || ref.status === 200, "refresh failed");
-  must(refBody.accessToken && refBody.refreshToken, "refresh missing tokens");
-
-  // logout
-  const lo = await fetch(`${base}/auth/logout`, {
-    method: "POST",
-    headers: {
-      cookie: setCookie
-        .split(",")
-        .map((s) => s.split(";")[0])
-        .join("; "),
-    },
-  });
-  must(lo.status === 204, "logout failed");
-
-  console.log("✅ E2E auth flow OK");
-
   // register
   let r = await json(`${base}/auth/register`, {
     method: "POST",
     body: JSON.stringify({
-      firstName: "Test",
-      lastName: uname,
       email: `${uname}@ex.com`,
       password: pw,
-      acceptedTerms: true,
+      name: `User ${uname}`,
     }),
   });
-  must(r.status === 201 || r.status === 200, "register failed");
+  must(r.status === 201, `register failed (${r.status})`);
+  must(r.body.accessToken && r.body.user, "register response missing {user, accessToken}");
+  must(!("refreshToken" in r.body), "register unexpectedly returned refreshToken");
 
   // login
   r = await json(`${base}/auth/login`, {
     method: "POST",
-    body: JSON.stringify({ identifier: `${uname}@ex.com`, password: pw }),
+    body: JSON.stringify({ email: `${uname}@ex.com`, password: pw }),
   });
-  must(r.status === 201 || r.status === 200, "login failed");
-  must(r.body.accessToken && r.body.refreshToken, "login tokens missing");
+  must(r.status === 200, `login failed (${r.status})`);
+  must(r.body.accessToken && r.body.user, "login response missing {user, accessToken}");
+  must(!("refreshToken" in r.body), "login unexpectedly returned refreshToken");
 
-  console.log("✅ E2E password flow OK");
+  const accessToken = r.body.accessToken;
+
+  // me with bearer token
+  const me = await fetch(`${base}/me`, {
+    headers: {
+      authorization: `Bearer ${accessToken}`,
+    },
+  });
+  const meBody = await me.json();
+  must(me.status === 200 && meBody.user, "/me with bearer token failed");
+
+  // logout revokes server-side session
+  const logout = await fetch(`${base}/auth/logout`, {
+    method: "POST",
+    headers: {
+      authorization: `Bearer ${accessToken}`,
+    },
+  });
+  const logoutBody = await logout.json().catch(() => ({}));
+  must(logout.status === 200 && logoutBody.success === true, "logout failed");
+
+  // old token should now be invalid
+  const revoked = await fetch(`${base}/me`, {
+    headers: {
+      authorization: `Bearer ${accessToken}`,
+    },
+  });
+  must(revoked.status === 401, `revoked token unexpectedly accepted (${revoked.status})`);
+
+  console.log("✅ E2E auth session lifecycle OK");
 })().catch((e) => {
   console.error("❌ E2E failed:", e.message);
   process.exit(1);

@@ -20,8 +20,8 @@
 3. Update `API_CORS_ORIGINS` and redeploy if origin missing.
 4. Inspect browser console for preflight failure details.
 
-## Token Rotation Issues
+## Session Validation Issues
 
-1. Query refresh token table for user to ensure rotation updated.
-2. If multiple active tokens, revoke by deleting entries and forcing logout.
-3. Regenerate cookies by logging in and verifying new `Set-Cookie` headers.
+1. Query the `Session` table for the token `sid` to verify `revokedAt` and `expiresAt`.
+2. If multiple stale sessions exist, revoke rows for the user and force re-login.
+3. Re-authenticate and verify a new token contains a new `sid`.

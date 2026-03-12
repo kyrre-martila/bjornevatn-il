@@ -3,22 +3,26 @@
  * Do not make direct changes to the file.
  */
 
+
 export interface paths {
-  "/api/v1/health": {
-    /** Health check */
-    get: operations["health"];
+  "/api/v1/me": {
+    get: operations["UsersController_me"];
+    patch: operations["UsersController_updateMe"];
   };
   "/api/v1/auth/register": {
-    /** Register a new user */
-    post: operations["register"];
+    post: operations["AuthController_register"];
   };
   "/api/v1/auth/login": {
-    /** Login with credentials */
-    post: operations["login"];
+    post: operations["AuthController_login"];
   };
-  "/api/v1/me": {
-    /** Get current user profile */
-    get: operations["getMe"];
+  "/api/v1/auth/logout": {
+    post: operations["AuthController_logout"];
+  };
+  "/health": {
+    get: operations["HealthController_ping"];
+  };
+  "/api/v1/metrics": {
+    get: operations["PrometheusController_index"];
   };
 }
 
@@ -26,19 +30,8 @@ export type webhooks = Record<string, never>;
 
 export interface components {
   schemas: {
-    PublicUser: {
+    UserProfileDto: {
       id: string;
-      /** Format: email */
-      email: string;
-      name: string | null;
-    };
-    AuthResponse: {
-      user: components["schemas"]["PublicUser"];
-      accessToken: string;
-    };
-    UserProfile: {
-      id: string;
-      /** Format: email */
       email: string;
       phone: string | null;
       firstName: string | null;
@@ -49,8 +42,38 @@ export interface components {
       createdAt: string;
       role: string;
     };
-    MeResponse: {
-      user: components["schemas"]["UserProfile"];
+    MeResponseDto: {
+      user: components["schemas"]["UserProfileDto"];
+    };
+    UpdateMeDto: {
+      firstName?: string;
+      lastName?: string;
+      phone?: string;
+      birthDate?: string;
+    };
+    PublicUserDto: {
+      id: string;
+      email: string;
+      name: string | null;
+      role: string;
+    };
+    AuthResponseDto: {
+      user: components["schemas"]["PublicUserDto"];
+      accessToken: string;
+    };
+    LogoutResponseDto: {
+      success: boolean;
+    };
+    RegisterDto: {
+      /** Format: email */
+      email: string;
+      password: string;
+      name?: string;
+    };
+    LoginDto: {
+      /** Format: email */
+      email: string;
+      password: string;
     };
   };
   responses: never;
@@ -65,81 +88,77 @@ export type $defs = Record<string, never>;
 export type external = Record<string, never>;
 
 export interface operations {
-  /** Health check */
-  health: {
+
+  UsersController_me: {
     responses: {
-      /** @description Health status */
       200: {
         content: {
-          "application/json": {
-            ok: boolean;
-            service: string;
-            version: string;
-          };
+          "application/json": components["schemas"]["MeResponseDto"];
         };
       };
     };
   };
-  /** Register a new user */
-  register: {
+  UsersController_updateMe: {
     requestBody: {
       content: {
-        "application/json": {
-          /** Format: email */
-          email: string;
-          password: string;
-          name?: string | null;
-        };
+        "application/json": components["schemas"]["UpdateMeDto"];
       };
     };
     responses: {
-      /** @description User registered */
+      200: {
+        content: {
+          "application/json": components["schemas"]["MeResponseDto"];
+        };
+      };
+    };
+  };
+  AuthController_register: {
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["RegisterDto"];
+      };
+    };
+    responses: {
       201: {
         content: {
-          "application/json": components["schemas"]["AuthResponse"];
+          "application/json": components["schemas"]["AuthResponseDto"];
         };
-      };
-      /** @description Email already in use */
-      400?: {
-        content: never;
       };
     };
   };
-  /** Login with credentials */
-  login: {
+  AuthController_login: {
     requestBody: {
       content: {
-        "application/json": {
-          /** Format: email */
-          email: string;
-          password: string;
-        };
+        "application/json": components["schemas"]["LoginDto"];
       };
     };
     responses: {
-      /** @description User authenticated */
       200: {
         content: {
-          "application/json": components["schemas"]["AuthResponse"];
+          "application/json": components["schemas"]["AuthResponseDto"];
         };
       };
-      /** @description Invalid credentials */
-      401?: {
+    };
+  };
+  AuthController_logout: {
+    responses: {
+      200: {
+        content: {
+          "application/json": components["schemas"]["LogoutResponseDto"];
+        };
+      };
+    };
+  };
+  HealthController_ping: {
+    responses: {
+      200: {
         content: never;
       };
     };
   };
-  /** Get current user profile */
-  getMe: {
+  PrometheusController_index: {
     responses: {
-      /** @description User profile */
       200: {
-        content: {
-          "application/json": components["schemas"]["MeResponse"];
-        };
-      };
-      /** @description Missing or invalid token */
-      401?: {
         content: never;
       };
     };

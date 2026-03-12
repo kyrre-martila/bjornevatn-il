@@ -82,7 +82,7 @@ export class UsersController {
 
   @Get()
   @ApiBearerAuth()
-  @ApiCookieAuth()
+  @ApiCookieAuth("access")
   @ApiOkResponse({ type: MeResponseDto })
   async me(@Req() req: Request): Promise<MeResponseDto> {
     const access =
@@ -117,7 +117,7 @@ export class UsersController {
 
   @Patch()
   @ApiBearerAuth()
-  @ApiCookieAuth()
+  @ApiCookieAuth("access")
   @ApiOkResponse({ type: MeResponseDto })
   async updateMe(
     @Req() req: Request,

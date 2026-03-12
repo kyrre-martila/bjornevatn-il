@@ -8,15 +8,15 @@ This blueprint is structured for content-driven websites: a public website exper
 - Web clients use generated SDKs; shared DTOs live in `packages/contracts`.
 - Public pages and admin/editor tooling both consume the same API/domain boundaries to keep content behavior consistent across surfaces.
 
-## Login / Refresh Sequence
+## Login / Session Sequence
 
 1. Client submits credentials to `/api/v1/auth/login`.
-2. Controller validates payload, calls AuthService.
-3. AuthService verifies user via UserRepository and issues tokens via TokenService.
-4. Tokens stored in secure cookies (web) + refresh record persisted via Prisma.
-5. Client uses access token for API requests.
-6. On expiration, client calls `/api/v1/auth/refresh` with refresh cookie.
-7. AuthService validates rotation, revokes old token, issues new pair.
+2. Controller validates payload and calls `AuthService`.
+3. `AuthService` verifies credentials and issues a JWT access token containing a random session id (`sid`).
+4. The same `sid` is persisted in the `Session` table with expiry metadata.
+5. Protected endpoints validate both JWT integrity and the server-side `Session` state.
+6. Logout revokes the current session row immediately.
+7. When an access token expires, clients sign in again (no refresh-token endpoint).
 
 ## ADR References
 

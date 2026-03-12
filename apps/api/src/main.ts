@@ -84,7 +84,7 @@ async function emitOpenApiDocument(app: INestApplication) {
     .setTitle("Blueprint API")
     .setVersion("1.0.0")
     .addServer(`/api/v1`)
-    .addCookieAuth("sid", { type: "apiKey", in: "cookie" })
+    .addCookieAuth("access", { type: "apiKey", in: "cookie" })
     .addBearerAuth()
     .build();
   const doc = SwaggerModule.createDocument(app, config, {

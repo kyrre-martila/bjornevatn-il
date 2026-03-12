@@ -1,164 +1,367 @@
 {
-  "openapi": "3.0.3",
-  "info": {
-    "title": "Blueprint API",
-    "version": "1.0.0"
-  },
-  "servers": [{ "url": "/api/v1" }],
+  "openapi": "3.0.0",
   "paths": {
-    "/api/v1/health": {
+    "/api/v1/me": {
       "get": {
-        "summary": "Health check",
-        "operationId": "health",
+        "operationId": "UsersController_me",
+        "parameters": [],
         "responses": {
           "200": {
-            "description": "Health status",
+            "description": "",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "ok": { "type": "boolean" },
-                    "service": { "type": "string" },
-                    "version": { "type": "string" }
-                  },
-                  "required": ["ok", "service", "version"]
+                  "$ref": "#/components/schemas/MeResponseDto"
                 }
               }
             }
           }
-        }
-      }
-    },
-    "/api/v1/auth/register": {
-      "post": {
-        "summary": "Register a new user",
-        "operationId": "register",
+        },
+        "tags": [
+          "me"
+        ],
+        "security": [
+          {
+            "cookie": []
+          },
+          {
+            "bearer": []
+          }
+        ]
+      },
+      "patch": {
+        "operationId": "UsersController_updateMe",
+        "parameters": [],
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
               "schema": {
-                "type": "object",
-                "properties": {
-                  "email": { "type": "string", "format": "email" },
-                  "password": { "type": "string", "minLength": 8 },
-                  "name": { "type": "string", "nullable": true }
-                },
-                "required": ["email", "password"],
-                "additionalProperties": false
+                "$ref": "#/components/schemas/UpdateMeDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "me"
+        ],
+        "security": [
+          {
+            "cookie": []
+          },
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/auth/register": {
+      "post": {
+        "operationId": "AuthController_register",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterDto"
               }
             }
           }
         },
         "responses": {
           "201": {
-            "description": "User registered",
+            "description": "",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/AuthResponse" }
+                "schema": {
+                  "$ref": "#/components/schemas/AuthResponseDto"
+                }
               }
             }
-          },
-          "400": { "description": "Email already in use" }
-        }
+          }
+        },
+        "tags": [
+          "auth"
+        ]
       }
     },
     "/api/v1/auth/login": {
       "post": {
-        "summary": "Login with credentials",
-        "operationId": "login",
+        "operationId": "AuthController_login",
+        "parameters": [],
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
               "schema": {
-                "type": "object",
-                "properties": {
-                  "email": { "type": "string", "format": "email" },
-                  "password": { "type": "string", "minLength": 8 }
-                },
-                "required": ["email", "password"],
-                "additionalProperties": false
+                "$ref": "#/components/schemas/LoginDto"
               }
             }
           }
         },
         "responses": {
           "200": {
-            "description": "User authenticated",
+            "description": "",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/AuthResponse" }
+                "schema": {
+                  "$ref": "#/components/schemas/AuthResponseDto"
+                }
               }
             }
-          },
-          "401": { "description": "Invalid credentials" }
+          }
+        },
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/v1/auth/logout": {
+      "post": {
+        "operationId": "AuthController_logout",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LogoutResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/health": {
+      "get": {
+        "operationId": "HealthController_ping",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
         }
       }
     },
-    "/api/v1/me": {
+    "/api/v1/metrics": {
       "get": {
-        "summary": "Get current user profile",
-        "operationId": "getMe",
+        "operationId": "PrometheusController_index",
+        "parameters": [],
         "responses": {
           "200": {
-            "description": "User profile",
-            "content": {
-              "application/json": {
-                "schema": { "$ref": "#/components/schemas/MeResponse" }
-              }
-            }
-          },
-          "401": { "description": "Missing or invalid token" }
+            "description": ""
+          }
         }
       }
     }
   },
+  "info": {
+    "title": "Blueprint API",
+    "description": "",
+    "version": "1.0.0",
+    "contact": {}
+  },
+  "tags": [],
+  "servers": [
+    {
+      "url": "/api/v1"
+    }
+  ],
   "components": {
+    "securitySchemes": {
+      "cookie": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "access"
+      },
+      "bearer": {
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "type": "http"
+      }
+    },
     "schemas": {
-      "PublicUser": {
+      "UserProfileDto": {
         "type": "object",
         "properties": {
-          "id": { "type": "string" },
-          "email": { "type": "string", "format": "email" },
-          "name": { "type": "string", "nullable": true }
+          "id": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "phone": {
+            "type": "string",
+            "nullable": true
+          },
+          "firstName": {
+            "type": "string",
+            "nullable": true
+          },
+          "lastName": {
+            "type": "string",
+            "nullable": true
+          },
+          "birthDate": {
+            "type": "string",
+            "nullable": true
+          },
+          "displayName": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "role": {
+            "type": "string"
+          }
         },
-        "required": ["id", "email"],
-        "additionalProperties": false
+        "required": [
+          "id",
+          "email",
+          "phone",
+          "firstName",
+          "lastName",
+          "birthDate",
+          "displayName",
+          "createdAt",
+          "role"
+        ]
       },
-      "AuthResponse": {
+      "MeResponseDto": {
         "type": "object",
         "properties": {
-          "user": { "$ref": "#/components/schemas/PublicUser" },
-          "accessToken": { "type": "string" }
+          "user": {
+            "$ref": "#/components/schemas/UserProfileDto"
+          }
         },
-        "required": ["user", "accessToken"],
-        "additionalProperties": false
+        "required": [
+          "user"
+        ]
       },
-      "UserProfile": {
+      "UpdateMeDto": {
         "type": "object",
         "properties": {
-          "id": { "type": "string" },
-          "email": { "type": "string", "format": "email" },
-          "phone": { "type": "string", "nullable": true },
-          "firstName": { "type": "string", "nullable": true },
-          "lastName": { "type": "string", "nullable": true },
-          "birthDate": { "type": "string", "nullable": true },
-          "displayName": { "type": "string", "nullable": true },
-          "createdAt": { "type": "string", "format": "date-time" },
-          "role": { "type": "string" }
-        },
-        "required": ["id", "email", "createdAt", "role"],
-        "additionalProperties": false
+          "firstName": {
+            "type": "string"
+          },
+          "lastName": {
+            "type": "string"
+          },
+          "phone": {
+            "type": "string"
+          },
+          "birthDate": {
+            "type": "string"
+          }
+        }
       },
-      "MeResponse": {
+      "PublicUserDto": {
         "type": "object",
         "properties": {
-          "user": { "$ref": "#/components/schemas/UserProfile" }
+          "id": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "role": {
+            "type": "string"
+          }
         },
-        "required": ["user"],
-        "additionalProperties": false
+        "required": [
+          "id",
+          "email",
+          "name",
+          "role"
+        ]
+      },
+      "AuthResponseDto": {
+        "type": "object",
+        "properties": {
+          "user": {
+            "$ref": "#/components/schemas/PublicUserDto"
+          },
+          "accessToken": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user",
+          "accessToken"
+        ]
+      },
+      "LogoutResponseDto": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "success"
+        ]
+      },
+      "RegisterDto": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email"
+          },
+          "password": {
+            "type": "string",
+            "minLength": 8
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "email",
+          "password"
+        ]
+      },
+      "LoginDto": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email"
+          },
+          "password": {
+            "type": "string",
+            "minLength": 8
+          }
+        },
+        "required": [
+          "email",
+          "password"
+        ]
       }
     }
   }
