@@ -3,8 +3,10 @@ import Link from "next/link";
 
 import {
   getContentTypeArchiveItems,
+  getContentItemPath,
   getPublicContentTypeBySlug,
   resolvePageContentBySlug,
+  sanitizeInternalRedirectTarget,
 } from "../../../lib/content";
 import { renderBlock } from "../page/[slug]/block-renderer";
 import {
@@ -21,7 +23,14 @@ export default async function ContentTypeArchivePage({
   const pageResolution = await resolvePageContentBySlug(contentTypeSlug);
 
   if (pageResolution.redirectTo) {
-    permanentRedirect(pageResolution.redirectTo);
+    const redirectTarget = sanitizeInternalRedirectTarget(
+      pageResolution.redirectTo,
+    );
+    if (!redirectTarget) {
+      notFound();
+    }
+
+    permanentRedirect(redirectTarget);
   }
 
   if (pageResolution.page) {
@@ -64,7 +73,10 @@ export default async function ContentTypeArchivePage({
               <h2 className="news-list__title">{item.title}</h2>
               <p className="news-list__excerpt">{item.summary}</p>
               <Link
-                href={`/${contentTypeSlug}/${item.slug}`}
+                href={
+                  getContentItemPath(contentTypeSlug, item.slug) ??
+                  `/${contentTypeSlug}/${item.slug}`
+                }
                 className="news-list__link"
               >
                 Read more

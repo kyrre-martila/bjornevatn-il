@@ -5,6 +5,7 @@ import {
   getPublicContentTypeBySlug,
   getSiteConfiguration,
   resolveContentItemBySlug,
+  sanitizeInternalRedirectTarget,
   withTitleSuffix,
 } from "../../../../lib/content";
 import { resolveContentTypeTemplate } from "../../templates/template-registry";
@@ -31,7 +32,10 @@ export async function generateMetadata({
 
   const canonicalUrl =
     item.canonicalUrl ??
-    new URL(`/${contentTypeSlug}/${item.slug}`, `${siteConfig.siteUrl}/`).toString();
+    new URL(
+      `/${contentTypeSlug}/${item.slug}`,
+      `${siteConfig.siteUrl}/`,
+    ).toString();
   const title = withTitleSuffix(item.title, siteConfig.defaultTitleSuffix);
 
   return {
@@ -58,7 +62,12 @@ export default async function ContentItemPage({
   }
 
   if (resolved.redirectTo) {
-    permanentRedirect(resolved.redirectTo);
+    const redirectTarget = sanitizeInternalRedirectTarget(resolved.redirectTo);
+    if (!redirectTarget) {
+      notFound();
+    }
+
+    permanentRedirect(redirectTarget);
   }
 
   const item = resolved.item;
@@ -66,7 +75,9 @@ export default async function ContentItemPage({
     notFound();
   }
 
-  const Template = resolveContentTypeTemplate(item.templateKey || contentType.templateKey);
+  const Template = resolveContentTypeTemplate(
+    item.templateKey || contentType.templateKey,
+  );
 
   return (
     <Template title={item.title} meta={item.publishedAt}>
