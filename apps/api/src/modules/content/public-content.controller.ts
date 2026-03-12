@@ -43,9 +43,16 @@ type PublicContentItemDto = {
   id: string;
   slug: string;
   title: string;
+  summary: string;
+  body: string;
+  shortDescription: string;
+  featuredImage: string | null;
+  callToActionLabel: string;
+  callToActionUrl: string;
+  relatedItemIds: string[];
+  publishedAt: string;
   canonicalUrl: string | null;
   noIndex: boolean;
-  data: Record<string, unknown>;
   updatedAt: Date;
   parentId?: string;
 };
@@ -59,6 +66,60 @@ type PublicContentTypeDto = {
   name: string;
   templateKey: string | null;
   isPublic: boolean;
+};
+
+type PublicPageBlockType = "hero" | "rich_text" | "cta" | "image" | "news_list";
+
+type PublicPageBlockData =
+  | {
+      type: "hero";
+      data: {
+        eyebrow: string;
+        title: string;
+        subtitle: string;
+        primaryCta: { href: string; label: string };
+        secondaryCta: { href: string; label: string };
+      };
+    }
+  | { type: "rich_text"; data: { paragraphs: string[] } }
+  | {
+      type: "cta";
+      data: {
+        href: string;
+        label: string;
+        title?: string;
+        description?: string;
+      };
+    }
+  | {
+      type: "image";
+      data: {
+        src: string;
+        alt?: string;
+        caption?: string;
+        width?: number;
+        height?: number;
+      };
+    }
+  | { type: "news_list"; data: { title?: string; count?: number } };
+
+type PublicPageBlockDto = {
+  id: string;
+  type: PublicPageBlockType;
+  order: number;
+  data: PublicPageBlockData["data"];
+};
+
+type PublicPageDto = {
+  slug: string;
+  title: string;
+  templateKey: string;
+  seoTitle: string | null;
+  seoDescription: string | null;
+  seoImage: string | null;
+  canonicalUrl: string | null;
+  noIndex: boolean;
+  blocks: PublicPageBlockDto[];
 };
 
 class PublicSiteSettingDto {
@@ -200,33 +261,192 @@ export class PublicContentController {
     };
   }
 
-  private mapPublicPage(page: Page) {
+  private mapPublicPage(page: Page): PublicPageDto {
     return {
       slug: page.slug,
       title: page.title,
-      templateKey: page.templateKey,
+      templateKey:
+        typeof page.templateKey === "string" && page.templateKey.trim()
+          ? page.templateKey
+          : "index",
       seoTitle: page.seoTitle,
       seoDescription: page.seoDescription,
       seoImage: page.seoImage,
       canonicalUrl: page.canonicalUrl,
       noIndex: page.noIndex,
-      blocks: page.blocks.map((block) => ({
-        id: block.id,
-        type: block.type,
-        order: block.order,
-        data: block.data,
-      })),
+      blocks: page.blocks
+        .map((block) => this.mapPublicPageBlock(block))
+        .filter((block): block is PublicPageBlockDto => block !== null),
     };
   }
 
+  private mapPublicPageBlock(block: {
+    id: string;
+    type: string;
+    order: number;
+    data: Record<string, unknown>;
+  }): PublicPageBlockDto | null {
+    const data = this.asRecord(block.data);
+
+    if (block.type === "hero") {
+      const primaryCta = this.asRecord(data.primaryCta);
+      const secondaryCta = this.asRecord(data.secondaryCta);
+
+      if (
+        typeof data.eyebrow !== "string" ||
+        typeof data.title !== "string" ||
+        typeof data.subtitle !== "string" ||
+        typeof primaryCta.href !== "string" ||
+        typeof primaryCta.label !== "string" ||
+        typeof secondaryCta.href !== "string" ||
+        typeof secondaryCta.label !== "string"
+      ) {
+        return null;
+      }
+
+      return {
+        id: block.id,
+        type: "hero",
+        order: block.order,
+        data: {
+          eyebrow: data.eyebrow,
+          title: data.title,
+          subtitle: data.subtitle,
+          primaryCta: { href: primaryCta.href, label: primaryCta.label },
+          secondaryCta: { href: secondaryCta.href, label: secondaryCta.label },
+        },
+      };
+    }
+
+    if (block.type === "rich_text") {
+      const paragraphs = Array.isArray(data.paragraphs)
+        ? data.paragraphs.filter(
+            (paragraph): paragraph is string => typeof paragraph === "string",
+          )
+        : null;
+
+      if (!paragraphs) {
+        return null;
+      }
+
+      return {
+        id: block.id,
+        type: "rich_text",
+        order: block.order,
+        data: { paragraphs },
+      };
+    }
+
+    if (block.type === "cta") {
+      if (typeof data.href !== "string" || typeof data.label !== "string") {
+        return null;
+      }
+
+      return {
+        id: block.id,
+        type: "cta",
+        order: block.order,
+        data: {
+          href: data.href,
+          label: data.label,
+          ...(typeof data.title === "string" ? { title: data.title } : {}),
+          ...(typeof data.description === "string"
+            ? { description: data.description }
+            : {}),
+        },
+      };
+    }
+
+    if (block.type === "image") {
+      if (typeof data.src !== "string") {
+        return null;
+      }
+
+      return {
+        id: block.id,
+        type: "image",
+        order: block.order,
+        data: {
+          src: data.src,
+          ...(typeof data.alt === "string" ? { alt: data.alt } : {}),
+          ...(typeof data.caption === "string"
+            ? { caption: data.caption }
+            : {}),
+          ...(typeof data.width === "number" ? { width: data.width } : {}),
+          ...(typeof data.height === "number" ? { height: data.height } : {}),
+        },
+      };
+    }
+
+    if (block.type === "news_list") {
+      if (
+        data.title !== undefined &&
+        data.title !== null &&
+        typeof data.title !== "string"
+      ) {
+        return null;
+      }
+
+      if (
+        data.count !== undefined &&
+        data.count !== null &&
+        typeof data.count !== "number"
+      ) {
+        return null;
+      }
+
+      return {
+        id: block.id,
+        type: "news_list",
+        order: block.order,
+        data: {
+          ...(typeof data.title === "string" ? { title: data.title } : {}),
+          ...(typeof data.count === "number" ? { count: data.count } : {}),
+        },
+      };
+    }
+
+    return null;
+  }
+
   private mapPublicContentItem(item: ContentItem): PublicContentItemDto {
+    const data = this.asRecord(item.data);
+    const publishedAt =
+      typeof data.publishedAt === "string"
+        ? data.publishedAt
+        : item.updatedAt.toISOString();
+
     return {
       id: item.id,
       slug: item.slug,
       title: item.title,
+      summary:
+        typeof data.excerpt === "string"
+          ? data.excerpt
+          : typeof data.summary === "string"
+            ? data.summary
+            : typeof data.shortDescription === "string"
+              ? data.shortDescription
+              : "",
+      body: typeof data.body === "string" ? data.body : "",
+      shortDescription:
+        typeof data.shortDescription === "string" ? data.shortDescription : "",
+      featuredImage:
+        typeof data.featuredImage === "string" ? data.featuredImage : null,
+      callToActionLabel:
+        typeof data.callToActionLabel === "string"
+          ? data.callToActionLabel
+          : "",
+      callToActionUrl:
+        typeof data.callToActionUrl === "string" ? data.callToActionUrl : "",
+      relatedItemIds: Array.isArray(data.relatedServices)
+        ? data.relatedServices.filter(
+            (entry): entry is string => typeof entry === "string",
+          )
+        : [],
+      publishedAt,
       canonicalUrl: item.canonicalUrl,
       noIndex: item.noIndex,
-      data: item.data,
       updatedAt: item.updatedAt,
       ...(item.parentId ? { parentId: item.parentId } : {}),
     };
@@ -252,5 +472,11 @@ export class PublicContentController {
         ...node,
         children: this.filterPublishedContentItemTree(node.children),
       }));
+  }
+
+  private asRecord(value: unknown): Record<string, unknown> {
+    return typeof value === "object" && value !== null && !Array.isArray(value)
+      ? (value as Record<string, unknown>)
+      : {};
   }
 }

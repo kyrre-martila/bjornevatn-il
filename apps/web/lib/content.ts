@@ -128,13 +128,12 @@ type ApiPageBlock = {
 type ApiPage = {
   slug: string;
   title: string;
-  templateKey?: string | null;
+  templateKey: string;
   seoTitle: string | null;
   seoDescription: string | null;
   seoImage: string | null;
   canonicalUrl: string | null;
   noIndex: boolean;
-  published: boolean;
   blocks?: ApiPageBlock[];
 };
 
@@ -142,12 +141,18 @@ type ApiContentItem = {
   id: string;
   slug: string;
   title: string;
-  templateKey?: string | null;
+  summary: string;
+  body: string;
+  shortDescription: string;
+  featuredImage: string | null;
+  callToActionLabel: string;
+  callToActionUrl: string;
+  relatedItemIds: string[];
+  publishedAt: string;
   canonicalUrl: string | null;
   noIndex: boolean;
-  published: boolean;
-  data: Record<string, unknown> | null;
   updatedAt: string;
+  parentId?: string | null;
 };
 
 type ApiContentItemTree = ApiContentItem & {
@@ -192,7 +197,6 @@ export type GenericContentDetailItem = {
   canonicalUrl: string | null;
   noIndex: boolean;
   publishedAt: string;
-  data: Record<string, unknown>;
 };
 
 type ApiTaxonomy = {
@@ -315,19 +319,12 @@ function mapApiPage(page: ApiPage): ContentPage {
 }
 
 function mapApiContentItem(item: ApiContentItem): NewsItem {
-  const data = asRecord(item.data);
-  const publishedAt =
-    typeof data.publishedAt === "string" ? data.publishedAt : item.updatedAt;
-
   return {
     slug: item.slug,
     title: item.title,
-    summary: typeof data.excerpt === "string" ? data.excerpt : "",
-    publishedAt: new Date(publishedAt).toISOString().slice(0, 10),
-    templateKey:
-      typeof item.templateKey === "string" && item.templateKey.trim()
-        ? item.templateKey
-        : "index",
+    summary: item.summary,
+    publishedAt: new Date(item.publishedAt).toISOString().slice(0, 10),
+    templateKey: "index",
     canonicalUrl: item.canonicalUrl ?? null,
     noIndex: Boolean(item.noIndex),
   };
@@ -335,10 +332,9 @@ function mapApiContentItem(item: ApiContentItem): NewsItem {
 
 function mapApiContentItemDetail(item: ApiContentItem): NewsDetailItem {
   const mapped = mapApiContentItem(item);
-  const data = asRecord(item.data);
   return {
     ...mapped,
-    body: typeof data.body === "string" ? data.body : "",
+    body: item.body,
   };
 }
 
@@ -447,7 +443,7 @@ function mapHeroFromPage(page: ContentPage): HeroContent | null {
 
 export async function getHomepageContent(): Promise<HeroContent> {
   const apiPage = await fetchContent<ApiPage>("/content/pages/slug/home");
-  if (!apiPage || !apiPage.published) {
+  if (!apiPage) {
     return {
       eyebrow: "",
       title: "",
@@ -484,14 +480,11 @@ function mapServiceListItem(
   item: ApiContentItem,
   childCount: number,
 ): ServiceListItem {
-  const data = asRecord(item.data);
-
   return {
     id: item.id,
     slug: item.slug,
     title: item.title,
-    shortDescription:
-      typeof data.shortDescription === "string" ? data.shortDescription : "",
+    shortDescription: item.shortDescription,
     childCount,
   };
 }
@@ -579,24 +572,12 @@ export async function getPublicContentTypeBySlug(
 function mapGenericArchiveItem(
   item: ApiContentItem,
 ): GenericContentArchiveItem {
-  const data = asRecord(item.data);
-  const publishedAt =
-    typeof data.publishedAt === "string" ? data.publishedAt : item.updatedAt;
-  const summary =
-    typeof data.excerpt === "string"
-      ? data.excerpt
-      : typeof data.summary === "string"
-        ? data.summary
-        : typeof data.shortDescription === "string"
-          ? data.shortDescription
-          : "";
-
   return {
     id: item.id,
     slug: item.slug,
     title: item.title,
-    summary,
-    publishedAt: new Date(publishedAt).toISOString().slice(0, 10),
+    summary: item.summary,
+    publishedAt: new Date(item.publishedAt).toISOString().slice(0, 10),
   };
 }
 
@@ -616,38 +597,23 @@ export async function getContentTypeArchiveItems(
     return [];
   }
 
-  return items.filter((item) => item.published).map(mapGenericArchiveItem);
+  return items.map(mapGenericArchiveItem);
 }
 
 function mapGenericDetailItem(
   item: ApiContentItem,
   fallbackTemplateKey: string,
 ): GenericContentDetailItem {
-  const data = asRecord(item.data);
-  const publishedAt =
-    typeof data.publishedAt === "string" ? data.publishedAt : item.updatedAt;
-
   return {
     id: item.id,
     slug: item.slug,
     title: item.title,
-    summary:
-      typeof data.excerpt === "string"
-        ? data.excerpt
-        : typeof data.summary === "string"
-          ? data.summary
-          : typeof data.shortDescription === "string"
-            ? data.shortDescription
-            : "",
-    body: typeof data.body === "string" ? data.body : "",
-    templateKey:
-      typeof item.templateKey === "string" && item.templateKey.trim()
-        ? item.templateKey
-        : fallbackTemplateKey,
+    summary: item.summary,
+    body: item.body,
+    templateKey: fallbackTemplateKey,
     canonicalUrl: item.canonicalUrl ?? null,
     noIndex: Boolean(item.noIndex),
-    publishedAt: new Date(publishedAt).toISOString().slice(0, 10),
-    data,
+    publishedAt: new Date(item.publishedAt).toISOString().slice(0, 10),
   };
 }
 
@@ -672,7 +638,7 @@ export async function resolveContentItemBySlug(
   }
 
   const item = response;
-  if (!item || !item.published) {
+  if (!item) {
     return { redirectTo: null, item: null };
   }
 
@@ -725,18 +691,13 @@ export async function resolveServiceBySlug(
   }
 
   const item = response;
-  if (!item || !item.published) {
+  if (!item) {
     return { redirectTo: null, item: null };
   }
 
   const tree = services ?? [];
   const allServices = flattenServiceTree(tree);
-  const data = asRecord(item.data);
-  const relatedIds = Array.isArray(data.relatedServices)
-    ? data.relatedServices.filter(
-        (entry): entry is string => typeof entry === "string",
-      )
-    : [];
+  const relatedIds = item.relatedItemIds;
 
   const relatedServices = relatedIds
     .map((id) => allServices.find((entry) => entry.id === id))
@@ -755,17 +716,11 @@ export async function resolveServiceBySlug(
       id: item.id,
       slug: item.slug,
       title: item.title,
-      shortDescription:
-        typeof data.shortDescription === "string" ? data.shortDescription : "",
-      body: typeof data.body === "string" ? data.body : "",
-      featuredImage:
-        typeof data.featuredImage === "string" ? data.featuredImage : null,
-      callToActionLabel:
-        typeof data.callToActionLabel === "string"
-          ? data.callToActionLabel
-          : "",
-      callToActionUrl:
-        typeof data.callToActionUrl === "string" ? data.callToActionUrl : "",
+      shortDescription: item.shortDescription,
+      body: item.body,
+      featuredImage: item.featuredImage,
+      callToActionLabel: item.callToActionLabel,
+      callToActionUrl: item.callToActionUrl,
       relatedServices,
       childServices,
       taxonomyTerms,
@@ -792,7 +747,7 @@ export async function resolveNewsItemBySlug(
 
   const item = response;
 
-  if (!item || !item.published) {
+  if (!item) {
     return { redirectTo: null, item: null };
   }
 
@@ -825,7 +780,7 @@ export async function resolvePageContentBySlug(
 
   const page = response;
 
-  if (!page || !page.published) {
+  if (!page) {
     return { redirectTo: null, page: null };
   }
 
@@ -929,7 +884,6 @@ export async function getSitemapPages(): Promise<SitemapPageEntry[]> {
       slug: string;
       canonicalUrl: string | null;
       updatedAt: string;
-      published: boolean;
       noIndex: boolean;
     }>
   >("/content/pages");
@@ -938,14 +892,12 @@ export async function getSitemapPages(): Promise<SitemapPageEntry[]> {
     return [];
   }
 
-  return pages
-    .filter((page) => page.published)
-    .map((page) => ({
-      slug: page.slug,
-      canonicalUrl: page.canonicalUrl ?? null,
-      updatedAt: page.updatedAt,
-      noIndex: Boolean(page.noIndex),
-    }));
+  return pages.map((page) => ({
+    slug: page.slug,
+    canonicalUrl: page.canonicalUrl ?? null,
+    updatedAt: page.updatedAt,
+    noIndex: Boolean(page.noIndex),
+  }));
 }
 
 function contentItemPath(contentTypeSlug: string, slug: string): string | null {
@@ -1008,15 +960,13 @@ export async function getSitemapContentItems(): Promise<
         return [];
       }
 
-      return items
-        .filter((item) => item.published)
-        .map((item) => ({
-          contentTypeSlug: type.slug,
-          slug: item.slug,
-          canonicalUrl: item.canonicalUrl ?? null,
-          updatedAt: item.updatedAt,
-          noIndex: Boolean(item.noIndex),
-        }));
+      return items.map((item) => ({
+        contentTypeSlug: type.slug,
+        slug: item.slug,
+        canonicalUrl: item.canonicalUrl ?? null,
+        updatedAt: item.updatedAt,
+        noIndex: Boolean(item.noIndex),
+      }));
     }),
   );
 
