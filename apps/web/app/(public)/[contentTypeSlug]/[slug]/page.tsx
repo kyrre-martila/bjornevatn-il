@@ -1,12 +1,11 @@
 import type { Metadata } from "next";
-import { notFound, permanentRedirect } from "next/navigation";
+import { notFound, permanentRedirect, redirect } from "next/navigation";
 
 import {
   getContentItemPath,
   getPublicContentTypeBySlug,
   getSiteConfiguration,
   resolveContentItemBySlug,
-  sanitizeInternalRedirectTarget,
   withTitleSuffix,
 } from "../../../../lib/content";
 import { resolveContentTypeTemplate } from "../../templates/template-registry";
@@ -22,7 +21,7 @@ export async function generateMetadata({
     getSiteConfiguration(),
   ]);
 
-  if (resolved.redirectTo) {
+  if (resolved.redirect) {
     return { title: "Redirecting" };
   }
 
@@ -60,13 +59,13 @@ export default async function ContentItemPage({
     notFound();
   }
 
-  if (resolved.redirectTo) {
-    const redirectTarget = sanitizeInternalRedirectTarget(resolved.redirectTo);
-    if (!redirectTarget) {
-      notFound();
+  if (resolved.redirect) {
+    // Honor API semantics while keeping redirect targets constrained to internal paths.
+    if (resolved.redirect.permanent) {
+      permanentRedirect(resolved.redirect.target);
     }
 
-    permanentRedirect(redirectTarget);
+    redirect(resolved.redirect.target);
   }
 
   const item = resolved.item;

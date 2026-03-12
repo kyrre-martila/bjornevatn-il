@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { notFound, permanentRedirect } from "next/navigation";
+import { notFound, permanentRedirect, redirect } from "next/navigation";
 import Link from "next/link";
 
 import {
@@ -9,7 +9,6 @@ import {
   getPublicContentTypeBySlug,
   getSiteConfiguration,
   resolvePageContentBySlug,
-  sanitizeInternalRedirectTarget,
   withTitleSuffix,
 } from "../../../lib/content";
 import { renderBlock } from "../page/[slug]/block-renderer";
@@ -71,15 +70,13 @@ export default async function ContentTypeArchivePage({
   const { contentTypeSlug } = await params;
   const pageResolution = await resolvePageContentBySlug(contentTypeSlug);
 
-  if (pageResolution.redirectTo) {
-    const redirectTarget = sanitizeInternalRedirectTarget(
-      pageResolution.redirectTo,
-    );
-    if (!redirectTarget) {
-      notFound();
+  if (pageResolution.redirect) {
+    // Honor API semantics while keeping redirect targets constrained to internal paths.
+    if (pageResolution.redirect.permanent) {
+      permanentRedirect(pageResolution.redirect.target);
     }
 
-    permanentRedirect(redirectTarget);
+    redirect(pageResolution.redirect.target);
   }
 
   if (pageResolution.page) {

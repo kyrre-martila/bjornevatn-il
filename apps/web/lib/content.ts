@@ -206,12 +206,48 @@ type ApiSiteSetting = {
 
 type ApiSlugRedirect = {
   redirectTo: string;
+  permanent?: boolean;
+};
+
+export type ResolvedRedirect = {
+  target: string;
   permanent: boolean;
 };
 
 function isApiSlugRedirect(value: unknown): value is ApiSlugRedirect {
   const record = asRecord(value);
   return typeof record.redirectTo === "string";
+}
+
+function isApiContentItem(value: unknown): value is ApiContentItem {
+  const record = asRecord(value);
+  return (
+    typeof record.id === "string" &&
+    typeof record.slug === "string" &&
+    typeof record.title === "string"
+  );
+}
+
+function isApiPage(value: unknown): value is ApiPage {
+  const record = asRecord(value);
+  return typeof record.slug === "string" && typeof record.title === "string";
+}
+
+function toResolvedRedirect(value: unknown): ResolvedRedirect | null {
+  if (!isApiSlugRedirect(value)) {
+    return null;
+  }
+
+  const target = sanitizeInternalRedirectTarget(value.redirectTo);
+  if (!target) {
+    return null;
+  }
+
+  return {
+    target,
+    // Redirects are permanent by default when the API does not specify otherwise.
+    permanent: value.permanent !== false,
+  };
 }
 
 const PUBLIC_SITE_SETTING_KEYS: SiteSettingKey[] = [
@@ -610,30 +646,30 @@ export async function resolveContentItemBySlug(
   contentTypeSlug: string,
   slug: string,
 ): Promise<{
-  redirectTo: string | null;
+  redirect: ResolvedRedirect | null;
   item: GenericContentDetailItem | null;
 }> {
   const contentType = await getPublicContentTypeBySlug(contentTypeSlug);
   if (!contentType) {
-    return { redirectTo: null, item: null };
+    return { redirect: null, item: null };
   }
 
   const response = await fetchContent<ApiContentItem | ApiSlugRedirect>(
     `/public/content/items/type-slug/${encodeURIComponent(contentTypeSlug)}/${encodeURIComponent(slug)}`,
   );
 
-  if (isApiSlugRedirect(response)) {
-    return { redirectTo: response.redirectTo, item: null };
+  const redirect = toResolvedRedirect(response);
+  if (redirect) {
+    return { redirect, item: null };
   }
 
-  const item = response;
-  if (!item) {
-    return { redirectTo: null, item: null };
+  if (!isApiContentItem(response)) {
+    return { redirect: null, item: null };
   }
 
   return {
-    redirectTo: null,
-    item: mapGenericDetailItem(item, contentType.templateKey),
+    redirect: null,
+    item: mapGenericDetailItem(response, contentType.templateKey),
   };
 }
 
@@ -651,7 +687,7 @@ async function getServiceTaxonomyTermNames(
 
 export async function resolveServiceBySlug(
   slug: string,
-): Promise<{ redirectTo: string | null; item: ServiceDetailItem | null }> {
+): Promise<{ redirect: ResolvedRedirect | null; item: ServiceDetailItem | null }> {
   const [response, services, templateKey] = await Promise.all([
     fetchContent<ApiContentItem | ApiSlugRedirect>(
       `/public/content/items/type-slug/services/${encodeURIComponent(slug)}`,
@@ -662,15 +698,16 @@ export async function resolveServiceBySlug(
     getContentTypeTemplateKey("services"),
   ]);
 
-  if (isApiSlugRedirect(response)) {
-    return { redirectTo: response.redirectTo, item: null };
+  const redirect = toResolvedRedirect(response);
+  if (redirect) {
+    return { redirect, item: null };
+  }
+
+  if (!isApiContentItem(response)) {
+    return { redirect: null, item: null };
   }
 
   const item = response;
-  if (!item) {
-    return { redirectTo: null, item: null };
-  }
-
   const tree = services ?? [];
   const allServices = flattenServiceTree(tree);
   const relatedIds = item.relatedItemIds;
@@ -687,7 +724,7 @@ export async function resolveServiceBySlug(
   const taxonomyTerms = await getServiceTaxonomyTermNames(item.id);
 
   return {
-    redirectTo: null,
+    redirect: null,
     item: {
       id: item.id,
       slug: item.slug,
@@ -709,7 +746,7 @@ export async function resolveServiceBySlug(
 
 export async function resolveNewsItemBySlug(
   slug: string,
-): Promise<{ redirectTo: string | null; item: NewsDetailItem | null }> {
+): Promise<{ redirect: ResolvedRedirect | null; item: NewsDetailItem | null }> {
   const [response, templateKey] = await Promise.all([
     fetchContent<ApiContentItem | ApiSlugRedirect>(
       `/public/content/items/type-slug/news/${encodeURIComponent(slug)}`,
@@ -717,20 +754,19 @@ export async function resolveNewsItemBySlug(
     getContentTypeTemplateKey("news"),
   ]);
 
-  if (isApiSlugRedirect(response)) {
-    return { redirectTo: response.redirectTo, item: null };
+  const redirect = toResolvedRedirect(response);
+  if (redirect) {
+    return { redirect, item: null };
   }
 
-  const item = response;
-
-  if (!item) {
-    return { redirectTo: null, item: null };
+  if (!isApiContentItem(response)) {
+    return { redirect: null, item: null };
   }
 
   return {
-    redirectTo: null,
+    redirect: null,
     item: {
-      ...mapApiContentItemDetail(item),
+      ...mapApiContentItemDetail(response),
       templateKey,
     },
   };
@@ -745,22 +781,21 @@ export async function getNewsItemBySlug(
 
 export async function resolvePageContentBySlug(
   slug: string,
-): Promise<{ redirectTo: string | null; page: ContentPage | null }> {
+): Promise<{ redirect: ResolvedRedirect | null; page: ContentPage | null }> {
   const response = await fetchContent<ApiPage | ApiSlugRedirect>(
     `/public/content/pages/slug/${encodeURIComponent(slug)}`,
   );
 
-  if (isApiSlugRedirect(response)) {
-    return { redirectTo: response.redirectTo, page: null };
+  const redirect = toResolvedRedirect(response);
+  if (redirect) {
+    return { redirect, page: null };
   }
 
-  const page = response;
-
-  if (!page) {
-    return { redirectTo: null, page: null };
+  if (!isApiPage(response)) {
+    return { redirect: null, page: null };
   }
 
-  return { redirectTo: null, page: mapApiPage(page) };
+  return { redirect: null, page: mapApiPage(response) };
 }
 
 export async function getPageContentBySlug(

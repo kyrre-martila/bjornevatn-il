@@ -1,11 +1,10 @@
 import type { Metadata } from "next";
-import { notFound, permanentRedirect } from "next/navigation";
+import { notFound, permanentRedirect, redirect } from "next/navigation";
 
 import {
   getPagePath,
   getSiteConfiguration,
   resolvePageContentBySlug,
-  sanitizeInternalRedirectTarget,
   withTitleSuffix,
 } from "../../../../lib/content";
 import { renderBlock } from "./block-renderer";
@@ -46,7 +45,7 @@ export async function generateMetadata({
     getSiteConfiguration(),
   ]);
 
-  if (resolved.redirectTo) {
+  if (resolved.redirect) {
     return {};
   }
 
@@ -92,13 +91,13 @@ export default async function GenericPage({
   const { slug } = await params;
   const resolved = await resolvePageContentBySlug(slug);
 
-  if (resolved.redirectTo) {
-    const redirectTarget = sanitizeInternalRedirectTarget(resolved.redirectTo);
-    if (!redirectTarget) {
-      notFound();
+  if (resolved.redirect) {
+    // Honor API semantics while keeping redirect targets constrained to internal paths.
+    if (resolved.redirect.permanent) {
+      permanentRedirect(resolved.redirect.target);
     }
 
-    permanentRedirect(redirectTarget);
+    redirect(resolved.redirect.target);
   }
 
   const content = resolved.page;
