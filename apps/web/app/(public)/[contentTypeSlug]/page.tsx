@@ -1,18 +1,67 @@
+import type { Metadata } from "next";
 import { notFound, permanentRedirect } from "next/navigation";
 import Link from "next/link";
 
 import {
   getContentTypeArchiveItems,
   getContentItemPath,
+  getPagePath,
   getPublicContentTypeBySlug,
+  getSiteConfiguration,
   resolvePageContentBySlug,
   sanitizeInternalRedirectTarget,
+  withTitleSuffix,
 } from "../../../lib/content";
 import { renderBlock } from "../page/[slug]/block-renderer";
 import {
   resolveContentTypeTemplate,
   resolvePageTemplate,
 } from "../templates/template-registry";
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ contentTypeSlug: string }>;
+}): Promise<Metadata> {
+  const { contentTypeSlug } = await params;
+  const [pageResolution, contentType, siteConfig] = await Promise.all([
+    resolvePageContentBySlug(contentTypeSlug),
+    getPublicContentTypeBySlug(contentTypeSlug),
+    getSiteConfiguration(),
+  ]);
+
+  if (pageResolution.page) {
+    const page = pageResolution.page;
+    const pagePath = getPagePath(page.slug) ?? `/${contentTypeSlug}`;
+    const title = withTitleSuffix(
+      page.seoTitle?.trim() || page.title,
+      siteConfig.defaultTitleSuffix,
+    );
+
+    return {
+      title,
+      description: page.seoDescription?.trim() || undefined,
+      alternates: {
+        canonical: new URL(pagePath, `${siteConfig.siteUrl}/`).toString(),
+      },
+      robots: page.noIndex ? { index: false, follow: true } : undefined,
+    };
+  }
+
+  if (!contentType) {
+    return {};
+  }
+
+  const canonicalPath = `/${contentType.slug}`;
+  const title = withTitleSuffix(contentType.name, siteConfig.defaultTitleSuffix);
+
+  return {
+    title,
+    alternates: {
+      canonical: new URL(canonicalPath, `${siteConfig.siteUrl}/`).toString(),
+    },
+  };
+}
 
 export default async function ContentTypeArchivePage({
   params,

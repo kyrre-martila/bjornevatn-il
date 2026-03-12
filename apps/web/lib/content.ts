@@ -876,16 +876,23 @@ export async function getSitemapPages(): Promise<SitemapPageEntry[]> {
   }));
 }
 
+function normalizePathSegment(value: string): string {
+  return value.trim().replace(/^\/+|\/+$/g, "");
+}
+
 function contentItemPath(contentTypeSlug: string, slug: string): string | null {
-  if (!contentTypeSlug.trim() || !slug.trim()) {
+  const normalizedContentTypeSlug = normalizePathSegment(contentTypeSlug);
+  const normalizedSlug = normalizePathSegment(slug);
+
+  if (!normalizedContentTypeSlug || !normalizedSlug) {
     return null;
   }
 
-  return `/${contentTypeSlug}/${slug}`;
+  return `/${normalizedContentTypeSlug}/${normalizedSlug}`;
 }
 
 function pagePath(slug: string): string | null {
-  const normalizedSlug = slug.trim();
+  const normalizedSlug = normalizePathSegment(slug);
 
   if (!normalizedSlug) {
     return null;

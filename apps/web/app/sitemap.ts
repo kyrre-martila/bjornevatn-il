@@ -22,9 +22,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const pageEntries = pages
     .filter((page) => !page.noIndex)
     .map((page) => ({
-      url:
-        page.canonicalUrl ??
-        normalizeUrl(baseUrl, getPagePath(page.slug) ?? "/"),
+      url: normalizeUrl(baseUrl, getPagePath(page.slug) ?? "/"),
       lastModified: new Date(page.updatedAt),
     }));
 
@@ -34,9 +32,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       const fallbackPath = getContentItemPath(item.contentTypeSlug, item.slug);
 
       return {
-        url:
-          item.canonicalUrl ??
-          normalizeUrl(baseUrl, fallbackPath ?? `/page/${item.slug}`),
+        url: normalizeUrl(baseUrl, fallbackPath ?? `/${item.contentTypeSlug}`),
         lastModified: new Date(item.updatedAt),
       };
     });

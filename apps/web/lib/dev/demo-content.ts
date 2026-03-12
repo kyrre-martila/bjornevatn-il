@@ -53,8 +53,8 @@ export const DEMO_PAGES: ContentPage[] = [
           title: "Believable website blueprint",
           subtitle:
             "Moren ipsum dolor sit amet, consectetuer adipiscing elit. Moren aenean commodo ligula eget dolor.",
-          primaryCta: { href: "/page/services", label: "Explore services" },
-          secondaryCta: { href: "/page/contact", label: "Contact us" },
+          primaryCta: { href: "/services", label: "Explore services" },
+          secondaryCta: { href: "/contact", label: "Contact us" },
         },
       },
       {
@@ -87,7 +87,7 @@ export const DEMO_PAGES: ContentPage[] = [
           title: "Start your Moren project",
           description:
             "Moren ipsum nulla consequat massa quis enim. Donec pede justo, fringilla vel, aliquet nec, vulputate eget, arcu.",
-          href: "/page/contact",
+          href: "/contact",
           label: "Book a consultation",
         },
       },
@@ -163,7 +163,7 @@ export const DEMO_PAGES: ContentPage[] = [
           title: "Need a custom scope?",
           description:
             "Moren ipsum maecenas tempus, tellus eget condimentum rhoncus, sem quam semper libero.",
-          href: "/page/contact",
+          href: "/contact",
           label: "Request proposal",
         },
       },
@@ -203,21 +203,21 @@ export const DEMO_NAVIGATION_ITEMS: NavigationItem[] = [
   {
     id: "nav-about",
     label: "About",
-    url: "/page/about",
+    url: "/about",
     order: 2,
     parentId: null,
   },
   {
     id: "nav-services",
     label: "Services",
-    url: "/page/services",
+    url: "/services",
     order: 3,
     parentId: null,
   },
   {
     id: "nav-contact",
     label: "Contact",
-    url: "/page/contact",
+    url: "/contact",
     order: 4,
     parentId: null,
   },

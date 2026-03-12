@@ -57,8 +57,7 @@ export async function generateMetadata({
   }
 
   const basePath = getPagePath(page.slug) ?? "/";
-  const canonicalUrl =
-    page.canonicalUrl ?? new URL(basePath, `${siteConfig.siteUrl}/`).toString();
+  const canonicalUrl = new URL(basePath, `${siteConfig.siteUrl}/`).toString();
   const title = withTitleSuffix(
     page.seoTitle?.trim() || page.title,
     siteConfig.defaultTitleSuffix,
@@ -109,7 +108,7 @@ export default async function GenericPage({
   }
 
   const canonicalPath = getPagePath(content.slug);
-  if (canonicalPath && canonicalPath !== `/page/${content.slug}`) {
+  if (canonicalPath) {
     permanentRedirect(canonicalPath);
   }
 

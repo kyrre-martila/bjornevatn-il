@@ -1,8 +1,39 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 
-import { getHomepageContent, getPageContentBySlug } from "../../lib/content";
+import {
+  getHomepageContent,
+  getPageContentBySlug,
+  getSiteConfiguration,
+  withTitleSuffix,
+} from "../../lib/content";
 import { renderBlock } from "./page/[slug]/block-renderer";
 import { resolvePageTemplate } from "./templates/template-registry";
+
+export async function generateMetadata(): Promise<Metadata> {
+  const [content, siteConfig] = await Promise.all([
+    getPageContentBySlug("home"),
+    getSiteConfiguration(),
+  ]);
+
+  if (!content) {
+    return {
+      alternates: { canonical: new URL("/", `${siteConfig.siteUrl}/`).toString() },
+    };
+  }
+
+  const title = withTitleSuffix(
+    content.seoTitle?.trim() || content.title,
+    siteConfig.defaultTitleSuffix,
+  );
+
+  return {
+    title,
+    description: content.seoDescription?.trim() || undefined,
+    alternates: { canonical: new URL("/", `${siteConfig.siteUrl}/`).toString() },
+    robots: content.noIndex ? { index: false, follow: true } : undefined,
+  };
+}
 
 export default async function Homepage() {
   const content = await getPageContentBySlug("home");

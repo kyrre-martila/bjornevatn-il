@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound, permanentRedirect } from "next/navigation";
 
 import {
+  getContentItemPath,
   getPublicContentTypeBySlug,
   getSiteConfiguration,
   resolveContentItemBySlug,
@@ -30,12 +31,10 @@ export async function generateMetadata({
     return { title: "Not found" };
   }
 
-  const canonicalUrl =
-    item.canonicalUrl ??
-    new URL(
-      `/${contentTypeSlug}/${item.slug}`,
-      `${siteConfig.siteUrl}/`,
-    ).toString();
+  const canonicalUrl = new URL(
+    getContentItemPath(contentTypeSlug, item.slug) ?? `/${contentTypeSlug}`,
+    `${siteConfig.siteUrl}/`,
+  ).toString();
   const title = withTitleSuffix(item.title, siteConfig.defaultTitleSuffix);
 
   return {

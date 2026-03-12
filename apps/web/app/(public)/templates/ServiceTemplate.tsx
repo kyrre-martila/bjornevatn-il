@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 
+import { getContentItemPath } from "../../../lib/content";
 import type { BaseTemplateProps } from "./template-types";
 
 export function ServiceTemplate({
@@ -45,7 +46,12 @@ export function ServiceTemplate({
             <ul>
               {service.relatedServices.map((related) => (
                 <li key={related.slug}>
-                  <Link href={`/services/${related.slug}`}>
+                  <Link
+                    href={
+                      getContentItemPath("services", related.slug) ??
+                      "/services"
+                    }
+                  >
                     {related.title}
                   </Link>
                 </li>
@@ -60,7 +66,14 @@ export function ServiceTemplate({
             <ul>
               {service.childServices.map((child) => (
                 <li key={child.slug}>
-                  <Link href={`/services/${child.slug}`}>{child.title}</Link>
+                  <Link
+                    href={
+                      getContentItemPath("services", child.slug) ??
+                      "/services"
+                    }
+                  >
+                    {child.title}
+                  </Link>
                 </li>
               ))}
             </ul>
