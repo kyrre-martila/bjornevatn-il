@@ -21,26 +21,36 @@ const templates: TemplateRegistry = {
   landing: LandingTemplate,
 };
 
+const INDEX_TEMPLATE_KEY: TemplateKey = "index";
+
+function isTemplateKey(value: string): value is TemplateKey {
+  return value in templates;
+}
+
 export const pageTemplateRegistry: TemplateRegistry = templates;
 
 export const contentTypeTemplateRegistry: TemplateRegistry = templates;
 
-export function resolvePageTemplate(
+export function resolveTemplate(
   templateKey: string | null | undefined,
 ): TemplateComponent {
   if (!templateKey) {
-    return templates.index;
+    return templates[INDEX_TEMPLATE_KEY];
   }
 
-  return templates[templateKey as TemplateKey] ?? templates.index;
+  return isTemplateKey(templateKey)
+    ? templates[templateKey]
+    : templates[INDEX_TEMPLATE_KEY];
+}
+
+export function resolvePageTemplate(
+  templateKey: string | null | undefined,
+): TemplateComponent {
+  return resolveTemplate(templateKey);
 }
 
 export function resolveContentTypeTemplate(
   templateKey: string | null | undefined,
 ): TemplateComponent {
-  if (!templateKey) {
-    return templates.index;
-  }
-
-  return templates[templateKey as TemplateKey] ?? templates.index;
+  return resolveTemplate(templateKey);
 }

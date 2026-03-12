@@ -148,14 +148,8 @@ export class PublicContentController {
     }
 
     if (result.kind === "redirect") {
-      if (contentTypeSlug === "news") {
-        return {
-          redirectTo: `/news/${result.destinationSlug}`,
-          permanent: true,
-        };
-      }
       return {
-        redirectTo: `/content/${encodeURIComponent(contentTypeSlug)}/${encodeURIComponent(result.destinationSlug)}`,
+        redirectTo: `/${encodeURIComponent(contentTypeSlug)}/${encodeURIComponent(result.destinationSlug)}`,
         permanent: true,
       };
     }
