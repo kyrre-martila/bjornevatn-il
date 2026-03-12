@@ -17,6 +17,10 @@ import { LocalFileStorageProvider } from "./local-file-storage.provider";
 import { MediaController } from "./media.controller";
 import { MediaService } from "./media.service";
 import { AuthModule } from "../auth/auth.module";
+import {
+  MEDIA_UPLOAD_SCANNER,
+  NoopMediaUploadScanner,
+} from "./media-upload-scanner";
 
 @Module({
   imports: [AuthModule],
@@ -65,6 +69,10 @@ import { AuthModule } from "../auth/auth.module";
     {
       provide: "MediaStorageProvider",
       useClass: LocalFileStorageProvider,
+    },
+    {
+      provide: MEDIA_UPLOAD_SCANNER,
+      useClass: NoopMediaUploadScanner,
     },
     MediaService,
   ],

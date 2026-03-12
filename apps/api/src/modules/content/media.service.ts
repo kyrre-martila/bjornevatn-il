@@ -1,7 +1,8 @@
 import { BadRequestException, Inject, Injectable } from "@nestjs/common";
 import { fromBuffer as detectFileTypeFromBuffer } from "file-type";
-import { imageSize } from "image-size";
+import sharp from "sharp";
 import type { Media, MediaRepository, MediaStorageProvider } from "@org/domain";
+import { MEDIA_UPLOAD_SCANNER, type MediaUploadScanner } from "./media-upload-scanner";
 
 export type UploadMediaInput = {
   fileBuffer: Buffer;
@@ -11,24 +12,36 @@ export type UploadMediaInput = {
 };
 
 type ImageMetadata = {
-  width: number | null;
-  height: number | null;
-  mimeType: string | null;
+  width: number;
+  height: number;
+  mimeType: string;
 };
 
 @Injectable()
 export class MediaService {
   private static readonly allowedMimeTypes = new Set(["image/png", "image/jpeg"]);
+  private static readonly maxUploadBytes = 10 * 1024 * 1024;
 
   constructor(
     @Inject("MediaRepository")
     private readonly mediaRepository: MediaRepository,
     @Inject("MediaStorageProvider")
     private readonly mediaStorageProvider: MediaStorageProvider,
+    @Inject(MEDIA_UPLOAD_SCANNER)
+    private readonly uploadScanner: MediaUploadScanner,
   ) {}
 
   async upload(input: UploadMediaInput): Promise<Media> {
+    this.ensureFileSizeWithinLimits(input.fileBuffer.byteLength);
+
     const detectedMimeType = await this.detectAndValidateMimeType(input);
+    const imageMetadata = await this.extractImageMetadata(input.fileBuffer, detectedMimeType);
+
+    await this.uploadScanner.scan({
+      buffer: input.fileBuffer,
+      fileName: input.fileName,
+      mimeType: detectedMimeType,
+    });
 
     const stored = await this.mediaStorageProvider.upload(
       {
@@ -41,21 +54,24 @@ export class MediaService {
       },
     );
 
-    const imageMetadata = this.extractImageMetadata(input.fileBuffer, detectedMimeType);
-    if (imageMetadata.width === null || imageMetadata.height === null) {
-      throw new BadRequestException("Uploaded file is malformed or unreadable.");
-    }
-
     return this.mediaRepository.create({
       url: this.mediaStorageProvider.getUrl(stored.id),
       alt: input.alt,
       width: imageMetadata.width,
       height: imageMetadata.height,
-      mimeType: imageMetadata.mimeType ?? detectedMimeType,
+      mimeType: imageMetadata.mimeType,
       sizeBytes: input.fileBuffer.byteLength,
       originalFilename: input.fileName,
       storageKey: stored.id,
     });
+  }
+
+  private ensureFileSizeWithinLimits(sizeBytes: number): void {
+    if (sizeBytes > MediaService.maxUploadBytes) {
+      throw new BadRequestException(
+        `Uploaded file is too large (${sizeBytes} bytes). Maximum allowed size is ${MediaService.maxUploadBytes} bytes.`,
+      );
+    }
   }
 
   private async detectAndValidateMimeType(input: UploadMediaInput): Promise<string> {
@@ -118,36 +134,37 @@ export class MediaService {
     return segments.at(-1) ?? url;
   }
 
-  private extractImageMetadata(fileBuffer: Buffer, mimeType: string): ImageMetadata {
-    const metadata = this.safeReadImageSize(fileBuffer);
+  private async extractImageMetadata(fileBuffer: Buffer, mimeType: string): Promise<ImageMetadata> {
+    let metadata;
 
-    const width = metadata.width ?? null;
-    const height = metadata.height ?? null;
-    if (!width || !height) {
-      return { width: null, height: null, mimeType: null };
-    }
-
-    const detectedMimeType = this.normalizeMimeType(this.imageTypeToMimeType(metadata.type));
-    if (detectedMimeType && detectedMimeType !== mimeType) {
-      throw new BadRequestException(
-        `Uploaded file image metadata type mismatch: detected "${mimeType}" but metadata indicates "${detectedMimeType}".`,
-      );
-    }
-
-    return { width, height, mimeType: detectedMimeType || mimeType };
-  }
-
-  private safeReadImageSize(fileBuffer: Buffer) {
     try {
-      return imageSize(fileBuffer);
+      metadata = await sharp(fileBuffer, { failOn: "error", limitInputPixels: 100_000_000 }).metadata();
     } catch {
       throw new BadRequestException("Uploaded file is malformed or unreadable.");
     }
+
+    const width = metadata.width;
+    const height = metadata.height;
+    if (!width || !height) {
+      throw new BadRequestException("Uploaded file is malformed or unreadable.");
+    }
+
+    const metadataMimeType = metadata.format ? this.imageFormatToMimeType(metadata.format) : "";
+    if (!metadataMimeType) {
+      throw new BadRequestException("Unsupported or malformed image metadata.");
+    }
+
+    if (metadataMimeType !== mimeType) {
+      throw new BadRequestException(
+        `Uploaded file image metadata type mismatch: detected "${mimeType}" but metadata indicates "${metadataMimeType}".`,
+      );
+    }
+
+    return { width, height, mimeType: metadataMimeType };
   }
 
-  private imageTypeToMimeType(imageType: string | undefined): string {
-    switch (imageType) {
-      case "jpg":
+  private imageFormatToMimeType(format: string): string {
+    switch (format) {
       case "jpeg":
         return "image/jpeg";
       case "png":
@@ -156,6 +173,4 @@ export class MediaService {
         return "";
     }
   }
-
-
 }

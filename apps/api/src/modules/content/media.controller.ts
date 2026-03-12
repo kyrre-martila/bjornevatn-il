@@ -25,6 +25,11 @@ import { AuthService } from "../auth/auth.service";
 import { requireMinimumRole } from "../../common/auth/admin-access";
 import type { Request } from "express";
 
+const MEDIA_UPLOAD_LIMITS = {
+  fileSizeBytes: 10 * 1024 * 1024,
+  files: 1,
+} as const;
+
 class UploadMediaDto {
   @ApiProperty()
   @IsString()
@@ -66,7 +71,14 @@ export class MediaController {
   }
 
   @Post("upload")
-  @UseInterceptors(FileInterceptor("file"))
+  @UseInterceptors(
+    FileInterceptor("file", {
+      limits: {
+        fileSize: MEDIA_UPLOAD_LIMITS.fileSizeBytes,
+        files: MEDIA_UPLOAD_LIMITS.files,
+      },
+    }),
+  )
   @ApiConsumes("multipart/form-data")
   @ApiBody({
     schema: {

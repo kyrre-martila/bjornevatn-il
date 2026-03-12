@@ -20,6 +20,10 @@ type MediaStorageProviderMock = {
   getUrl: jest.Mock;
 };
 
+type MediaUploadScannerMock = {
+  scan: jest.Mock;
+};
+
 const createService = () => {
   const mediaRepository: MediaRepositoryMock = {
     create: jest.fn(),
@@ -35,12 +39,21 @@ const createService = () => {
     getUrl: jest.fn().mockReturnValue("/uploads/stored-file-1"),
   };
 
+  const mediaUploadScanner: MediaUploadScannerMock = {
+    scan: jest.fn().mockResolvedValue(undefined),
+  };
+
   mediaRepository.create.mockImplementation((value) => Promise.resolve({ id: "media-1", ...value }));
 
   return {
-    service: new MediaService(mediaRepository as never, mediaStorageProvider as never),
+    service: new MediaService(
+      mediaRepository as never,
+      mediaStorageProvider as never,
+      mediaUploadScanner as never,
+    ),
     mediaRepository,
     mediaStorageProvider,
+    mediaUploadScanner,
   };
 };
 
@@ -65,6 +78,24 @@ describe("MediaService", () => {
     expect(result.mimeType).toBe("image/png");
   });
 
+  it("runs the upload scanner extension point before storage", async () => {
+    const { service, mediaStorageProvider, mediaUploadScanner } = createService();
+
+    await service.upload({
+      fileBuffer: Buffer.from(tinyPngBase64, "base64"),
+      fileName: "tiny.png",
+      mimeType: "image/png",
+      alt: "Tiny",
+    });
+
+    expect(mediaUploadScanner.scan).toHaveBeenCalledWith(
+      expect.objectContaining({ fileName: "tiny.png", mimeType: "image/png" }),
+    );
+    expect(mediaUploadScanner.scan.mock.invocationCallOrder[0]).toBeLessThan(
+      mediaStorageProvider.upload.mock.invocationCallOrder[0],
+    );
+  });
+
   it("rejects uploads when claimed type does not match file contents", async () => {
     const { service } = createService();
 
@@ -76,6 +107,19 @@ describe("MediaService", () => {
         alt: "Mismatch",
       }),
     ).rejects.toThrow(BadRequestException);
+  });
+
+  it("rejects oversized uploads", async () => {
+    const { service } = createService();
+
+    await expect(
+      service.upload({
+        fileBuffer: Buffer.alloc((10 * 1024 * 1024) + 1),
+        fileName: "too-large.png",
+        mimeType: "image/png",
+        alt: "Too large",
+      }),
+    ).rejects.toThrow("too large");
   });
 
   it("rejects unsupported detected image types", async () => {
