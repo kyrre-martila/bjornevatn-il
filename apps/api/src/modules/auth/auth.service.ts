@@ -6,8 +6,10 @@ import {
 import { ConfigService } from "@nestjs/config";
 import { JwtService } from "@nestjs/jwt";
 import * as bcrypt from "bcrypt";
+import { randomUUID } from "crypto";
 
 import { PrismaService } from "../../prisma/prisma.service";
+import { SessionRepository } from "./session.repository";
 
 export type PublicUser = {
   id: string;
@@ -30,8 +32,19 @@ export type AuthResult = {
   accessToken: string;
 };
 
-type JwtPayload = { sub: string; email: string };
+type JwtPayload = {
+  sub: string;
+  email: string;
+  sid: string;
+  exp?: number;
+};
 
+/**
+ * Session model:
+ * - Every issued access token includes a session id (`sid`).
+ * - The sid is persisted in the Session table with server-side expiry/revocation state.
+ * - Requests are accepted only when both JWT verification and Session state validation succeed.
+ */
 @Injectable()
 export class AuthService {
   private readonly saltRounds: number;
@@ -39,6 +52,7 @@ export class AuthService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwt: JwtService,
+    private readonly sessions: SessionRepository,
     config: ConfigService,
   ) {
     const configuredRounds = Number(config.get("BCRYPT_SALT_ROUNDS"));
@@ -68,11 +82,14 @@ export class AuthService {
     }
   }
 
-  async register(input: {
-    email: string;
-    password: string;
-    name?: string;
-  }): Promise<AuthResult> {
+  async register(
+    input: {
+      email: string;
+      password: string;
+      name?: string;
+    },
+    context: { ip?: string | null; userAgent?: string | null } = {},
+  ): Promise<AuthResult> {
     const email = input.email.trim().toLowerCase();
     const existing = await this.prisma.user.findUnique({ where: { email } });
     if (existing) {
@@ -91,11 +108,14 @@ export class AuthService {
       },
     });
 
-    const accessToken = this.signToken({ sub: user.id, email: user.email });
+    const accessToken = await this.issueAccessTokenForUser(user, context);
     return { user: this.toPublicUser(user), accessToken };
   }
 
-  async login(input: { email: string; password: string }): Promise<AuthResult> {
+  async login(
+    input: { email: string; password: string },
+    context: { ip?: string | null; userAgent?: string | null } = {},
+  ): Promise<AuthResult> {
     const email = input.email.trim().toLowerCase();
     const user = await this.prisma.user.findUnique({ where: { email } });
 
@@ -108,22 +128,80 @@ export class AuthService {
       throw new UnauthorizedException("Invalid credentials");
     }
 
-    const accessToken = this.signToken({ sub: user.id, email: user.email });
+    const accessToken = await this.issueAccessTokenForUser(user, context);
     return { user: this.toPublicUser(user), accessToken };
   }
 
-  async validateUser(token: string): Promise<PublicUser> {
+  async authenticate(token: string): Promise<{ payload: JwtPayload; user: PublicUser }> {
     const payload = this.decodeToken(token);
     if (!payload) {
       throw new UnauthorizedException("Invalid token");
     }
+
+    await this.assertSessionIsActive(payload);
 
     const user = await this.prisma.user.findUnique({ where: { id: payload.sub } });
     if (!user) {
       throw new UnauthorizedException("Invalid token");
     }
 
-    return this.toPublicUser(user);
+    return { payload, user: this.toPublicUser(user) };
+  }
+
+  async validateUser(token: string): Promise<PublicUser> {
+    const auth = await this.authenticate(token);
+    return auth.user;
+  }
+
+  async revokeSessionFromToken(token: string): Promise<void> {
+    const payload = this.decodeToken(token);
+    if (!payload?.sid) {
+      throw new UnauthorizedException("Invalid token");
+    }
+
+    await this.sessions.revoke(payload.sid, new Date());
+  }
+
+  private async assertSessionIsActive(payload: JwtPayload): Promise<void> {
+    if (!payload.sid) {
+      throw new UnauthorizedException("Invalid token");
+    }
+
+    const session = await this.sessions.findByToken(payload.sid);
+    if (!session || session.userId !== payload.sub) {
+      throw new UnauthorizedException("Invalid token");
+    }
+
+    if (session.revokedAt) {
+      throw new UnauthorizedException("Session revoked");
+    }
+
+    if (session.expiresAt.getTime() <= Date.now()) {
+      await this.sessions.revoke(payload.sid, new Date());
+      throw new UnauthorizedException("Session expired");
+    }
+  }
+
+  private async issueAccessTokenForUser(
+    user: { id: string; email: string },
+    context: { ip?: string | null; userAgent?: string | null },
+  ): Promise<string> {
+    const sid = randomUUID();
+    const accessToken = this.signToken({ sub: user.id, email: user.email, sid });
+    const verified = this.decodeToken(accessToken);
+    if (!verified?.exp) {
+      throw new UnauthorizedException("Unable to create session token");
+    }
+
+    await this.sessions.create({
+      userId: user.id,
+      token: sid,
+      ip: context.ip ?? null,
+      userAgent: context.userAgent ?? null,
+      expiresAt: new Date(verified.exp * 1000),
+    });
+
+    return accessToken;
   }
 
   private toPublicUser(user: PrismaUser): PublicUser {

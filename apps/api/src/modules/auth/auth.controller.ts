@@ -1,4 +1,12 @@
-import { Body, Controller, HttpCode, HttpStatus, Post } from "@nestjs/common";
+import {
+  Body,
+  Controller,
+  HttpCode,
+  HttpStatus,
+  Post,
+  Req,
+  UnauthorizedException,
+} from "@nestjs/common";
 import {
   ApiCreatedResponse,
   ApiOkResponse,
@@ -6,6 +14,7 @@ import {
   ApiTags,
 } from "@nestjs/swagger";
 import { IsEmail, IsOptional, IsString, MinLength } from "class-validator";
+import type { Request } from "express";
 
 import { AuthService, type PublicUser } from "./auth.service";
 
@@ -29,6 +38,11 @@ class AuthResponseDto {
 
   @ApiProperty()
   accessToken!: string;
+}
+
+class LogoutResponseDto {
+  @ApiProperty()
+  success!: boolean;
 }
 
 class RegisterDto {
@@ -60,17 +74,39 @@ export class AuthController {
 
   @Post("register")
   @ApiCreatedResponse({ type: AuthResponseDto })
-  async register(@Body() dto: RegisterDto): Promise<AuthResponseDto> {
-    const result = await this.auth.register(dto);
+  async register(@Body() dto: RegisterDto, @Req() req: Request): Promise<AuthResponseDto> {
+    const result = await this.auth.register(dto, this.extractSessionContext(req));
     return this.toAuthResponse(result.user, result.accessToken);
   }
 
   @Post("login")
   @HttpCode(HttpStatus.OK)
   @ApiOkResponse({ type: AuthResponseDto })
-  async login(@Body() dto: LoginDto): Promise<AuthResponseDto> {
-    const result = await this.auth.login(dto);
+  async login(@Body() dto: LoginDto, @Req() req: Request): Promise<AuthResponseDto> {
+    const result = await this.auth.login(dto, this.extractSessionContext(req));
     return this.toAuthResponse(result.user, result.accessToken);
+  }
+
+  @Post("logout")
+  @HttpCode(HttpStatus.OK)
+  @ApiOkResponse({ type: LogoutResponseDto })
+  async logout(@Req() req: Request): Promise<LogoutResponseDto> {
+    const token =
+      (req.cookies?.access as string | undefined) ??
+      req.headers.authorization?.replace(/^Bearer\s+/i, "").trim();
+    if (!token) {
+      throw new UnauthorizedException("Missing token");
+    }
+
+    await this.auth.revokeSessionFromToken(token);
+    return { success: true };
+  }
+
+  private extractSessionContext(req: Request): { ip?: string | null; userAgent?: string | null } {
+    return {
+      ip: req.ip,
+      userAgent: req.headers["user-agent"] ?? null,
+    };
   }
 
   private toAuthResponse(user: PublicUser, accessToken: string): AuthResponseDto {

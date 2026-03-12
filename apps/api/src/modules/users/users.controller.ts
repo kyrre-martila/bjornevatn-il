@@ -90,8 +90,7 @@ export class UsersController {
       (req.headers.authorization ?? "").replace(/^Bearer\s+/i, "");
     if (!access) throw new UnauthorizedException("Missing token");
 
-    const payload = this.auth.decodeToken(access);
-    if (!payload) throw new UnauthorizedException("Invalid token");
+    const { payload } = await this.auth.authenticate(access);
 
     const user = await this.usersService.getProfile(payload.sub);
 
@@ -130,8 +129,7 @@ export class UsersController {
 
     if (!access) throw new UnauthorizedException("Missing token");
 
-    const payload = this.auth.decodeToken(access);
-    if (!payload) throw new UnauthorizedException("Invalid token");
+    const { payload } = await this.auth.authenticate(access);
 
     // Call the domain service to update the profile.
     const updated = await this.usersService.updateProfile(payload.sub, {
