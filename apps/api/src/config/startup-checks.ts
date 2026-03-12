@@ -2,6 +2,11 @@ import { PrismaService } from "../prisma/prisma.service";
 
 type Env = Record<string, string | undefined>;
 
+const DEVELOPMENT_CORS_DEFAULT_ORIGINS = [
+  "http://localhost:3000",
+  "http://127.0.0.1:3000",
+] as const;
+
 const REQUIRED_ENV_VARS = [
   "DATABASE_URL",
   "JWT_SECRET",
@@ -24,6 +29,25 @@ export function validateRequiredEnvVariables(env: Env = process.env) {
       `Missing required environment variables: ${missing.join(", ")}. Please set these values in your .env file before starting the API.`,
     );
   }
+}
+
+export function resolveCorsOrigins(env: Env = process.env): string[] {
+  const configuredOrigins =
+    env.API_CORS_ORIGINS?.split(",")
+      .map((origin) => origin.trim())
+      .filter(Boolean) ?? [];
+
+  if (configuredOrigins.length > 0) {
+    return configuredOrigins;
+  }
+
+  if (env.NODE_ENV === "production") {
+    throw new Error(
+      "Missing required API_CORS_ORIGINS for production startup. Set API_CORS_ORIGINS to a comma-separated list of trusted origins (for example: https://admin.your-domain.com,https://www.your-domain.com).",
+    );
+  }
+
+  return [...DEVELOPMENT_CORS_DEFAULT_ORIGINS];
 }
 
 export async function assertMigrationsApplied(prisma: PrismaService) {

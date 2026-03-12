@@ -1,5 +1,6 @@
 import {
   assertMigrationsApplied,
+  resolveCorsOrigins,
   validateRequiredEnvVariables,
 } from "../../src/config/startup-checks";
 
@@ -27,6 +28,36 @@ describe("startup checks", () => {
           ENCRYPTION_KEY: "encryption-key",
         }),
       ).not.toThrow();
+    });
+  });
+
+  describe("resolveCorsOrigins", () => {
+    it("returns configured origins when API_CORS_ORIGINS is set", () => {
+      expect(
+        resolveCorsOrigins({
+          API_CORS_ORIGINS:
+            "https://admin.example.org, https://www.example.org",
+          NODE_ENV: "production",
+        }),
+      ).toEqual(["https://admin.example.org", "https://www.example.org"]);
+    });
+
+    it("throws in production when API_CORS_ORIGINS is missing", () => {
+      expect(() =>
+        resolveCorsOrigins({
+          NODE_ENV: "production",
+          API_CORS_ORIGINS: "",
+        }),
+      ).toThrow("Missing required API_CORS_ORIGINS for production startup");
+    });
+
+    it("falls back to local development origins outside production", () => {
+      expect(
+        resolveCorsOrigins({
+          NODE_ENV: "development",
+          API_CORS_ORIGINS: "",
+        }),
+      ).toEqual(["http://localhost:3000", "http://127.0.0.1:3000"]);
     });
   });
 

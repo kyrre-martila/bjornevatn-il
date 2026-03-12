@@ -13,6 +13,7 @@ import { ConfigService } from "@nestjs/config";
 import { validateSecurityConfig } from "./config/security.config";
 import {
   assertMigrationsApplied,
+  resolveCorsOrigins,
   validateRequiredEnvVariables,
 } from "./config/startup-checks";
 import * as express from "express";
@@ -33,19 +34,7 @@ import type { Logger } from "pino";
 import { startOtel, shutdownOtel } from "../otel";
 import { PrismaService } from "./prisma/prisma.service";
 
-const defaultCorsOrigins = ["http://localhost:3000", "https://app.example.com"];
-
-function parseCorsOrigins(): string[] {
-  return (
-    process.env.API_CORS_ORIGINS?.split(",")
-      .map((origin) => origin.trim())
-      .filter(Boolean) ?? []
-  );
-}
-
-function configureCors(app: INestApplication) {
-  const whitelist = parseCorsOrigins();
-  const allowedOrigins = whitelist.length > 0 ? whitelist : defaultCorsOrigins;
+function configureCors(app: INestApplication, allowedOrigins: string[]) {
   const allowedMethods = "GET,POST,PUT,PATCH,DELETE,OPTIONS";
   const allowedHeaders =
     "Origin, X-Requested-With, Content-Type, Accept, Authorization, x-csrf-token";
@@ -111,6 +100,7 @@ async function emitOpenApiDocument(app: INestApplication) {
 async function bootstrap() {
   validateRequiredEnvVariables();
   validateSecurityConfig();
+  const corsOrigins = resolveCorsOrigins();
 
   await startOtel();
 
@@ -176,7 +166,7 @@ async function bootstrap() {
     return res.status(410).json({ error: "API version required. Use /api/v1" });
   });
 
-  configureCors(app);
+  configureCors(app, corsOrigins);
 
   app.use(
     helmet({
@@ -247,6 +237,7 @@ async function bootstrap() {
       metricsBasicAuthEnabled: Boolean(
         process.env.METRICS_USER && process.env.METRICS_PASS,
       ),
+      corsOriginCount: corsOrigins.length,
       otelExporterEndpoint:
         process.env.OTEL_EXPORTER_OTLP_ENDPOINT ||
         "http://localhost:4318/v1/traces",

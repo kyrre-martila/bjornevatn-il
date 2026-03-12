@@ -8,7 +8,7 @@ Security guidance for the content website blueprint (public site + admin/editor 
 - `COOKIE_SECRET`: Encryption/signature for session cookies.
 - `ENCRYPTION_KEY`: 32-byte key for at-rest sensitive fields.
 - `COOKIE_DOMAIN`: Shared domain for web cookies (prod uses apex domain).
-- `API_CORS_ORIGINS`: Comma-separated list of allowed origins.
+- `API_CORS_ORIGINS`: Comma-separated list of allowed origins (required in production).
 
 ## Cookie Policy
 
@@ -26,6 +26,8 @@ Security guidance for the content website blueprint (public site + admin/editor 
 ## CORS Configuration
 
 - API reads `API_CORS_ORIGINS` and rejects requests whose `Origin` is missing from the allowlist.
+- In `NODE_ENV=production`, startup fails fast when `API_CORS_ORIGINS` is missing or empty.
+- In non-production environments, API falls back to local defaults: `http://localhost:3000` and `http://127.0.0.1:3000`.
 - Update the env var during deployments to add/remove origins for public and admin website domains.
 
 ## Token Handling
@@ -42,7 +44,6 @@ Security guidance for the content website blueprint (public site + admin/editor 
 4. Update `API_CORS_ORIGINS` if origin compromise suspected.
 5. Redeploy services with new secrets.
 6. Document incident and follow [docs/RUNBOOKS/incident-response.md](RUNBOOKS/incident-response.md).
-
 
 ## Reverse Proxy / Tunnel Notes
 
