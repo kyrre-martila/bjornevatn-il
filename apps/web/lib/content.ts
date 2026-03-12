@@ -162,6 +162,9 @@ type ApiContentType = {
   description?: string;
   fields?: unknown;
   templateKey?: string | null;
+  public?: boolean;
+  isPublic?: boolean;
+  visibility?: string;
 };
 
 export type PublicContentType = {
@@ -519,6 +522,17 @@ async function getContentTypeTemplateKey(slug: string): Promise<string> {
 }
 
 function mapPublicContentType(type: ApiContentType): PublicContentType | null {
+  if (type.public === false || type.isPublic === false) {
+    return null;
+  }
+
+  if (
+    typeof type.visibility === "string" &&
+    type.visibility.trim().toLowerCase() !== "public"
+  ) {
+    return null;
+  }
+
   if (typeof type.slug !== "string" || !type.slug.trim()) {
     return null;
   }
