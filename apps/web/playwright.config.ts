@@ -1,7 +1,9 @@
 import { defineConfig, devices } from "@playwright/test";
+import { existsSync } from "node:fs";
 import { resolve } from "node:path";
 
 const baseURL = process.env.PLAYWRIGHT_WEB_BASE_URL ?? "http://127.0.0.1:3000";
+const storageStatePath = resolve(__dirname, "storageState.json");
 
 export default defineConfig({
   testDir: "./tests/e2e",
@@ -14,7 +16,7 @@ export default defineConfig({
   reporter: process.env.CI ? [["list"], ["html", { open: "never" }]] : "list",
   use: {
     baseURL,
-    storageState: resolve(__dirname, "storageState.json"),
+    storageState: existsSync(storageStatePath) ? storageStatePath : undefined,
     trace: process.env.CI ? "on-first-retry" : "retain-on-failure",
     screenshot: "only-on-failure",
     video: "retain-on-failure",

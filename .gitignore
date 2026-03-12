@@ -11,3 +11,12 @@ coverage
 .turbo
 .DS_Store
 apps/api/openapi/
+
+# Playwright/browser-generated artifacts (can contain auth/session state)
+apps/web/storageState.json
+playwright/.auth/
+**/.auth/
+playwright-report/
+**/playwright-report/
+test-results/
+**/test-results/

@@ -12,6 +12,7 @@
 2. Unit tests: `pnpm test:unit` (watch mode: `pnpm test:unit -- --watch`).
 3. Contract tests: `pnpm test:contract` after regenerating SDKs.
 4. Web E2E: `pnpm test:e2e` (requires dev stack running).
+   - Playwright session state is local-only. If you need a persisted login for local debugging, generate `apps/web/storageState.json` on your machine and do not commit it.
 
 ## CI Usage
 
