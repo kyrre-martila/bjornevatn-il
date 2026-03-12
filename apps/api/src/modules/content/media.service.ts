@@ -1,5 +1,6 @@
 import { BadRequestException, Inject, Injectable } from "@nestjs/common";
 import { fromBuffer as detectFileTypeFromBuffer } from "file-type";
+import { imageSize } from "image-size";
 import type { Media, MediaRepository, MediaStorageProvider } from "@org/domain";
 
 export type UploadMediaInput = {
@@ -12,6 +13,7 @@ export type UploadMediaInput = {
 type ImageMetadata = {
   width: number | null;
   height: number | null;
+  mimeType: string | null;
 };
 
 @Injectable()
@@ -49,7 +51,7 @@ export class MediaService {
       alt: input.alt,
       width: imageMetadata.width,
       height: imageMetadata.height,
-      mimeType: detectedMimeType,
+      mimeType: imageMetadata.mimeType ?? detectedMimeType,
       sizeBytes: input.fileBuffer.byteLength,
       originalFilename: input.fileName,
       storageKey: stored.id,
@@ -117,92 +119,42 @@ export class MediaService {
   }
 
   private extractImageMetadata(fileBuffer: Buffer, mimeType: string): ImageMetadata {
-    if (mimeType === "image/png") {
-      return this.readPngMetadata(fileBuffer);
+    const metadata = this.safeReadImageSize(fileBuffer);
+
+    const width = metadata.width ?? null;
+    const height = metadata.height ?? null;
+    if (!width || !height) {
+      return { width: null, height: null, mimeType: null };
     }
 
-    if (mimeType === "image/jpeg") {
-      return this.readJpegMetadata(fileBuffer);
+    const detectedMimeType = this.normalizeMimeType(this.imageTypeToMimeType(metadata.type));
+    if (detectedMimeType && detectedMimeType !== mimeType) {
+      throw new BadRequestException(
+        `Uploaded file image metadata type mismatch: detected "${mimeType}" but metadata indicates "${detectedMimeType}".`,
+      );
     }
 
-
-    return { width: null, height: null };
+    return { width, height, mimeType: detectedMimeType || mimeType };
   }
 
-  private readPngMetadata(buffer: Buffer): ImageMetadata {
-    if (buffer.length < 24) {
-      return { width: null, height: null };
+  private safeReadImageSize(fileBuffer: Buffer) {
+    try {
+      return imageSize(fileBuffer);
+    } catch {
+      throw new BadRequestException("Uploaded file is malformed or unreadable.");
     }
-
-    const pngSignature = "89504e470d0a1a0a";
-    if (buffer.subarray(0, 8).toString("hex") !== pngSignature) {
-      return { width: null, height: null };
-    }
-
-    const ihdrLength = buffer.readUInt32BE(8);
-    const ihdrChunkType = buffer.subarray(12, 16).toString("ascii");
-    if (ihdrLength !== 13 || ihdrChunkType !== "IHDR") {
-      return { width: null, height: null };
-    }
-
-    const width = buffer.readUInt32BE(16);
-    const height = buffer.readUInt32BE(20);
-    if (width === 0 || height === 0) {
-      return { width: null, height: null };
-    }
-
-    return { width, height };
   }
 
-  private readJpegMetadata(buffer: Buffer): ImageMetadata {
-    if (buffer.length < 4 || buffer[0] !== 0xff || buffer[1] !== 0xd8) {
-      return { width: null, height: null };
+  private imageTypeToMimeType(imageType: string | undefined): string {
+    switch (imageType) {
+      case "jpg":
+      case "jpeg":
+        return "image/jpeg";
+      case "png":
+        return "image/png";
+      default:
+        return "";
     }
-
-    let offset = 2;
-
-    while (offset + 9 < buffer.length) {
-      if (buffer[offset] !== 0xff) {
-        offset += 1;
-        continue;
-      }
-
-      const marker = buffer[offset + 1];
-      const length = buffer.readUInt16BE(offset + 2);
-
-      if (length < 2 || offset + 2 + length > buffer.length) {
-        return { width: null, height: null };
-      }
-
-      const isSofMarker =
-        marker === 0xc0 ||
-        marker === 0xc1 ||
-        marker === 0xc2 ||
-        marker === 0xc3 ||
-        marker === 0xc5 ||
-        marker === 0xc6 ||
-        marker === 0xc7 ||
-        marker === 0xc9 ||
-        marker === 0xca ||
-        marker === 0xcb ||
-        marker === 0xcd ||
-        marker === 0xce ||
-        marker === 0xcf;
-
-      if (isSofMarker && length >= 7) {
-        const height = buffer.readUInt16BE(offset + 5);
-        const width = buffer.readUInt16BE(offset + 7);
-        if (width === 0 || height === 0) {
-          return { width: null, height: null };
-        }
-
-        return { width, height };
-      }
-
-      offset += 2 + length;
-    }
-
-    return { width: null, height: null };
   }
 
 
