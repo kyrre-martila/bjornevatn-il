@@ -199,17 +199,6 @@ export type GenericContentDetailItem = {
   publishedAt: string;
 };
 
-type ApiTaxonomy = {
-  id: string;
-  slug: string;
-};
-
-type ApiTerm = {
-  id: string;
-  name: string;
-  taxonomyId: string;
-};
-
 type ApiSiteSetting = {
   key: string;
   value: string;
@@ -442,7 +431,7 @@ function mapHeroFromPage(page: ContentPage): HeroContent | null {
 }
 
 export async function getHomepageContent(): Promise<HeroContent> {
-  const apiPage = await fetchContent<ApiPage>("/content/pages/slug/home");
+  const apiPage = await fetchContent<ApiPage>("/public/content/pages/slug/home");
   if (!apiPage) {
     return {
       eyebrow: "",
@@ -467,7 +456,7 @@ export async function getHomepageContent(): Promise<HeroContent> {
 
 export async function getNewsListing(): Promise<NewsItem[]> {
   const items = await fetchContent<ApiContentItem[]>(
-    "/content/items/type-slug/news",
+    "/public/content/items/type-slug/news",
   );
   if (!items) {
     return [];
@@ -504,7 +493,7 @@ function flattenServiceTree(items: ApiContentItemTree[]): ApiContentItemTree[] {
 
 export async function getServicesListing(): Promise<ServiceListItem[]> {
   const tree = await fetchContent<ApiContentItemTree[]>(
-    "/content/items/type-slug/services?mode=tree",
+    "/public/content/items/type-slug/services?mode=tree",
   );
 
   if (!tree) {
@@ -550,7 +539,7 @@ function mapPublicContentType(type: ApiContentType): PublicContentType | null {
 }
 
 export async function getPublicContentTypes(): Promise<PublicContentType[]> {
-  const types = await fetchContent<ApiContentType[]>("/content/types");
+  const types = await fetchContent<ApiContentType[]>("/public/content/types");
   if (!types) {
     return [];
   }
@@ -590,7 +579,7 @@ export async function getContentTypeArchiveItems(
   }
 
   const items = await fetchContent<ApiContentItem[]>(
-    `/content/items/type-slug/${encodeURIComponent(contentTypeSlug)}`,
+    `/public/content/items/type-slug/${encodeURIComponent(contentTypeSlug)}`,
   );
 
   if (!items) {
@@ -630,7 +619,7 @@ export async function resolveContentItemBySlug(
   }
 
   const response = await fetchContent<ApiContentItem | ApiSlugRedirect>(
-    `/content/items/type-slug/${encodeURIComponent(contentTypeSlug)}/${encodeURIComponent(slug)}`,
+    `/public/content/items/type-slug/${encodeURIComponent(contentTypeSlug)}/${encodeURIComponent(slug)}`,
   );
 
   if (isApiSlugRedirect(response)) {
@@ -651,26 +640,13 @@ export async function resolveContentItemBySlug(
 async function getServiceTaxonomyTermNames(
   contentItemId: string,
 ): Promise<string[]> {
-  const [terms, taxonomies] = await Promise.all([
-    fetchContent<ApiTerm[]>(
-      `/content/items/${encodeURIComponent(contentItemId)}/terms`,
-    ),
-    fetchContent<ApiTaxonomy[]>("/content/taxonomies"),
-  ]);
-
-  if (!terms || !taxonomies) {
-    return [];
-  }
-
-  const taxonomyIds = new Set(
-    taxonomies
-      .filter((taxonomy) => taxonomy.slug === "service-category")
-      .map((taxonomy) => taxonomy.id),
+  const terms = await fetchContent<string[]>(
+    `/public/content/items/${encodeURIComponent(contentItemId)}/service-categories`,
   );
 
-  return terms
-    .filter((term) => taxonomyIds.has(term.taxonomyId))
-    .map((term) => term.name);
+  return Array.isArray(terms)
+    ? terms.filter((term): term is string => typeof term === "string")
+    : [];
 }
 
 export async function resolveServiceBySlug(
@@ -678,10 +654,10 @@ export async function resolveServiceBySlug(
 ): Promise<{ redirectTo: string | null; item: ServiceDetailItem | null }> {
   const [response, services, templateKey] = await Promise.all([
     fetchContent<ApiContentItem | ApiSlugRedirect>(
-      `/content/items/type-slug/services/${encodeURIComponent(slug)}`,
+      `/public/content/items/type-slug/services/${encodeURIComponent(slug)}`,
     ),
     fetchContent<ApiContentItemTree[]>(
-      "/content/items/type-slug/services?mode=tree",
+      "/public/content/items/type-slug/services?mode=tree",
     ),
     getContentTypeTemplateKey("services"),
   ]);
@@ -736,7 +712,7 @@ export async function resolveNewsItemBySlug(
 ): Promise<{ redirectTo: string | null; item: NewsDetailItem | null }> {
   const [response, templateKey] = await Promise.all([
     fetchContent<ApiContentItem | ApiSlugRedirect>(
-      `/content/items/type-slug/news/${encodeURIComponent(slug)}`,
+      `/public/content/items/type-slug/news/${encodeURIComponent(slug)}`,
     ),
     getContentTypeTemplateKey("news"),
   ]);
@@ -771,7 +747,7 @@ export async function resolvePageContentBySlug(
   slug: string,
 ): Promise<{ redirectTo: string | null; page: ContentPage | null }> {
   const response = await fetchContent<ApiPage | ApiSlugRedirect>(
-    `/content/pages/slug/${encodeURIComponent(slug)}`,
+    `/public/content/pages/slug/${encodeURIComponent(slug)}`,
   );
 
   if (isApiSlugRedirect(response)) {
@@ -795,7 +771,7 @@ export async function getPageContentBySlug(
 }
 
 export async function getPublicSiteSettings(): Promise<PublicSiteSettings> {
-  const settings = await fetchContent<ApiSiteSetting[]>("/content/settings");
+  const settings = await fetchContent<ApiSiteSetting[]>("/public/content/settings");
   if (!settings) {
     return {};
   }
@@ -886,7 +862,7 @@ export async function getSitemapPages(): Promise<SitemapPageEntry[]> {
       updatedAt: string;
       noIndex: boolean;
     }>
-  >("/content/pages");
+  >("/public/content/pages");
 
   if (!pages) {
     return [];
@@ -945,7 +921,7 @@ export function sanitizeInternalRedirectTarget(target: string): string | null {
 export async function getSitemapContentItems(): Promise<
   SitemapContentItemEntry[]
 > {
-  const types = await fetchContent<ApiContentType[]>("/content/types");
+  const types = await fetchContent<ApiContentType[]>("/public/content/types");
   if (!types) {
     return [];
   }
@@ -953,7 +929,7 @@ export async function getSitemapContentItems(): Promise<
   const allItems = await Promise.all(
     types.map(async (type) => {
       const items = await fetchContent<ApiContentItem[]>(
-        `/content/items/type-slug/${encodeURIComponent(type.slug)}`,
+        `/public/content/items/type-slug/${encodeURIComponent(type.slug)}`,
       );
 
       if (!items) {
@@ -1003,7 +979,7 @@ export function getPagePath(slug: string): string | null {
 }
 
 export async function getPublicNavigationTree(): Promise<NavigationTreeItem[]> {
-  const items = await fetchContent<unknown[]>("/content/navigation-items");
+  const items = await fetchContent<unknown[]>("/public/content/navigation-items");
   if (!Array.isArray(items)) {
     return [];
   }

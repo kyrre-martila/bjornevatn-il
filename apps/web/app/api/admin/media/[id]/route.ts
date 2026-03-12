@@ -12,7 +12,7 @@ export async function PATCH(
   }
 
   const body = await request.text();
-  const res = await fetch(`${getApiBase()}/media/${params.id}`, {
+  const res = await fetch(`${getApiBase()}/admin/media/${params.id}`, {
     method: "PATCH",
     headers: buildForwardHeaders(true),
     body,
@@ -37,7 +37,7 @@ export async function DELETE(
     return denied;
   }
 
-  const res = await fetch(`${getApiBase()}/media/${params.id}`, {
+  const res = await fetch(`${getApiBase()}/admin/media/${params.id}`, {
     method: "DELETE",
     headers: buildForwardHeaders(),
   });

@@ -8,7 +8,7 @@ export async function GET() {
     return denied;
   }
 
-  const res = await fetch(`${getApiBase()}/media`, {
+  const res = await fetch(`${getApiBase()}/admin/media`, {
     headers: buildForwardHeaders(),
     cache: "no-store",
   });
