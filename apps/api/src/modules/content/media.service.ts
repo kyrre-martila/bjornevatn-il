@@ -1,4 +1,5 @@
-import { Inject, Injectable } from "@nestjs/common";
+import { BadRequestException, Inject, Injectable } from "@nestjs/common";
+import { fromBuffer as detectFileTypeFromBuffer } from "file-type";
 import type { Media, MediaRepository, MediaStorageProvider } from "@org/domain";
 
 export type UploadMediaInput = {
@@ -15,6 +16,8 @@ type ImageMetadata = {
 
 @Injectable()
 export class MediaService {
+  private static readonly allowedMimeTypes = new Set(["image/png", "image/jpeg"]);
+
   constructor(
     @Inject("MediaRepository")
     private readonly mediaRepository: MediaRepository,
@@ -23,29 +26,70 @@ export class MediaService {
   ) {}
 
   async upload(input: UploadMediaInput): Promise<Media> {
+    const detectedMimeType = await this.detectAndValidateMimeType(input);
+
     const stored = await this.mediaStorageProvider.upload(
       {
         buffer: input.fileBuffer,
         originalName: input.fileName,
-        mimeType: input.mimeType,
+        mimeType: detectedMimeType,
       },
       {
         alt: input.alt,
       },
     );
 
-    const imageMetadata = this.extractImageMetadata(input.fileBuffer, input.mimeType);
+    const imageMetadata = this.extractImageMetadata(input.fileBuffer, detectedMimeType);
+    if (imageMetadata.width === null || imageMetadata.height === null) {
+      throw new BadRequestException("Uploaded file is malformed or unreadable.");
+    }
 
     return this.mediaRepository.create({
       url: this.mediaStorageProvider.getUrl(stored.id),
       alt: input.alt,
       width: imageMetadata.width,
       height: imageMetadata.height,
-      mimeType: input.mimeType,
+      mimeType: detectedMimeType,
       sizeBytes: input.fileBuffer.byteLength,
       originalFilename: input.fileName,
       storageKey: stored.id,
     });
+  }
+
+  private async detectAndValidateMimeType(input: UploadMediaInput): Promise<string> {
+    const detected = await detectFileTypeFromBuffer(input.fileBuffer);
+    if (!detected) {
+      throw new BadRequestException("Unable to detect file type from uploaded content.");
+    }
+
+    if (!MediaService.allowedMimeTypes.has(detected.mime)) {
+      throw new BadRequestException(
+        `Unsupported media type \"${detected.mime}\". Allowed types: image/png, image/jpeg.`,
+      );
+    }
+
+    const claimedMimeType = this.normalizeMimeType(input.mimeType);
+    if (claimedMimeType && claimedMimeType !== detected.mime) {
+      throw new BadRequestException(
+        `Uploaded file content type mismatch: claimed \"${claimedMimeType}\" but detected \"${detected.mime}\".`,
+      );
+    }
+
+    return detected.mime;
+  }
+
+  private normalizeMimeType(mimeType: string): string {
+    const normalized = mimeType.trim().toLowerCase();
+
+    if (!normalized) {
+      return "";
+    }
+
+    if (normalized === "image/jpg") {
+      return "image/jpeg";
+    }
+
+    return normalized;
   }
 
   async list(): Promise<Media[]> {
@@ -81,6 +125,7 @@ export class MediaService {
       return this.readJpegMetadata(fileBuffer);
     }
 
+
     return { width: null, height: null };
   }
 
@@ -94,8 +139,17 @@ export class MediaService {
       return { width: null, height: null };
     }
 
+    const ihdrLength = buffer.readUInt32BE(8);
+    const ihdrChunkType = buffer.subarray(12, 16).toString("ascii");
+    if (ihdrLength !== 13 || ihdrChunkType !== "IHDR") {
+      return { width: null, height: null };
+    }
+
     const width = buffer.readUInt32BE(16);
     const height = buffer.readUInt32BE(20);
+    if (width === 0 || height === 0) {
+      return { width: null, height: null };
+    }
 
     return { width, height };
   }
@@ -138,6 +192,10 @@ export class MediaService {
       if (isSofMarker && length >= 7) {
         const height = buffer.readUInt16BE(offset + 5);
         const width = buffer.readUInt16BE(offset + 7);
+        if (width === 0 || height === 0) {
+          return { width: null, height: null };
+        }
+
         return { width, height };
       }
 
@@ -146,4 +204,6 @@ export class MediaService {
 
     return { width: null, height: null };
   }
+
+
 }
