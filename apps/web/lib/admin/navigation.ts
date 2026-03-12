@@ -31,10 +31,13 @@ function buildHeaders() {
 export async function listAdminNavigationItems(): Promise<
   AdminNavigationItem[]
 > {
-  const response = await fetch(`${getApiBase()}/content/navigation-items`, {
-    headers: buildHeaders(),
-    cache: "no-store",
-  });
+  const response = await fetch(
+    `${getApiBase()}/admin/content/navigation-items`,
+    {
+      headers: buildHeaders(),
+      cache: "no-store",
+    },
+  );
 
   if (!response.ok) {
     return [];

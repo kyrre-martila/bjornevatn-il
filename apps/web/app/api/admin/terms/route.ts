@@ -9,8 +9,8 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const taxonomyId = searchParams.get("taxonomyId");
   const path = taxonomyId
-    ? `/content/terms?taxonomyId=${encodeURIComponent(taxonomyId)}`
-    : "/content/terms";
+    ? `/admin/content/terms?taxonomyId=${encodeURIComponent(taxonomyId)}`
+    : "/admin/content/terms";
 
   const res = await fetch(`${getApiBase()}${path}`, {
     headers: buildForwardHeaders(),
@@ -32,7 +32,7 @@ export async function POST(request: Request) {
   if (denied) return denied;
 
   const body = await request.text();
-  const res = await fetch(`${getApiBase()}/content/terms`, {
+  const res = await fetch(`${getApiBase()}/admin/content/terms`, {
     method: "POST",
     headers: buildForwardHeaders(true),
     body,

@@ -10,7 +10,7 @@ export async function GET(_: Request, { params }: Params) {
 
   const { id } = await params;
   const res = await fetch(
-    `${getApiBase()}/content/items/${encodeURIComponent(id)}/terms`,
+    `${getApiBase()}/admin/content/items/${encodeURIComponent(id)}/terms`,
     {
       headers: buildForwardHeaders(),
       cache: "no-store",
@@ -35,7 +35,7 @@ export async function PUT(request: Request, { params }: Params) {
   const { id } = await params;
   const body = await request.text();
   const res = await fetch(
-    `${getApiBase()}/content/items/${encodeURIComponent(id)}/terms`,
+    `${getApiBase()}/admin/content/items/${encodeURIComponent(id)}/terms`,
     {
       method: "PUT",
       headers: buildForwardHeaders(true),

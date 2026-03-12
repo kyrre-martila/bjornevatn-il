@@ -683,7 +683,7 @@ class UpdateMediaDto {
 }
 
 @ApiTags("content")
-@Controller("content")
+@Controller("admin/content")
 export class ContentController {
   constructor(
     @Inject("PagesRepository")
@@ -709,17 +709,20 @@ export class ContentController {
   ) {}
 
   @Get("pages")
-  listPages() {
+  async listPages(@Req() req: Request) {
+    await requireMinimumRole(req, this.auth, "editor");
     return this.pages.findMany();
   }
 
   @Get("pages/:id")
-  getPage(@Param("id") id: string) {
+  async getPage(@Req() req: Request, @Param("id") id: string) {
+    await requireMinimumRole(req, this.auth, "editor");
     return this.pages.findById(id);
   }
 
   @Get("pages/slug/:slug")
-  async getPageBySlug(@Param("slug") slug: string) {
+  async getPageBySlug(@Req() req: Request, @Param("slug") slug: string) {
+    await requireMinimumRole(req, this.auth, "editor");
     const result = await this.pages.findBySlugOrRedirect(slug);
     if (!result) {
       return null;
@@ -782,12 +785,14 @@ export class ContentController {
   }
 
   @Get("types")
-  listContentTypes() {
+  async listContentTypes(@Req() req: Request) {
+    await requireMinimumRole(req, this.auth, "editor");
     return this.contentTypes.findMany();
   }
 
   @Get("types/:id")
-  getContentType(@Param("id") id: string) {
+  async getContentType(@Req() req: Request, @Param("id") id: string) {
+    await requireMinimumRole(req, this.auth, "editor");
     return this.contentTypes.findById(id);
   }
 
@@ -833,7 +838,11 @@ export class ContentController {
   }
 
   @Get("items")
-  async listContentItems(@Query() query: ListContentItemsQueryDto) {
+  async listContentItems(
+    @Req() req: Request,
+    @Query() query: ListContentItemsQueryDto,
+  ) {
+    await requireMinimumRole(req, this.auth, "editor");
     const items = await this.contentItems.findMany();
     if (query.mode === "tree") {
       return this.toContentItemTree(items);
@@ -843,15 +852,18 @@ export class ContentController {
   }
 
   @Get("items/:id")
-  getContentItem(@Param("id") id: string) {
+  async getContentItem(@Req() req: Request, @Param("id") id: string) {
+    await requireMinimumRole(req, this.auth, "editor");
     return this.contentItems.findById(id);
   }
 
   @Get("items/type/:contentTypeId")
-  listContentItemsByTypeId(
+  async listContentItemsByTypeId(
+    @Req() req: Request,
     @Param("contentTypeId") contentTypeId: string,
     @Query() query: ListContentItemsQueryDto,
   ) {
+    await requireMinimumRole(req, this.auth, "editor");
     if (query.mode === "tree") {
       return this.contentItems.findTreeByContentTypeId(contentTypeId);
     }
@@ -861,9 +873,11 @@ export class ContentController {
 
   @Get("items/type-slug/:slug")
   async listContentItemsByTypeSlug(
+    @Req() req: Request,
     @Param("slug") slug: string,
     @Query() query: ListContentItemsQueryDto,
   ) {
+    await requireMinimumRole(req, this.auth, "editor");
     if (query.mode === "tree") {
       const items = await this.contentItems.findTreeByContentTypeSlug(slug);
       return this.filterPublishedContentItemTree(items);
@@ -875,9 +889,11 @@ export class ContentController {
 
   @Get("items/type-slug/:contentTypeSlug/:slug")
   async getContentItemBySlug(
+    @Req() req: Request,
     @Param("contentTypeSlug") contentTypeSlug: string,
     @Param("slug") slug: string,
   ) {
+    await requireMinimumRole(req, this.auth, "editor");
     const result = await this.contentItems.findBySlugOrRedirect(
       contentTypeSlug,
       slug,
@@ -1431,12 +1447,14 @@ export class ContentController {
   }
 
   @Get("taxonomies")
-  listTaxonomies() {
+  async listTaxonomies(@Req() req: Request) {
+    await requireMinimumRole(req, this.auth, "editor");
     return this.taxonomies.findMany();
   }
 
   @Get("taxonomies/:id")
-  getTaxonomy(@Param("id") id: string) {
+  async getTaxonomy(@Req() req: Request, @Param("id") id: string) {
+    await requireMinimumRole(req, this.auth, "editor");
     return this.taxonomies.findById(id);
   }
 
@@ -1464,7 +1482,8 @@ export class ContentController {
   }
 
   @Get("terms")
-  listTerms(@Query() query: ListTermsQueryDto) {
+  async listTerms(@Req() req: Request, @Query() query: ListTermsQueryDto) {
+    await requireMinimumRole(req, this.auth, "editor");
     if (query.taxonomyId) {
       return this.terms.findManyByTaxonomyId(query.taxonomyId);
     }
@@ -1472,7 +1491,8 @@ export class ContentController {
   }
 
   @Get("terms/:id")
-  getTerm(@Param("id") id: string) {
+  async getTerm(@Req() req: Request, @Param("id") id: string) {
+    await requireMinimumRole(req, this.auth, "editor");
     return this.terms.findById(id);
   }
 
@@ -1500,7 +1520,8 @@ export class ContentController {
   }
 
   @Get("items/:id/terms")
-  async listContentItemTerms(@Param("id") id: string) {
+  async listContentItemTerms(@Req() req: Request, @Param("id") id: string) {
+    await requireMinimumRole(req, this.auth, "editor");
     const assignments = await this.contentItemTerms.findManyByContentItemId(id);
     const terms = await this.terms.findManyByIds(
       assignments.map((entry) => entry.termId),
@@ -1540,7 +1561,8 @@ export class ContentController {
   }
 
   @Get("navigation-items")
-  listNavigationItems() {
+  async listNavigationItems(@Req() req: Request) {
+    await requireMinimumRole(req, this.auth, "editor");
     return this.navigation.findMany();
   }
 
@@ -1596,7 +1618,8 @@ export class ContentController {
   }
 
   @Get("media")
-  async listMedia() {
+  async listMedia(@Req() req: Request) {
+    await requireMinimumRole(req, this.auth, "editor");
     const [mediaItems, usage] = await Promise.all([
       this.media.findMany(),
       this.getReferencedMediaUsage(),
@@ -1609,7 +1632,8 @@ export class ContentController {
   }
 
   @Get("media/:id")
-  getMedia(@Param("id") id: string) {
+  async getMedia(@Req() req: Request, @Param("id") id: string) {
+    await requireMinimumRole(req, this.auth, "editor");
     return this.media.findById(id);
   }
 

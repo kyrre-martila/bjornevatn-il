@@ -70,7 +70,7 @@ function buildHeaders() {
 }
 
 export async function listAdminContentTypes(): Promise<AdminContentType[]> {
-  const response = await fetch(`${getApiBase()}/content/types`, {
+  const response = await fetch(`${getApiBase()}/admin/content/types`, {
     headers: buildHeaders(),
     cache: "no-store",
   });
@@ -86,7 +86,7 @@ export async function listAdminContentItems(
   contentTypeId: string,
 ): Promise<AdminContentItem[]> {
   const response = await fetch(
-    `${getApiBase()}/content/items/type/${contentTypeId}`,
+    `${getApiBase()}/admin/content/items/type/${contentTypeId}`,
     {
       headers: buildHeaders(),
       cache: "no-store",

@@ -6,7 +6,7 @@ export async function GET(_: Request, { params }: { params: { id: string } }) {
   const denied = await requireMinimumAdminRole();
   if (denied) return denied;
 
-  const res = await fetch(`${getApiBase()}/content/pages/${params.id}`, {
+  const res = await fetch(`${getApiBase()}/admin/content/pages/${params.id}`, {
     headers: buildForwardHeaders(),
     cache: "no-store",
   });
@@ -24,7 +24,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
   if (denied) return denied;
 
   const body = await request.text();
-  const res = await fetch(`${getApiBase()}/content/pages/${params.id}`, {
+  const res = await fetch(`${getApiBase()}/admin/content/pages/${params.id}`, {
     method: "PATCH",
     headers: buildForwardHeaders(true),
     body,
@@ -42,7 +42,7 @@ export async function DELETE(_: Request, { params }: { params: { id: string } })
   const denied = await requireMinimumAdminRole();
   if (denied) return denied;
 
-  const res = await fetch(`${getApiBase()}/content/pages/${params.id}`, {
+  const res = await fetch(`${getApiBase()}/admin/content/pages/${params.id}`, {
     method: "DELETE",
     headers: buildForwardHeaders(),
   });

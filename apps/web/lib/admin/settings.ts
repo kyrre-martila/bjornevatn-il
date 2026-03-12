@@ -26,7 +26,7 @@ function buildHeaders() {
 }
 
 export async function listAdminSettings(): Promise<AdminSiteSetting[]> {
-  const response = await fetch(`${getApiBase()}/content/settings`, {
+  const response = await fetch(`${getApiBase()}/admin/content/settings`, {
     headers: buildHeaders(),
     cache: "no-store",
   });

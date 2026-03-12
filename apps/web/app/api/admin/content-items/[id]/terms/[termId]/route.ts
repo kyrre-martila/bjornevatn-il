@@ -10,7 +10,7 @@ export async function DELETE(_: Request, { params }: Params) {
 
   const { id, termId } = await params;
   const res = await fetch(
-    `${getApiBase()}/content/items/${encodeURIComponent(id)}/terms/${encodeURIComponent(termId)}`,
+    `${getApiBase()}/admin/content/items/${encodeURIComponent(id)}/terms/${encodeURIComponent(termId)}`,
     {
       method: "DELETE",
       headers: buildForwardHeaders(true),

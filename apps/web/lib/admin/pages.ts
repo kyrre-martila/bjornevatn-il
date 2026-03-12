@@ -48,7 +48,7 @@ function buildHeaders() {
 }
 
 export async function listAdminPages(): Promise<AdminPage[]> {
-  const response = await fetch(`${getApiBase()}/content/pages`, {
+  const response = await fetch(`${getApiBase()}/admin/content/pages`, {
     headers: buildHeaders(),
     cache: "no-store",
   });
@@ -62,7 +62,7 @@ export async function listAdminPages(): Promise<AdminPage[]> {
 }
 
 export async function getAdminPage(id: string): Promise<AdminPage | null> {
-  const response = await fetch(`${getApiBase()}/content/pages/${id}`, {
+  const response = await fetch(`${getApiBase()}/admin/content/pages/${id}`, {
     headers: buildHeaders(),
     cache: "no-store",
   });

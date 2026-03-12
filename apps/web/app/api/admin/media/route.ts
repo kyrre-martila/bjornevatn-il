@@ -15,7 +15,9 @@ export async function GET() {
 
   const data = await res.json().catch(() => null);
   if (!res.ok) {
-    return NextResponse.json(data ?? { error: "Failed to load media" }, { status: res.status });
+    return NextResponse.json(data ?? { error: "Failed to load media" }, {
+      status: res.status,
+    });
   }
 
   return NextResponse.json(data);

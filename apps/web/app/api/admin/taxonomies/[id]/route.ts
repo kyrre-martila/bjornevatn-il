@@ -10,7 +10,7 @@ export async function GET(_: Request, { params }: Params) {
 
   const { id } = await params;
   const res = await fetch(
-    `${getApiBase()}/content/taxonomies/${encodeURIComponent(id)}`,
+    `${getApiBase()}/admin/content/taxonomies/${encodeURIComponent(id)}`,
     {
       headers: buildForwardHeaders(),
       cache: "no-store",
@@ -34,7 +34,7 @@ export async function PATCH(request: Request, { params }: Params) {
   const { id } = await params;
   const body = await request.text();
   const res = await fetch(
-    `${getApiBase()}/content/taxonomies/${encodeURIComponent(id)}`,
+    `${getApiBase()}/admin/content/taxonomies/${encodeURIComponent(id)}`,
     {
       method: "PATCH",
       headers: buildForwardHeaders(true),
@@ -58,7 +58,7 @@ export async function DELETE(_: Request, { params }: Params) {
 
   const { id } = await params;
   const res = await fetch(
-    `${getApiBase()}/content/taxonomies/${encodeURIComponent(id)}`,
+    `${getApiBase()}/admin/content/taxonomies/${encodeURIComponent(id)}`,
     {
       method: "DELETE",
       headers: buildForwardHeaders(true),

@@ -7,7 +7,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
   if (denied) return denied;
 
   const body = await request.text();
-  const res = await fetch(`${getApiBase()}/content/types/${params.id}`, {
+  const res = await fetch(`${getApiBase()}/admin/content/types/${params.id}`, {
     method: "PATCH",
     headers: buildForwardHeaders(true),
     body,
@@ -25,7 +25,7 @@ export async function DELETE(_: Request, { params }: { params: { id: string } })
   const denied = await requireSuperAdmin();
   if (denied) return denied;
 
-  const res = await fetch(`${getApiBase()}/content/types/${params.id}`, {
+  const res = await fetch(`${getApiBase()}/admin/content/types/${params.id}`, {
     method: "DELETE",
     headers: buildForwardHeaders(),
   });

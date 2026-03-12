@@ -11,7 +11,7 @@ export async function PATCH(
 
   const body = await request.text();
   const res = await fetch(
-    `${getApiBase()}/content/navigation-items/${params.id}`,
+    `${getApiBase()}/admin/content/navigation-items/${params.id}`,
     {
       method: "PATCH",
       headers: buildForwardHeaders(true),
@@ -38,7 +38,7 @@ export async function DELETE(
   if (denied) return denied;
 
   const res = await fetch(
-    `${getApiBase()}/content/navigation-items/${params.id}`,
+    `${getApiBase()}/admin/content/navigation-items/${params.id}`,
     {
       method: "DELETE",
       headers: buildForwardHeaders(),

@@ -6,7 +6,7 @@ export async function GET() {
   const denied = await requireMinimumAdminRole("admin");
   if (denied) return denied;
 
-  const res = await fetch(`${getApiBase()}/content/settings`, {
+  const res = await fetch(`${getApiBase()}/admin/content/settings`, {
     headers: buildForwardHeaders(),
     cache: "no-store",
   });
@@ -26,7 +26,7 @@ export async function POST(request: Request) {
   if (denied) return denied;
 
   const body = await request.text();
-  const res = await fetch(`${getApiBase()}/content/settings`, {
+  const res = await fetch(`${getApiBase()}/admin/content/settings`, {
     method: "POST",
     headers: buildForwardHeaders(true),
     body,
