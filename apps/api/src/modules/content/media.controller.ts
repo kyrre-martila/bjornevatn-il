@@ -43,8 +43,8 @@ class UpdateMediaDto {
   alt?: string;
 }
 
-@ApiTags("media")
-@Controller("media")
+@ApiTags("admin-media")
+@Controller("admin/media")
 export class MediaController {
   constructor(
     private readonly mediaService: MediaService,

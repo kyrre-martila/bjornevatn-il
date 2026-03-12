@@ -23,7 +23,7 @@ export async function POST(request: Request) {
   const headers = buildForwardHeaders();
   delete headers["content-type"];
 
-  const res = await fetch(`${getApiBase()}/media/upload`, {
+  const res = await fetch(`${getApiBase()}/admin/media/upload`, {
     method: "POST",
     headers,
     body: outbound,

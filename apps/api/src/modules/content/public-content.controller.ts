@@ -10,6 +10,9 @@ import type {
   Page,
   PagesRepository,
   SiteSettingsRepository,
+  TaxonomiesRepository,
+  TermsRepository,
+  ContentItemTermsRepository,
 } from "@org/domain";
 
 const PUBLIC_SITE_SETTING_KEYS = [
@@ -127,8 +130,23 @@ class PublicSiteSettingDto {
   value!: string;
 }
 
-@ApiTags("content")
-@Controller("content")
+class PublicPageListItemDto {
+  slug!: string;
+  canonicalUrl!: string | null;
+  updatedAt!: Date;
+  noIndex!: boolean;
+}
+
+class PublicNavigationItemDto {
+  id!: string;
+  label!: string;
+  url!: string;
+  order!: number;
+  parentId!: string | null;
+}
+
+@ApiTags("public-content")
+@Controller("public/content")
 export class PublicContentController {
   constructor(
     @Inject("PagesRepository")
@@ -141,10 +159,16 @@ export class PublicContentController {
     private readonly navigation: NavigationItemsRepository,
     @Inject("SiteSettingsRepository")
     private readonly settings: SiteSettingsRepository,
+    @Inject("TaxonomiesRepository")
+    private readonly taxonomies: TaxonomiesRepository,
+    @Inject("TermsRepository")
+    private readonly terms: TermsRepository,
+    @Inject("ContentItemTermsRepository")
+    private readonly contentItemTerms: ContentItemTermsRepository,
   ) {}
 
   @Get("pages")
-  async listPages() {
+  async listPages(): Promise<PublicPageListItemDto[]> {
     const pages = await this.pages.findMany();
     return pages
       .filter((page) => page.published)
@@ -235,16 +259,52 @@ export class PublicContentController {
     return this.mapPublicContentItem(result.entity);
   }
 
+
+  @Get("items/:id/service-categories")
+  async listServiceCategoriesForItem(
+    @Param("id") id: string,
+  ): Promise<string[]> {
+    const serviceTaxonomy = (await this.taxonomies.findMany()).find(
+      (taxonomy) => taxonomy.slug === "service-category",
+    );
+
+    if (!serviceTaxonomy) {
+      return [];
+    }
+
+    const [links, terms] = await Promise.all([
+      this.contentItemTerms.findManyByContentItemId(id),
+      this.terms.findManyByTaxonomyId(serviceTaxonomy.id),
+    ]);
+
+    const allowedTermIds = new Set(terms.map((term) => term.id));
+    const termNameById = new Map(terms.map((term) => [term.id, term.name]));
+
+    return links
+      .map((link) => link.termId)
+      .filter((termId) => allowedTermIds.has(termId))
+      .map((termId) => termNameById.get(termId))
+      .filter((name): name is string => typeof name === "string");
+  }
   @Get("navigation-items")
-  listNavigationItems() {
-    return this.navigation.findMany();
+  async listNavigationItems(): Promise<PublicNavigationItemDto[]> {
+    const items = await this.navigation.findMany();
+    return items.map((item) => ({
+      id: item.id,
+      label: item.label,
+      url: item.url,
+      order: item.order,
+      parentId: item.parentId,
+    }));
   }
 
   @Get("settings")
   async listSettings(): Promise<PublicSiteSettingDto[]> {
     const settings = await this.settings.findMany();
     const allowed = new Set<string>(PUBLIC_SITE_SETTING_KEYS);
-    return settings.filter((setting) => allowed.has(setting.key));
+    return settings
+      .filter((setting) => allowed.has(setting.key))
+      .map((setting) => ({ key: setting.key, value: setting.value }));
   }
 
   private mapPublicContentType(type: {

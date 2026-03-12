@@ -35,7 +35,7 @@ function buildHeaders() {
 }
 
 export async function listAdminMedia(): Promise<AdminMedia[]> {
-  const response = await fetch(`${getApiBase()}/media`, {
+  const response = await fetch(`${getApiBase()}/admin/media`, {
     headers: buildHeaders(),
     cache: "no-store",
   });
