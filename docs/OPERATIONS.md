@@ -6,9 +6,13 @@
 2. Start base services: `docker compose -f infra/docker-compose.yml up -d`.
 3. Install deps: `pnpm install`.
 4. Generate Prisma client (optional): `pnpm db:generate`.
-5. Run migrations: `pnpm db:migrate`.
-6. Seed dev data/content (optional): `pnpm db:seed`.
-7. Start services: `pnpm dev` (web/api).
+5. Prepare DB schema + baseline content: `pnpm db:setup`.
+6. Start services: `pnpm dev` (web/api).
+
+If needed, run DB commands separately:
+
+- `pnpm db:migrate`
+- `pnpm db:seed`
 
 ## CI/CD Hooks
 

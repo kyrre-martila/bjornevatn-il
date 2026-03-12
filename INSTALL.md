@@ -8,6 +8,16 @@ Use this guide to run the blueprint locally after cloning.
 - pnpm 10+
 - Docker + Docker Compose (recommended for local PostgreSQL)
 
+## Root workflow (quick reference)
+
+```bash
+pnpm install
+pnpm db:setup
+pnpm dev
+```
+
+`pnpm db:setup` runs `pnpm db:migrate` and `pnpm db:seed`.
+
 ## 1) Install dependencies
 
 ```bash
@@ -44,19 +54,20 @@ Default container DB values are:
 
 Set `DATABASE_URL` in `.env` to match.
 
-## 4) Apply migrations
+## 4) Apply migrations + seed
+
+```bash
+pnpm db:setup
+```
+
+Or run explicitly:
 
 ```bash
 pnpm db:migrate
-```
-
-## 5) Seed initial data
-
-```bash
 pnpm db:seed
 ```
 
-## 6) Run the dev servers
+## 5) Run the dev servers
 
 ```bash
 pnpm dev

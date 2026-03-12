@@ -28,23 +28,19 @@ Set project-specific values (URLs, secrets, SMTP, DB connection).
 pnpm install
 ```
 
-## 5) Apply migrations
+## 5) Prepare database
 
 ```bash
-pnpm db:migrate
+pnpm db:setup
 ```
 
-## 6) Seed baseline data
+(Equivalent explicit commands: `pnpm db:migrate` then `pnpm db:seed`.)
 
-```bash
-pnpm db:seed
-```
+## 6) Develop and deploy
 
-## 7) Develop and deploy
-
-- Dev: `pnpm dev`
+- Dev (api + web): `pnpm dev`
 - Build: `pnpm build`
-- Production API: `pnpm start:api`
-- Production web: `pnpm start:web`
+- Production start (api + web): `pnpm start`
+- Single service start: `pnpm start:api` or `pnpm start:web`
 - Set production env vars from `.env.prod.example`
 - Validate health endpoints after release

@@ -29,19 +29,20 @@ Required minimum:
 pnpm db:migrate
 ```
 
-## 4) Run API and web
+## 4) Run production services
 
 Build artifacts must exist before startup.
 
-API:
+Start both services from the repo root:
+
+```bash
+pnpm start
+```
+
+Or start individually:
 
 ```bash
 pnpm start:api
-```
-
-Web:
-
-```bash
 pnpm start:web
 ```
 

@@ -1,5 +1,12 @@
 # Database Change Management
 
+## Standard root commands
+
+- `pnpm db:migrate` — apply committed migrations.
+- `pnpm db:seed` — seed baseline content/data.
+- `pnpm db:setup` — run migrate + seed together for local setup.
+- `pnpm db:push` — schema push for prototyping only (not CI/prod).
+
 ## Migrate deploy vs. db push
 
 `pnpm db:migrate` applies versioned SQL migrations that have been reviewed and committed to the repository. This guarantees that every environment (local, CI, staging, production) shares an identical schema history and that rollbacks can be reasoned about from git. The command refuses to run when migrations are missing or diverge, which protects us from accidental drift.

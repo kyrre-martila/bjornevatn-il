@@ -10,16 +10,38 @@ Developers and product teams who want a ready-made foundation for public website
 
 This repository is a blueprint, not a finished product. The architecture and defaults are production-inspired, but each implementation should adapt content models, security settings, and deployment configuration to fit its own editorial and publishing requirements.
 
-## Quick start
+### Implemented vs planned (high level)
+
+- **Implemented now:** local auth (JWT + cookies), role-aware admin area, Prisma/Postgres content model, local file and cloud storage adapters (S3/R2/Supabase), migrations + seed workflow, and production-oriented API/web deployment scaffolding.
+- **Planned/customize per project:** identity provider integrations (OAuth/SSO), richer editorial workflows/approval flows, object-storage policies, and tenant-specific session hardening.
+
+## One root-level workflow
 
 ```bash
 pnpm install
-pnpm db:migrate
-pnpm db:seed
+pnpm db:setup
 pnpm dev
 ```
 
+Then for release builds:
+
+```bash
+pnpm build
+pnpm start
+```
+
 Set up environment variables first (see [docs/OPERATIONS.md](docs/OPERATIONS.md#local-development)).
+
+## Common root commands
+
+- `pnpm install` — install dependencies.
+- `pnpm db:migrate` — apply committed Prisma migrations.
+- `pnpm db:seed` — seed baseline content/users.
+- `pnpm db:setup` — run migration + seed in one command.
+- `pnpm dev` — run API + web in development mode.
+- `pnpm build` — build all workspace apps/packages.
+- `pnpm start` — start API + web from production builds.
+- `pnpm start:api` / `pnpm start:web` — start only one service.
 
 ## Overview
 
@@ -31,23 +53,12 @@ Set up environment variables first (see [docs/OPERATIONS.md](docs/OPERATIONS.md#
 - Contracts: OpenAPI under `packages/contracts`.
 - Infra: Docker Compose for local + prod simulation, GitHub Actions CI/CD.
 
-## Common commands
+## Quickstart references
 
-- Install dependencies: `pnpm install`
-- Apply migrations: `pnpm db:migrate`
-- Seed baseline content: `pnpm db:seed`
-- Start local development: `pnpm dev`
-- Build all apps: `pnpm build`
-- Start production API: `pnpm start:api`
-- Start production web: `pnpm start:web`
-
-## Quickstart (development)
-
-- Follow [docs/OPERATIONS.md](docs/OPERATIONS.md#local-development) for environment setup, migrations, seed content, and local startup.
-
-## Quickstart (prod simulation)
-
-- Follow [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md#prod-simulation) to run the production-like Traefik + services stack locally.
+- Local/dev workflow: [INSTALL.md](INSTALL.md)
+- Production deployment workflow: [DEPLOY.md](DEPLOY.md)
+- New project bootstrap checklist: [NEW_PROJECT.md](NEW_PROJECT.md)
+- Extended operational docs: [docs/OPERATIONS.md](docs/OPERATIONS.md)
 
 ## Operational References
 
