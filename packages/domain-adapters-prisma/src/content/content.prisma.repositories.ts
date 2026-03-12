@@ -38,6 +38,19 @@ const PAGE_BLOCK_TYPES: PageBlockType[] = [
   "news_list",
 ];
 
+const ROUTE_SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+const ROUTE_SLUG_VALIDATION_MESSAGE =
+  "Slug must contain lowercase letters, numbers, and hyphens only.";
+
+function assertValidRouteSlug(slug: string, modelName: string): void {
+  if (!ROUTE_SLUG_PATTERN.test(slug)) {
+    throw new DomainError(
+      "VALIDATION_ERROR",
+      `${modelName} slug '${slug}' is invalid. ${ROUTE_SLUG_VALIDATION_MESSAGE}`,
+    );
+  }
+}
+
 function toPageBlockType(value: string): PageBlockType {
   return PAGE_BLOCK_TYPES.includes(value as PageBlockType)
     ? (value as PageBlockType)
@@ -452,6 +465,8 @@ export class PagesPrismaRepository implements PagesRepository {
   async create(
     data: Omit<Page, "id" | "createdAt" | "updatedAt">,
   ): Promise<Page> {
+    assertValidRouteSlug(data.slug, "Page");
+
     const redirectConflict = await this.prisma.pageSlugRedirect.findUnique({
       where: { sourceSlug: data.slug },
       select: { id: true },
@@ -498,6 +513,8 @@ export class PagesPrismaRepository implements PagesRepository {
 
       const nextSlug =
         typeof pageData.slug === "string" ? pageData.slug : existing.slug;
+
+      assertValidRouteSlug(nextSlug, "Page");
 
       if (nextSlug !== existing.slug) {
         const activeConflict = await tx.page.findFirst({
@@ -645,6 +662,8 @@ export class ContentTypesPrismaRepository implements ContentTypesRepository {
   async create(
     data: Omit<ContentType, "id" | "createdAt" | "updatedAt">,
   ): Promise<ContentType> {
+    assertValidRouteSlug(data.slug, "ContentType");
+
     const type = await this.prisma.contentType.create({
       data: {
         ...data,
@@ -658,6 +677,14 @@ export class ContentTypesPrismaRepository implements ContentTypesRepository {
     id: string,
     data: Partial<Omit<ContentType, "id" | "createdAt" | "updatedAt">>,
   ): Promise<ContentType> {
+    const existing = await this.prisma.contentType.findUnique({ where: { id } });
+    if (!existing) {
+      throw new DomainError("VALIDATION_ERROR", "Content type not found.");
+    }
+
+    const nextSlug = typeof data.slug === "string" ? data.slug : existing.slug;
+    assertValidRouteSlug(nextSlug, "ContentType");
+
     const type = await this.prisma.contentType.update({
       where: { id },
       data: {
@@ -946,6 +973,8 @@ export class ContentItemsPrismaRepository implements ContentItemsRepository {
   async create(
     data: Omit<ContentItem, "id" | "createdAt" | "updatedAt">,
   ): Promise<ContentItem> {
+    assertValidRouteSlug(data.slug, "ContentItem");
+
     const redirectConflict =
       await this.prisma.contentItemSlugRedirect.findFirst({
         where: { contentTypeId: data.contentTypeId, sourceSlug: data.slug },
@@ -982,6 +1011,8 @@ export class ContentItemsPrismaRepository implements ContentItemsRepository {
       const nextSlug =
         typeof data.slug === "string" ? data.slug : existing.slug;
       const nextContentTypeId = data.contentTypeId ?? existing.contentTypeId;
+
+      assertValidRouteSlug(nextSlug, "ContentItem");
 
       if (
         nextSlug !== existing.slug ||

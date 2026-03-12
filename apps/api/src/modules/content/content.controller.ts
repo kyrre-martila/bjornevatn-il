@@ -823,7 +823,7 @@ export class ContentController {
     }
 
     if (body.slug !== undefined) {
-      await this.ensurePageSlugDoesNotConflict(body.slug);
+      await this.ensurePageSlugDoesNotConflict(body.slug, id);
     }
 
     return this.pages.update(id, body);
@@ -875,26 +875,51 @@ export class ContentController {
     }
 
     if (body.slug !== undefined) {
-      await this.ensureContentTypeSlugDoesNotConflict(body.slug);
+      await this.ensureContentTypeSlugDoesNotConflict(body.slug, id);
     }
 
     return this.contentTypes.update(id, body);
   }
 
-  private async ensurePageSlugDoesNotConflict(slug: string) {
+  private async ensurePageSlugDoesNotConflict(slug: string, pageId?: string) {
     const conflictingContentType = await this.contentTypes.findBySlug(slug);
     if (conflictingContentType) {
       throw new BadRequestException(
         `Slug '${slug}' conflicts with an existing ContentType slug.`,
       );
     }
+
+    if (!pageId) {
+      return;
+    }
+
+    const currentPage = await this.pages.findBySlug(slug);
+    if (currentPage && currentPage.id !== pageId) {
+      throw new BadRequestException(
+        `Slug '${slug}' conflicts with another Page slug.`,
+      );
+    }
   }
 
-  private async ensureContentTypeSlugDoesNotConflict(slug: string) {
+  private async ensureContentTypeSlugDoesNotConflict(
+    slug: string,
+    contentTypeId?: string,
+  ) {
     const conflictingPage = await this.pages.findBySlug(slug);
     if (conflictingPage) {
       throw new BadRequestException(
         `Slug '${slug}' conflicts with an existing Page slug.`,
+      );
+    }
+
+    if (!contentTypeId) {
+      return;
+    }
+
+    const currentContentType = await this.contentTypes.findBySlug(slug);
+    if (currentContentType && currentContentType.id !== contentTypeId) {
+      throw new BadRequestException(
+        `Slug '${slug}' conflicts with another ContentType slug.`,
       );
     }
   }
