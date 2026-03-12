@@ -540,9 +540,7 @@ function mapPublicContentType(type: ApiContentType): PublicContentType | null {
   return {
     slug: type.slug,
     name:
-      typeof type.name === "string" && type.name.trim()
-        ? type.name
-        : type.slug,
+      typeof type.name === "string" && type.name.trim() ? type.name : type.slug,
     templateKey:
       typeof type.templateKey === "string" && type.templateKey.trim()
         ? type.templateKey
@@ -568,7 +566,9 @@ export async function getPublicContentTypeBySlug(
   return types.find((type) => type.slug === slug) ?? null;
 }
 
-function mapGenericArchiveItem(item: ApiContentItem): GenericContentArchiveItem {
+function mapGenericArchiveItem(
+  item: ApiContentItem,
+): GenericContentArchiveItem {
   const data = asRecord(item.data);
   const publishedAt =
     typeof data.publishedAt === "string" ? data.publishedAt : item.updatedAt;
@@ -644,7 +644,10 @@ function mapGenericDetailItem(
 export async function resolveContentItemBySlug(
   contentTypeSlug: string,
   slug: string,
-): Promise<{ redirectTo: string | null; item: GenericContentDetailItem | null }> {
+): Promise<{
+  redirectTo: string | null;
+  item: GenericContentDetailItem | null;
+}> {
   const contentType = await getPublicContentTypeBySlug(contentTypeSlug);
   if (!contentType) {
     return { redirectTo: null, item: null };
@@ -943,6 +946,40 @@ function contentItemPath(contentTypeSlug: string, slug: string): string | null {
   return `/${contentTypeSlug}/${slug}`;
 }
 
+function pagePath(slug: string): string | null {
+  const normalizedSlug = slug.trim();
+
+  if (!normalizedSlug) {
+    return null;
+  }
+
+  return normalizedSlug === "home" ? "/" : `/${normalizedSlug}`;
+}
+
+export function sanitizeInternalRedirectTarget(target: string): string | null {
+  const normalizedTarget = target.trim();
+
+  if (!normalizedTarget || !normalizedTarget.startsWith("/")) {
+    return null;
+  }
+
+  if (normalizedTarget.startsWith("//") || /[\r\n]/.test(normalizedTarget)) {
+    return null;
+  }
+
+  try {
+    const parsed = new URL(normalizedTarget, "https://internal.local");
+
+    if (parsed.origin !== "https://internal.local") {
+      return null;
+    }
+
+    return `${parsed.pathname}${parsed.search}${parsed.hash}`;
+  } catch {
+    return null;
+  }
+}
+
 export async function getSitemapContentItems(): Promise<
   SitemapContentItemEntry[]
 > {
@@ -999,6 +1036,10 @@ export function getContentItemPath(
   slug: string,
 ): string | null {
   return contentItemPath(contentTypeSlug, slug);
+}
+
+export function getPagePath(slug: string): string | null {
+  return pagePath(slug);
 }
 
 export async function getPublicNavigationTree(): Promise<NavigationTreeItem[]> {

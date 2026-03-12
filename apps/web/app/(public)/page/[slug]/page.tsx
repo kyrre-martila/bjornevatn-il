@@ -2,8 +2,10 @@ import type { Metadata } from "next";
 import { notFound, permanentRedirect } from "next/navigation";
 
 import {
+  getPagePath,
   getSiteConfiguration,
   resolvePageContentBySlug,
+  sanitizeInternalRedirectTarget,
   withTitleSuffix,
 } from "../../../../lib/content";
 import { renderBlock } from "./block-renderer";
@@ -54,7 +56,7 @@ export async function generateMetadata({
     return {};
   }
 
-  const basePath = page.slug === "home" ? "/" : `/page/${page.slug}`;
+  const basePath = getPagePath(page.slug) ?? "/";
   const canonicalUrl =
     page.canonicalUrl ?? new URL(basePath, `${siteConfig.siteUrl}/`).toString();
   const title = withTitleSuffix(
@@ -92,13 +94,23 @@ export default async function GenericPage({
   const resolved = await resolvePageContentBySlug(slug);
 
   if (resolved.redirectTo) {
-    permanentRedirect(resolved.redirectTo);
+    const redirectTarget = sanitizeInternalRedirectTarget(resolved.redirectTo);
+    if (!redirectTarget) {
+      notFound();
+    }
+
+    permanentRedirect(redirectTarget);
   }
 
   const content = resolved.page;
 
   if (!content) {
     notFound();
+  }
+
+  const canonicalPath = getPagePath(content.slug);
+  if (canonicalPath && canonicalPath !== `/page/${content.slug}`) {
+    permanentRedirect(canonicalPath);
   }
 
   const renderedBlocks = await Promise.all(

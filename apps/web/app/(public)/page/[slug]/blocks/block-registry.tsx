@@ -6,7 +6,7 @@ import type {
   HeroContent,
   NewsItem,
 } from "../../../../../lib/content";
-import { getNewsListing } from "../../../../../lib/content";
+import { getContentItemPath, getNewsListing } from "../../../../../lib/content";
 
 type RichTextData = { paragraphs: string[] };
 type ImageData = {
@@ -149,8 +149,13 @@ function NewsListBlock({
             <p className="news-list__meta">{item.publishedAt}</p>
             <h3 className="news-list__title">{item.title}</h3>
             <p className="news-list__excerpt">{item.summary}</p>
-            <Link href={`/page/${item.slug}`} className="news-list__link">
-              Read page
+            <Link
+              href={
+                getContentItemPath("news", item.slug) ?? `/news/${item.slug}`
+              }
+              className="news-list__link"
+            >
+              Read more
             </Link>
           </li>
         ))}

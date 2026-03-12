@@ -58,7 +58,8 @@ export class MediaController {
   ) {}
 
   @Get()
-  async listMedia() {
+  async listMedia(@Req() req: Request) {
+    await requireMinimumRole(req, this.auth, "editor");
     const [media, usedUrls] = await Promise.all([
       this.mediaService.list(),
       this.getUsedMediaUrls(),

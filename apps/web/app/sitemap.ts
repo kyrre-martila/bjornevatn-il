@@ -2,6 +2,7 @@ import type { MetadataRoute } from "next";
 
 import {
   getContentItemPath,
+  getPagePath,
   getSiteConfiguration,
   getSitemapContentItems,
   getSitemapPages,
@@ -23,7 +24,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     .map((page) => ({
       url:
         page.canonicalUrl ??
-        normalizeUrl(baseUrl, page.slug === "home" ? "/" : `/page/${page.slug}`),
+        normalizeUrl(baseUrl, getPagePath(page.slug) ?? "/"),
       lastModified: new Date(page.updatedAt),
     }));
 
