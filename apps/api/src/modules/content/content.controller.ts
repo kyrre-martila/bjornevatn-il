@@ -25,6 +25,7 @@ import {
   IsOptional,
   IsString,
   IsUrl,
+  Matches,
   Min,
   ValidateNested,
 } from "class-validator";
@@ -68,6 +69,10 @@ const PAGE_BLOCK_TYPES = [
   "news_list",
 ] as const;
 
+const ROUTE_SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+const ROUTE_SLUG_VALIDATION_MESSAGE =
+  "Slug must contain lowercase letters, numbers, and hyphens only.";
+
 class PageBlockInputDto {
   @ApiProperty({ enum: PAGE_BLOCK_TYPES })
   @IsString()
@@ -87,6 +92,7 @@ class PageBlockInputDto {
 class CreatePageDto {
   @ApiProperty()
   @IsString()
+  @Matches(ROUTE_SLUG_PATTERN, { message: ROUTE_SLUG_VALIDATION_MESSAGE })
   slug!: string;
 
   @ApiProperty()
@@ -138,6 +144,7 @@ class UpdatePageDto {
   @ApiProperty({ required: false })
   @IsOptional()
   @IsString()
+  @Matches(ROUTE_SLUG_PATTERN, { message: ROUTE_SLUG_VALIDATION_MESSAGE })
   slug?: string;
 
   @ApiProperty({ required: false })
@@ -298,6 +305,7 @@ class CreateContentTypeDto {
 
   @ApiProperty()
   @IsString()
+  @Matches(ROUTE_SLUG_PATTERN, { message: ROUTE_SLUG_VALIDATION_MESSAGE })
   slug!: string;
 
   @ApiProperty()
@@ -325,6 +333,7 @@ class UpdateContentTypeDto {
   @ApiProperty({ required: false })
   @IsOptional()
   @IsString()
+  @Matches(ROUTE_SLUG_PATTERN, { message: ROUTE_SLUG_VALIDATION_MESSAGE })
   slug?: string;
 
   @ApiProperty({ required: false })
@@ -352,6 +361,7 @@ class CreateContentItemDto {
 
   @ApiProperty()
   @IsString()
+  @Matches(ROUTE_SLUG_PATTERN, { message: ROUTE_SLUG_VALIDATION_MESSAGE })
   slug!: string;
 
   @ApiProperty()
@@ -411,6 +421,7 @@ class UpdateContentItemDto {
   @ApiProperty({ required: false })
   @IsOptional()
   @IsString()
+  @Matches(ROUTE_SLUG_PATTERN, { message: ROUTE_SLUG_VALIDATION_MESSAGE })
   slug?: string;
 
   @ApiProperty({ required: false })
@@ -769,6 +780,7 @@ export class ContentController {
         "Access denied: only super_admin can modify page templates.",
       );
     }
+    await this.ensurePageSlugDoesNotConflict(body.slug);
     await this.validatePageBlocksMediaAlt(body.title, body.blocks);
     return this.pages.create({
       ...body,
@@ -800,6 +812,10 @@ export class ContentController {
       );
     }
 
+    if (body.slug !== undefined) {
+      await this.ensurePageSlugDoesNotConflict(body.slug);
+    }
+
     return this.pages.update(id, body);
   }
 
@@ -828,6 +844,7 @@ export class ContentController {
     @Body() body: CreateContentTypeDto,
   ) {
     await requireSuperAdmin(req, this.auth);
+    await this.ensureContentTypeSlugDoesNotConflict(body.slug);
     await this.validateContentTypeFields(body.fields);
     return this.contentTypes.create({
       ...body,
@@ -846,7 +863,29 @@ export class ContentController {
       await this.validateContentTypeFields(body.fields);
     }
 
+    if (body.slug !== undefined) {
+      await this.ensureContentTypeSlugDoesNotConflict(body.slug);
+    }
+
     return this.contentTypes.update(id, body);
+  }
+
+  private async ensurePageSlugDoesNotConflict(slug: string) {
+    const conflictingContentType = await this.contentTypes.findBySlug(slug);
+    if (conflictingContentType) {
+      throw new BadRequestException(
+        `Slug '${slug}' conflicts with an existing ContentType slug.`,
+      );
+    }
+  }
+
+  private async ensureContentTypeSlugDoesNotConflict(slug: string) {
+    const conflictingPage = await this.pages.findBySlug(slug);
+    if (conflictingPage) {
+      throw new BadRequestException(
+        `Slug '${slug}' conflicts with an existing Page slug.`,
+      );
+    }
   }
 
   @Delete("types/:id")

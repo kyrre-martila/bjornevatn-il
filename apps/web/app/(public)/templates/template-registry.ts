@@ -3,7 +3,14 @@ import { LandingTemplate } from "./LandingTemplate";
 import { NewsTemplate } from "./NewsTemplate";
 import { ServiceTemplate } from "./ServiceTemplate";
 
-export type TemplateKey = "index" | "service" | "news" | "landing";
+export const VALID_TEMPLATE_KEYS = [
+  "index",
+  "service",
+  "news",
+  "landing",
+] as const;
+
+export type TemplateKey = (typeof VALID_TEMPLATE_KEYS)[number];
 
 type TemplateComponent = typeof IndexTemplate;
 type TemplateRegistry = Record<TemplateKey, TemplateComponent>;
@@ -24,7 +31,7 @@ const templates: TemplateRegistry = {
 const INDEX_TEMPLATE_KEY: TemplateKey = "index";
 
 function isTemplateKey(value: string): value is TemplateKey {
-  return value in templates;
+  return VALID_TEMPLATE_KEYS.includes(value as TemplateKey);
 }
 
 export const pageTemplateRegistry: TemplateRegistry = templates;

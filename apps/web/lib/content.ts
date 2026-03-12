@@ -171,6 +171,7 @@ export type PublicContentType = {
   slug: string;
   name: string;
   templateKey: string;
+  isPublic: boolean;
 };
 
 export type GenericContentArchiveItem = {
@@ -495,11 +496,17 @@ function mapServiceListItem(
   };
 }
 
-function flattenServiceTree(items: ApiContentItemTree[]): ApiContentItemTree[] {
+function flattenContentItemTree(
+  items: ApiContentItemTree[],
+): ApiContentItemTree[] {
   return items.flatMap((item) => [
     item,
-    ...flattenServiceTree(item.children ?? []),
+    ...flattenContentItemTree(item.children ?? []),
   ]);
+}
+
+function flattenServiceTree(items: ApiContentItemTree[]): ApiContentItemTree[] {
+  return flattenContentItemTree(items);
 }
 
 export async function getServicesListing(): Promise<ServiceListItem[]> {
@@ -522,14 +529,14 @@ async function getContentTypeTemplateKey(slug: string): Promise<string> {
 }
 
 function mapPublicContentType(type: ApiContentType): PublicContentType | null {
-  if (type.public === false || type.isPublic === false) {
-    return null;
-  }
+  const isPublic =
+    typeof type.isPublic === "boolean"
+      ? type.isPublic
+      : type.public !== false &&
+        (typeof type.visibility !== "string" ||
+          type.visibility.trim().toLowerCase() === "public");
 
-  if (
-    typeof type.visibility === "string" &&
-    type.visibility.trim().toLowerCase() !== "public"
-  ) {
+  if (!isPublic) {
     return null;
   }
 
@@ -545,6 +552,7 @@ function mapPublicContentType(type: ApiContentType): PublicContentType | null {
       typeof type.templateKey === "string" && type.templateKey.trim()
         ? type.templateKey
         : "index",
+    isPublic,
   };
 }
 
@@ -556,7 +564,9 @@ export async function getPublicContentTypes(): Promise<PublicContentType[]> {
 
   return types
     .map(mapPublicContentType)
-    .filter((type): type is PublicContentType => type !== null);
+    .filter(
+      (type): type is PublicContentType => type !== null && type.isPublic,
+    );
 }
 
 export async function getPublicContentTypeBySlug(

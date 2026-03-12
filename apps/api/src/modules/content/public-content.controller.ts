@@ -54,6 +54,13 @@ type PublicContentItemTreeDto = PublicContentItemDto & {
   children: PublicContentItemTreeDto[];
 };
 
+type PublicContentTypeDto = {
+  slug: string;
+  name: string;
+  templateKey: string | null;
+  isPublic: boolean;
+};
+
 class PublicSiteSettingDto {
   key!: string;
   value!: string;
@@ -107,13 +114,9 @@ export class PublicContentController {
   }
 
   @Get("types")
-  async listContentTypes() {
+  async listContentTypes(): Promise<PublicContentTypeDto[]> {
     const types = await this.contentTypes.findMany();
-    return types.map((type) => ({
-      slug: type.slug,
-      name: type.name,
-      templateKey: type.templateKey,
-    }));
+    return types.map((type) => this.mapPublicContentType(type));
   }
 
   @Get("items/type-slug/:slug")
@@ -171,6 +174,19 @@ export class PublicContentController {
     const settings = await this.settings.findMany();
     const allowed = new Set<string>(PUBLIC_SITE_SETTING_KEYS);
     return settings.filter((setting) => allowed.has(setting.key));
+  }
+
+  private mapPublicContentType(type: {
+    slug: string;
+    name: string;
+    templateKey: string | null;
+  }): PublicContentTypeDto {
+    return {
+      slug: type.slug,
+      name: type.name,
+      templateKey: type.templateKey,
+      isPublic: true,
+    };
   }
 
   private mapPublicPage(page: Page) {
