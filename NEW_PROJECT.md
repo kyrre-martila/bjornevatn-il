@@ -22,25 +22,23 @@ cp env.example .env
 
 Set project-specific values (URLs, secrets, SMTP, DB connection).
 
-## 4) Install dependencies
+## 4) Run the root workflow
+
+Use the root-level scripts so setup is consistent with the rest of the docs:
 
 ```bash
 pnpm install
-```
-
-## 5) Prepare database
-
-```bash
 pnpm db:setup
+# or run explicitly:
+# pnpm db:migrate
+# pnpm db:seed
+pnpm dev
+pnpm build
 ```
 
-(Equivalent explicit commands: `pnpm db:migrate` then `pnpm db:seed`.)
+## 5) Production start options
 
-## 6) Develop and deploy
-
-- Dev (api + web): `pnpm dev`
-- Build: `pnpm build`
-- Production start (api + web): `pnpm start`
-- Single service start: `pnpm start:api` or `pnpm start:web`
+- Start both services: `pnpm start`
+- Start one service: `pnpm start:api` or `pnpm start:web`
 - Set production env vars from `.env.prod.example`
 - Validate health endpoints after release
