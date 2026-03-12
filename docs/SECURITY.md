@@ -4,9 +4,9 @@ Security guidance for the content website blueprint (public site + admin/editor 
 
 ## Required Secrets
 
-- `JWT_SECRET`: HMAC signing key for access tokens.
-- `COOKIE_SECRET`: Encryption/signature for session cookies.
-- `ENCRYPTION_KEY`: 32-byte key for at-rest sensitive fields.
+- `JWT_SECRET`: HMAC signing key for access tokens (minimum 32 characters).
+- `COOKIE_SECRET`: Encryption/signature for session cookies (minimum 32 characters).
+- `ENCRYPTION_KEY`: key for at-rest sensitive fields (minimum 32 characters).
 - `COOKIE_DOMAIN`: Shared domain for web cookies (prod uses apex domain).
 - `API_CORS_ORIGINS`: Comma-separated list of allowed origins (required in production).
 
@@ -26,7 +26,7 @@ Security guidance for the content website blueprint (public site + admin/editor 
 ## CORS Configuration
 
 - API reads `API_CORS_ORIGINS` and rejects requests whose `Origin` is missing from the allowlist.
-- In `NODE_ENV=production`, startup fails fast when `API_CORS_ORIGINS` is missing or empty.
+- In `NODE_ENV=production`, startup fails fast when `API_CORS_ORIGINS` is missing or empty; explicit trusted origins are mandatory.
 - In non-production environments, API falls back to local defaults: `http://localhost:3000` and `http://127.0.0.1:3000`.
 - Update the env var during deployments to add/remove origins for public and admin website domains.
 

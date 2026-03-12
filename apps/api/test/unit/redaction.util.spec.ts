@@ -35,6 +35,35 @@ describe("redactSensitiveData", () => {
       items: [{ password: "[REDACTED]" }, { publicValue: "ok" }],
     });
   });
+
+  it("redacts bearer/basic/jwt-like raw string values", () => {
+    expect(redactSensitiveData("Bearer super-secret-token")).toBe("[REDACTED]");
+    expect(redactSensitiveData("Basic dXNlcjpwYXNz")).toBe("[REDACTED]");
+    expect(
+      redactSensitiveData(
+        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.payload.signature",
+      ),
+    ).toBe("[REDACTED]");
+  });
+
+  it("redacts expanded sensitive keys and cookie fields", () => {
+    expect(
+      redactSensitiveData({
+        apiKey: "abc123",
+        csrfToken: "csrf-secret",
+        sessionId: "session-secret",
+        credentials: { password: "unsafe" },
+        cookieValue: "session=123",
+      }),
+    ).toEqual({
+      apiKey: "[REDACTED]",
+      csrfToken: "[REDACTED]",
+      sessionId: "[REDACTED]",
+      credentials: "[REDACTED]",
+      cookieValue: "session=[REDACTED]",
+    });
+  });
+
 });
 
 describe("redactErrorForLogs", () => {

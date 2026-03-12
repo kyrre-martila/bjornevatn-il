@@ -3,10 +3,15 @@ const MAX_DEPTH = 10;
 
 const SENSITIVE_KEY_PATTERNS = [
   /password/i,
+  /passwd/i,
   /token/i,
   /secret/i,
   /authorization/i,
   /cookie/i,
+  /api[-_]?key/i,
+  /credential/i,
+  /session/i,
+  /csrf/i,
 ];
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
@@ -15,6 +20,20 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
 
 function shouldRedactKey(key: string): boolean {
   return SENSITIVE_KEY_PATTERNS.some((pattern) => pattern.test(key));
+}
+
+
+function isSensitiveString(value: string): boolean {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return false;
+  }
+
+  return (
+    /^(Bearer|Basic)\s+/i.test(trimmed) ||
+    /^eyJ[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+$/.test(trimmed) ||
+    /^[-_a-zA-Z0-9]{24,}$/.test(trimmed)
+  );
 }
 
 function redactCookieString(cookieHeader: string): string {
@@ -66,6 +85,10 @@ export function redactSensitiveData(value: unknown, depth = 0): unknown {
 
   if (Array.isArray(value)) {
     return value.map((item) => redactSensitiveData(item, depth + 1));
+  }
+
+  if (typeof value === "string") {
+    return isSensitiveString(value) ? REDACTED_VALUE : value;
   }
 
   if (!isPlainObject(value)) {

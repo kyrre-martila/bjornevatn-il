@@ -11,7 +11,7 @@ Follow these rules when writing or reviewing log statements for the Blueprint AP
   - `info` for lifecycle events (startup, shutdown, key business flows).
   - `warn` for recoverable anomalies that might need follow-up.
   - `error` for failures that impact the request or require alerting.
-- Redact or hash tokens/identifiers before logging if they are not already masked by interceptors.
+- Redact or hash tokens/identifiers before logging if they are not already masked by interceptors. Request/response bodies should be treated as sensitive by default and only logged in sanitized form.
 - Add contextual fields (user ID, tenant, route) to help correlation.
 
 ## Don't

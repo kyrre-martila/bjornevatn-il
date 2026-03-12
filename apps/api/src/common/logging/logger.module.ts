@@ -10,16 +10,26 @@ export const HTTP_LOGGER_TOKEN = Symbol("HTTP_LOGGER_TOKEN");
 const REDACT_FIELDS = [
   "req.headers.authorization",
   "req.headers.cookie",
+  "req.headers.x-api-key",
+  "req.headers.x-csrf-token",
+  "req.query.token",
+  "req.query.refreshToken",
+  "req.query.password",
   "req.body.password",
+  "req.body.passwd",
   "req.body.token",
   "req.body.refreshToken",
   "req.body.secret",
   "req.body.authorization",
   "req.body.cookie",
+  "req.body.apiKey",
+  "req.body.csrf",
   "req.body.*.password",
+  "req.body.*.passwd",
   "req.body.*.token",
   "req.body.*.refreshToken",
   "req.body.*.secret",
+  "req.body.*.apiKey",
   "res.headers.set-cookie",
 ];
 
@@ -30,8 +40,21 @@ function sanitizeBody(body: unknown): unknown {
     return body;
   }
 
+  if (typeof body === "string") {
+    if (body.length > MAX_BODY_LENGTH) {
+      return "[Truncated]";
+    }
+
+    try {
+      const parsed = JSON.parse(body) as unknown;
+      return redactSensitiveData(parsed);
+    } catch {
+      return "[REDACTED_TEXT_BODY]";
+    }
+  }
+
   try {
-    const json = typeof body === "string" ? body : JSON.stringify(body);
+    const json = JSON.stringify(body);
     if (json && json.length > MAX_BODY_LENGTH) {
       return "[Truncated]";
     }
