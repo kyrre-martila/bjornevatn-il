@@ -1,5 +1,9 @@
 import { expect, test } from "@playwright/test";
-import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
+import {
+  createServer,
+  type IncomingMessage,
+  type ServerResponse,
+} from "node:http";
 
 const API_PORT = 4000;
 const API_PREFIX = "/api/v1";
@@ -62,6 +66,10 @@ function pagePayload(slug: string, title: string, templateKey = "index") {
   };
 }
 
+/**
+ * Public routing contract matrix: canonical pages, public content-type archives,
+ * content-item details, slug-collision precedence, legacy redirects, and safety guards.
+ */
 test.describe("Public routing contract", () => {
   let api: MockContentApi;
 
@@ -76,26 +84,106 @@ test.describe("Public routing contract", () => {
     await api.stop();
   });
 
-  test("renders key top-level page routes", async ({ page }) => {
+  test("renders canonical public pages", async ({ page }) => {
     api.json("/public/content/pages/slug/about", pagePayload("about", "About"));
-    api.json("/public/content/pages/slug/contact", pagePayload("contact", "Contact"));
-    api.json("/public/content/pages/slug/services", pagePayload("services", "Services"));
-    api.json("/public/content/pages/slug/products", pagePayload("products", "Products"));
+    api.json(
+      "/public/content/pages/slug/contact",
+      pagePayload("contact", "Contact"),
+    );
 
     await page.goto("/about");
     await expect(page.getByText("About body copy")).toBeVisible();
 
     await page.goto("/contact");
     await expect(page.getByText("Contact body copy")).toBeVisible();
-
-    await page.goto("/services");
-    await expect(page.getByText("Services body copy")).toBeVisible();
-
-    await page.goto("/products");
-    await expect(page.getByText("Products body copy")).toBeVisible();
   });
 
-  test("renders /news archive and /news/my-article detail", async ({ page }) => {
+  test.describe("content type archives", () => {
+    const archiveCases = [
+      {
+        slug: "news",
+        name: "News",
+        templateKey: "news",
+        assertItemTitle: false,
+        item: {
+          id: "n-1",
+          slug: "my-article",
+          title: "My Article",
+          summary: "Summary",
+          body: "My article detail body",
+        },
+      },
+      {
+        slug: "services",
+        name: "Services",
+        templateKey: "service",
+        assertItemTitle: true,
+        item: {
+          id: "s-1",
+          slug: "web-design",
+          title: "Web Design",
+          summary: "Design and delivery",
+          body: "Design details",
+        },
+      },
+      {
+        slug: "products",
+        name: "Products",
+        templateKey: "landing",
+        assertItemTitle: true,
+        item: {
+          id: "p-1",
+          slug: "starter-kit",
+          title: "Starter Kit",
+          summary: "Product summary",
+          body: "Starter Kit details",
+        },
+      },
+    ] as const;
+
+    for (const archiveCase of archiveCases) {
+      test(`renders /${archiveCase.slug} archive`, async ({ page }) => {
+        api.json(`/public/content/pages/slug/${archiveCase.slug}`, null, 404);
+        api.json(`/public/content/types/${archiveCase.slug}`, {
+          slug: archiveCase.slug,
+          name: archiveCase.name,
+          templateKey: archiveCase.templateKey,
+          isPublic: true,
+        });
+        api.json(
+          `/public/content/items/type-slug/${archiveCase.slug}?offset=0&limit=21`,
+          [
+            {
+              id: archiveCase.item.id,
+              slug: archiveCase.item.slug,
+              title: archiveCase.item.title,
+              summary: archiveCase.item.summary,
+              body: archiveCase.item.body,
+              shortDescription: "",
+              featuredImage: null,
+              callToActionLabel: "",
+              callToActionUrl: "",
+              relatedItemIds: [],
+              publishedAt: "2025-01-10T00:00:00.000Z",
+              canonicalUrl: null,
+              noIndex: false,
+              updatedAt: "2025-01-10T00:00:00.000Z",
+            },
+          ],
+        );
+
+        await page.goto(`/${archiveCase.slug}`);
+        await expect(page).toHaveURL(new RegExp(`/${archiveCase.slug}$`));
+        if (archiveCase.assertItemTitle) {
+          await expect(
+            page.getByText(archiveCase.item.title).first(),
+          ).toBeVisible();
+        }
+      });
+    }
+  });
+
+  test("renders /news/my-article detail", async ({ page }) => {
     api.json("/public/content/pages/slug/news", null, 404);
     api.json("/public/content/types/news", {
       slug: "news",
@@ -138,11 +226,10 @@ test.describe("Public routing contract", () => {
       updatedAt: "2025-01-10T00:00:00.000Z",
     });
 
-    await page.goto("/news");
-    await expect(page).toHaveURL(/\/news$/);
-
     await page.goto("/news/my-article");
-    await expect(page.getByRole("heading", { level: 1, name: "My Article" })).toBeVisible();
+    await expect(
+      page.getByRole("heading", { level: 1, name: "My Article" }),
+    ).toBeVisible();
     await expect(page.getByText("My article detail body")).toBeVisible();
   });
 
@@ -171,12 +258,19 @@ test.describe("Public routing contract", () => {
     });
 
     await page.goto("/services/web-design");
-    await expect(page.getByRole("heading", { level: 1, name: "Web Design" })).toBeVisible();
+    await expect(
+      page.getByRole("heading", { level: 1, name: "Web Design" }),
+    ).toBeVisible();
     await expect(page.getByText("Design details")).toBeVisible();
   });
 
-  test("page slug collision takes precedence over content-type archive", async ({ page }) => {
-    api.json("/public/content/pages/slug/news", pagePayload("news", "News Landing"));
+  test("page slug collision takes precedence over content-type archive", async ({
+    page,
+  }) => {
+    api.json(
+      "/public/content/pages/slug/news",
+      pagePayload("news", "News Landing"),
+    );
     api.json("/public/content/types/news", {
       slug: "news",
       name: "News",
@@ -190,7 +284,9 @@ test.describe("Public routing contract", () => {
     await expect(page.getByText("Read more")).toHaveCount(0);
   });
 
-  test("legacy /page/{slug} route permanently redirects to canonical route", async ({ page }) => {
+  test("legacy /page/{slug} route permanently redirects to canonical route", async ({
+    page,
+  }) => {
     api.json("/public/content/pages/slug/about", pagePayload("about", "About"));
 
     const response = await page.request.get("/page/about", { maxRedirects: 0 });
@@ -198,11 +294,31 @@ test.describe("Public routing contract", () => {
     expect(response.headers()["location"]).toBe("/about");
   });
 
-  test("invalid redirect target is ignored and route resolves as not found", async ({ page }) => {
-    api.json("/public/content/pages/slug/unsafe", { redirectTo: "https://example.com/phish" });
+  test("invalid redirect target is ignored and route resolves as not found", async ({
+    page,
+  }) => {
+    api.json("/public/content/pages/slug/unsafe", {
+      redirectTo: "https://example.com/phish",
+    });
 
     const response = await page.goto("/unsafe");
     expect(response?.status()).toBe(404);
     await expect(page).toHaveURL(/\/unsafe$/);
+  });
+
+  test("private content types do not resolve to public archive routes", async ({
+    page,
+  }) => {
+    api.json("/public/content/pages/slug/internal-tools", null, 404);
+    api.json("/public/content/types/internal-tools", {
+      slug: "internal-tools",
+      name: "Internal Tools",
+      templateKey: "index",
+      isPublic: false,
+    });
+
+    const response = await page.goto("/internal-tools");
+    expect(response?.status()).toBe(404);
+    await expect(page).toHaveURL(/\/internal-tools$/);
   });
 });
