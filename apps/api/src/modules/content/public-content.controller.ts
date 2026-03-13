@@ -319,41 +319,95 @@ export class PublicContentController {
     return this.mapPublicContentItemDetail(result.entity);
   }
 
-  @Get("items/:id/service-categories")
-  async listServiceCategoriesForItem(
+  @Get("items/:id/taxonomies/:taxonomySlug")
+  async listTaxonomyTermsForItem(
     @Param("id") id: string,
+    @Param("taxonomySlug") taxonomySlug: string,
   ): Promise<string[]> {
-    const item = await this.contentItems.findById(id);
-    if (!item || !item.published) {
+    const isPublicItem = await this.isPublishedPublicContentItem(id);
+    if (!isPublicItem) {
       return [];
     }
 
-    const contentType = await this.contentTypes.findById(item.contentTypeId);
-    if (!contentType || !contentType.isPublic) {
-      return [];
-    }
+    return this.findTaxonomyTermNamesByItemIdAndTaxonomySlug(id, taxonomySlug);
+  }
 
-    const serviceTaxonomy = (await this.taxonomies.findMany()).find(
-      (taxonomy) => taxonomy.slug === "service-category",
+  @Get("items/type-slug/:contentTypeSlug/:id/taxonomies/:taxonomySlug")
+  async listTaxonomyTermsForItemByTypeSlug(
+    @Param("contentTypeSlug") contentTypeSlug: string,
+    @Param("id") id: string,
+    @Param("taxonomySlug") taxonomySlug: string,
+  ): Promise<string[]> {
+    const isPublicItem = await this.isPublishedPublicContentItem(
+      id,
+      contentTypeSlug,
     );
-
-    if (!serviceTaxonomy) {
+    if (!isPublicItem) {
       return [];
     }
 
-    const [links, terms] = await Promise.all([
+    return this.findTaxonomyTermNamesByItemIdAndTaxonomySlug(id, taxonomySlug);
+  }
+
+  @Get("items/:id/taxonomies")
+  async listTaxonomyRelationsForItem(
+    @Param("id") id: string,
+  ): Promise<
+    Array<{ taxonomySlug: string; taxonomyName: string; termNames: string[] }>
+  > {
+    const isPublicItem = await this.isPublishedPublicContentItem(id);
+    if (!isPublicItem) {
+      return [];
+    }
+
+    const [links, taxonomies] = await Promise.all([
       this.contentItemTerms.findManyByContentItemId(id),
-      this.terms.findManyByTaxonomyId(serviceTaxonomy.id),
+      this.taxonomies.findMany(),
     ]);
 
-    const allowedTermIds = new Set(terms.map((term) => term.id));
-    const termNameById = new Map(terms.map((term) => [term.id, term.name]));
+    if (!links.length || !taxonomies.length) {
+      return [];
+    }
 
-    return links
-      .map((link) => link.termId)
-      .filter((termId) => allowedTermIds.has(termId))
-      .map((termId) => termNameById.get(termId))
-      .filter((name): name is string => typeof name === "string");
+    const termsByTaxonomyId = new Map<string, Map<string, string>>();
+    for (const taxonomy of taxonomies) {
+      const terms = await this.terms.findManyByTaxonomyId(taxonomy.id);
+      termsByTaxonomyId.set(
+        taxonomy.id,
+        new Map(terms.map((term) => [term.id, term.name])),
+      );
+    }
+
+    return taxonomies
+      .map((taxonomy) => {
+        const termNameById = termsByTaxonomyId.get(taxonomy.id);
+        if (!termNameById) {
+          return null;
+        }
+
+        const termNames = links
+          .map((link) => termNameById.get(link.termId))
+          .filter((name): name is string => typeof name === "string");
+
+        if (!termNames.length) {
+          return null;
+        }
+
+        return {
+          taxonomySlug: taxonomy.slug,
+          taxonomyName: taxonomy.name,
+          termNames,
+        };
+      })
+      .filter(
+        (
+          relation,
+        ): relation is {
+          taxonomySlug: string;
+          taxonomyName: string;
+          termNames: string[];
+        } => Boolean(relation),
+      );
   }
   @Get("navigation-items")
   async listNavigationItems(): Promise<PublicNavigationItemDto[]> {
@@ -388,6 +442,57 @@ export class PublicContentController {
       templateKey: type.templateKey,
       isPublic: type.isPublic,
     };
+  }
+
+  private async isPublishedPublicContentItem(
+    contentItemId: string,
+    contentTypeSlug?: string,
+  ): Promise<boolean> {
+    const item = await this.contentItems.findById(contentItemId);
+    if (!item || !item.published) {
+      return false;
+    }
+
+    const contentType = contentTypeSlug
+      ? await this.contentTypes.findPublicBySlug(contentTypeSlug)
+      : await this.contentTypes.findById(item.contentTypeId);
+
+    if (!contentType || !contentType.isPublic) {
+      return false;
+    }
+
+    if (contentTypeSlug && contentType.id !== item.contentTypeId) {
+      return false;
+    }
+
+    return true;
+  }
+
+  private async findTaxonomyTermNamesByItemIdAndTaxonomySlug(
+    contentItemId: string,
+    taxonomySlug: string,
+  ): Promise<string[]> {
+    const taxonomy = (await this.taxonomies.findMany()).find(
+      (entry) => entry.slug === taxonomySlug,
+    );
+
+    if (!taxonomy) {
+      return [];
+    }
+
+    const [links, terms] = await Promise.all([
+      this.contentItemTerms.findManyByContentItemId(contentItemId),
+      this.terms.findManyByTaxonomyId(taxonomy.id),
+    ]);
+
+    const allowedTermIds = new Set(terms.map((term) => term.id));
+    const termNameById = new Map(terms.map((term) => [term.id, term.name]));
+
+    return links
+      .map((link) => link.termId)
+      .filter((termId) => allowedTermIds.has(termId))
+      .map((termId) => termNameById.get(termId))
+      .filter((name): name is string => typeof name === "string");
   }
 
   private mapPublicPage(page: Page): PublicPageDto {

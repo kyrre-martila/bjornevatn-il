@@ -828,13 +828,11 @@ export async function resolveContentItemBySlug(
   };
 }
 
-async function getServiceTaxonomyTermNames(
+async function getTaxonomyTermNamesForContentItem(
   contentTypeSlug: string,
   contentItemId: string,
+  taxonomySlug: string,
 ): Promise<string[]> {
-  const taxonomySlug =
-    process.env.NEXT_PUBLIC_SERVICE_TAXONOMY_SLUG?.trim() || "";
-
   if (!taxonomySlug) {
     return [];
   }
@@ -887,9 +885,10 @@ export async function resolveServiceBySlug(slug: string): Promise<{
     .filter((entry) => entry.parentId === item.id)
     .map((entry) => ({ slug: entry.slug, title: entry.title }));
 
-  const taxonomyTerms = await getServiceTaxonomyTermNames(
+  const taxonomyTerms = await getTaxonomyTermNamesForContentItem(
     serviceContentTypeSlug,
     item.id,
+    process.env.NEXT_PUBLIC_SERVICE_TAXONOMY_SLUG?.trim() || "",
   );
 
   return {
