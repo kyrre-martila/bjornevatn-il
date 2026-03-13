@@ -610,8 +610,11 @@ export async function getHomepageContent(): Promise<HeroContent> {
   );
 }
 
-export async function getNewsListing(): Promise<NewsItem[]> {
-  const items = await getContentTypeArchiveItems("news");
+export async function getNewsListing(limit?: number): Promise<NewsItem[]> {
+  const items = await getContentTypeArchiveItems(
+    "news",
+    typeof limit === "number" ? { offset: 0, limit } : undefined,
+  );
   return items.map((item) => ({
     ...item,
     templateKey: DEFAULT_TEMPLATE_KEY,

@@ -2,11 +2,19 @@ import { NextResponse } from "next/server";
 import { requireSuperAdmin } from "../auth";
 import { buildForwardHeaders, getApiBase } from "../utils";
 
-export async function GET() {
+export async function GET(request: Request) {
   const denied = await requireSuperAdmin();
   if (denied) return denied;
 
-  const res = await fetch(`${getApiBase()}/admin/content/types`, {
+  const { searchParams } = new URL(request.url);
+  const upstreamParams = new URLSearchParams();
+  const limit = searchParams.get("limit");
+  const offset = searchParams.get("offset");
+  if (limit) upstreamParams.set("limit", limit);
+  if (offset) upstreamParams.set("offset", offset);
+  const query = upstreamParams.size > 0 ? `?${upstreamParams.toString()}` : "";
+
+  const res = await fetch(`${getApiBase()}/admin/content/types${query}`, {
     headers: buildForwardHeaders(),
     cache: "no-store",
   });

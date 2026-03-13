@@ -9,7 +9,6 @@ import {
   Param,
   Patch,
   Post,
-  Put,
   Query,
   Req,
   ForbiddenException,
@@ -484,6 +483,24 @@ class UpdateContentItemDto {
   published?: boolean;
 }
 
+
+class AdminListQueryDto {
+  @ApiProperty({ required: false, minimum: 0 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  offset?: number;
+
+  @ApiProperty({ required: false, minimum: 1, maximum: 500 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(500)
+  limit?: number;
+}
+
 class ListContentItemsQueryDto {
   @ApiProperty({ required: false, enum: ["flat", "tree"], default: "flat" })
   @IsOptional()
@@ -686,9 +703,12 @@ export class ContentController {
   ) {}
 
   @Get("pages")
-  async listPages(@Req() req: Request) {
+  async listPages(
+    @Req() req: Request,
+    @Query() query: AdminListQueryDto,
+  ) {
     await requireMinimumRole(req, this.auth, "editor");
-    return this.pages.findMany();
+    return this.pages.findMany({ offset: query.offset, limit: query.limit });
   }
 
   @Get("pages/:id")
@@ -767,9 +787,15 @@ export class ContentController {
   }
 
   @Get("types")
-  async listContentTypes(@Req() req: Request) {
+  async listContentTypes(
+    @Req() req: Request,
+    @Query() query: AdminListQueryDto,
+  ) {
     await requireMinimumRole(req, this.auth, "editor");
-    return this.contentTypes.findMany();
+    return this.contentTypes.findMany({
+      offset: query.offset,
+      limit: query.limit,
+    });
   }
 
   @Get("types/:id")
@@ -920,11 +946,11 @@ export class ContentController {
       return this.filterPublishedContentItemTree(items);
     }
 
-    const items = await this.contentItems.findManyByContentTypeSlug(slug, {
+    return this.contentItems.findManyByContentTypeSlug(slug, {
       offset: query.offset,
       limit: query.limit,
+      published: true,
     });
-    return items.filter((item) => item.published);
   }
 
   @Get("items/type-slug/:contentTypeSlug/:slug")
@@ -1089,33 +1115,52 @@ export class ContentController {
     }
 
     const contentTypes = await this.contentTypes.findMany();
+    const contentTypeImageFieldKeys = new Map<string, string[]>();
+
     for (const contentType of contentTypes) {
-      const imageFields = contentType.fields.filter(
-        (field: ContentFieldDefinition) => field.type === "image",
-      );
-      if (imageFields.length === 0) {
+      const imageFieldKeys = contentType.fields
+        .filter((field: ContentFieldDefinition) => field.type === "image")
+        .map((field: ContentFieldDefinition) => field.key);
+
+      if (imageFieldKeys.length > 0) {
+        contentTypeImageFieldKeys.set(contentType.id, imageFieldKeys);
+      }
+    }
+
+    if (!contentTypeImageFieldKeys.size) {
+      return usage;
+    }
+
+    const items = await this.contentItems.findMany();
+    const contentTypeNameById = new Map(
+      contentTypes.map((contentType) => [contentType.id, contentType.name]),
+    );
+
+    for (const item of items) {
+      const imageFields = contentTypeImageFieldKeys.get(item.contentTypeId);
+      if (!imageFields || imageFields.length === 0) {
         continue;
       }
 
-      const items = await this.contentItems.findManyByContentTypeId(
-        contentType.id,
-      );
-      for (const item of items) {
-        for (const field of imageFields) {
-          const value = item.data[field.key];
-          if (typeof value !== "string" || !value.trim()) {
-            continue;
-          }
+      const contentTypeName = contentTypeNameById.get(item.contentTypeId);
+      if (!contentTypeName) {
+        continue;
+      }
 
-          const entries = usage.get(value.trim()) ?? [];
-          entries.push({
-            kind: "content",
-            contentType: contentType.name,
-            itemTitle: item.title,
-            fieldKey: field.key,
-          });
-          usage.set(value.trim(), entries);
+      for (const fieldKey of imageFields) {
+        const value = item.data[fieldKey];
+        if (typeof value !== "string" || !value.trim()) {
+          continue;
         }
+
+        const entries = usage.get(value.trim()) ?? [];
+        entries.push({
+          kind: "content",
+          contentType: contentTypeName,
+          itemTitle: item.title,
+          fieldKey,
+        });
+        usage.set(value.trim(), entries);
       }
     }
 

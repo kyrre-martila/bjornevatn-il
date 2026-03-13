@@ -417,10 +417,19 @@ function mapMedia(media: {
 export class PagesPrismaRepository implements PagesRepository {
   private readonly prisma = getPrisma();
 
-  async findMany(): Promise<Page[]> {
+  async findMany(pagination?: PaginationParams): Promise<Page[]> {
     const pages = await this.prisma.page.findMany({
       orderBy: { createdAt: "desc" },
       include: { blocks: { orderBy: { order: "asc" } } },
+      ...(typeof pagination?.offset === "number"
+        ? { skip: pagination.offset }
+        : {}),
+      ...(typeof pagination?.limit === "number"
+        ? { take: pagination.limit }
+        : {}),
+      ...(typeof pagination?.published === "boolean"
+        ? { where: { published: pagination.published } }
+        : {}),
     });
     return pages.map(mapPage);
   }
@@ -628,17 +637,29 @@ export class PageBlocksPrismaRepository implements PageBlocksRepository {
 export class ContentTypesPrismaRepository implements ContentTypesRepository {
   private readonly prisma = getPrisma();
 
-  async findMany(): Promise<ContentType[]> {
+  async findMany(pagination?: PaginationParams): Promise<ContentType[]> {
     const types = await this.prisma.contentType.findMany({
       orderBy: { createdAt: "desc" },
+      ...(typeof pagination?.offset === "number"
+        ? { skip: pagination.offset }
+        : {}),
+      ...(typeof pagination?.limit === "number"
+        ? { take: pagination.limit }
+        : {}),
     });
     return types.map(mapContentType);
   }
 
-  async findManyPublic(): Promise<ContentType[]> {
+  async findManyPublic(pagination?: PaginationParams): Promise<ContentType[]> {
     const types = await this.prisma.contentType.findMany({
       where: { isPublic: true },
       orderBy: { createdAt: "desc" },
+      ...(typeof pagination?.offset === "number"
+        ? { skip: pagination.offset }
+        : {}),
+      ...(typeof pagination?.limit === "number"
+        ? { take: pagination.limit }
+        : {}),
     });
     return types.map(mapContentType);
   }
@@ -712,6 +733,9 @@ export class ContentItemsPrismaRepository implements ContentItemsRepository {
   async findMany(pagination?: PaginationParams): Promise<ContentItem[]> {
     const items = await this.prisma.contentItem.findMany({
       orderBy: [{ sortOrder: "asc" }, { createdAt: "desc" }],
+      ...(typeof pagination?.published === "boolean"
+        ? { where: { published: pagination.published } }
+        : {}),
       ...(typeof pagination?.offset === "number"
         ? { skip: pagination.offset }
         : {}),
@@ -727,7 +751,12 @@ export class ContentItemsPrismaRepository implements ContentItemsRepository {
     pagination?: PaginationParams,
   ): Promise<ContentItem[]> {
     const items = await this.prisma.contentItem.findMany({
-      where: { contentTypeId },
+      where: {
+        contentTypeId,
+        ...(typeof pagination?.published === "boolean"
+          ? { published: pagination.published }
+          : {}),
+      },
       orderBy: [{ sortOrder: "asc" }, { createdAt: "desc" }],
       ...(typeof pagination?.offset === "number"
         ? { skip: pagination.offset }
@@ -744,7 +773,12 @@ export class ContentItemsPrismaRepository implements ContentItemsRepository {
     pagination?: PaginationParams,
   ): Promise<ContentItem[]> {
     const items = await this.prisma.contentItem.findMany({
-      where: { contentType: { slug: contentTypeSlug } },
+      where: {
+        contentType: { slug: contentTypeSlug },
+        ...(typeof pagination?.published === "boolean"
+          ? { published: pagination.published }
+          : {}),
+      },
       orderBy: [{ sortOrder: "asc" }, { createdAt: "desc" }],
       ...(typeof pagination?.offset === "number"
         ? { skip: pagination.offset }

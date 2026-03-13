@@ -210,16 +210,13 @@ export class PublicContentController {
   async listPages(
     @Query() query: PublicListPagesQueryDto,
   ): Promise<PublicPageListItemDto[]> {
-    const pages = await this.pages.findMany();
-    const publishedPages = pages.filter((page) => page.published);
-    const offset = query.offset ?? 0;
-    const limit = query.limit;
-    const pagedPages =
-      typeof limit === "number"
-        ? publishedPages.slice(offset, offset + limit)
-        : publishedPages.slice(offset);
+    const pages = await this.pages.findMany({
+      published: true,
+      offset: query.offset,
+      limit: query.limit,
+    });
 
-    return pagedPages.map((page) => ({
+    return pages.map((page) => ({
       slug: page.slug,
       canonicalUrl: page.canonicalUrl,
       updatedAt: page.updatedAt,
@@ -279,10 +276,9 @@ export class PublicContentController {
     const items = await this.contentItems.findManyByContentTypeSlug(slug, {
       offset: query.offset,
       limit: query.limit,
+      published: true,
     });
-    return items
-      .filter((item) => item.published)
-      .map((item) => this.mapPublicContentItemArchive(item));
+    return items.map((item) => this.mapPublicContentItemArchive(item));
   }
 
   @Get("items/type-slug/:contentTypeSlug/:slug")
@@ -369,25 +365,18 @@ export class PublicContentController {
       return [];
     }
 
-    const termsByTaxonomyId = new Map<string, Map<string, string>>();
-    for (const taxonomy of taxonomies) {
-      const terms = await this.terms.findManyByTaxonomyId(taxonomy.id);
-      termsByTaxonomyId.set(
-        taxonomy.id,
-        new Map(terms.map((term) => [term.id, term.name])),
-      );
+    const terms = await this.terms.findManyByIds(links.map((link) => link.termId));
+    const termNamesByTaxonomyId = new Map<string, string[]>();
+
+    for (const term of terms) {
+      const names = termNamesByTaxonomyId.get(term.taxonomyId) ?? [];
+      names.push(term.name);
+      termNamesByTaxonomyId.set(term.taxonomyId, names);
     }
 
     return taxonomies
       .map((taxonomy) => {
-        const termNameById = termsByTaxonomyId.get(taxonomy.id);
-        if (!termNameById) {
-          return null;
-        }
-
-        const termNames = links
-          .map((link) => termNameById.get(link.termId))
-          .filter((name): name is string => typeof name === "string");
+        const termNames = termNamesByTaxonomyId.get(taxonomy.id) ?? [];
 
         if (!termNames.length) {
           return null;
@@ -480,19 +469,16 @@ export class PublicContentController {
       return [];
     }
 
-    const [links, terms] = await Promise.all([
-      this.contentItemTerms.findManyByContentItemId(contentItemId),
-      this.terms.findManyByTaxonomyId(taxonomy.id),
-    ]);
+    const links = await this.contentItemTerms.findManyByContentItemId(contentItemId);
+    if (!links.length) {
+      return [];
+    }
 
-    const allowedTermIds = new Set(terms.map((term) => term.id));
-    const termNameById = new Map(terms.map((term) => [term.id, term.name]));
+    const terms = await this.terms.findManyByIds(links.map((link) => link.termId));
 
-    return links
-      .map((link) => link.termId)
-      .filter((termId) => allowedTermIds.has(termId))
-      .map((termId) => termNameById.get(termId))
-      .filter((name): name is string => typeof name === "string");
+    return terms
+      .filter((term) => term.taxonomyId === taxonomy.id)
+      .map((term) => term.name);
   }
 
   private mapPublicPage(page: Page): PublicPageDto {
