@@ -8,11 +8,22 @@ export async function GET(request: Request) {
 
   const { searchParams } = new URL(request.url);
   const contentTypeId = searchParams.get("contentTypeId");
+  const mode = searchParams.get("mode");
+  const limit = searchParams.get("limit");
+  const offset = searchParams.get("offset");
+
   const path = contentTypeId
     ? `/admin/content/items/type/${encodeURIComponent(contentTypeId)}`
     : "/admin/content/items";
 
-  const res = await fetch(`${getApiBase()}${path}`, {
+  const upstreamParams = new URLSearchParams();
+  if (mode) upstreamParams.set("mode", mode);
+  if (limit) upstreamParams.set("limit", limit);
+  if (offset) upstreamParams.set("offset", offset);
+
+  const query = upstreamParams.size > 0 ? `?${upstreamParams.toString()}` : "";
+
+  const res = await fetch(`${getApiBase()}${path}${query}`, {
     headers: buildForwardHeaders(),
     cache: "no-store",
   });

@@ -85,9 +85,20 @@ export async function listAdminContentTypes(): Promise<AdminContentType[]> {
 
 export async function listAdminContentItems(
   contentTypeId: string,
+  pagination?: { limit?: number; offset?: number },
 ): Promise<AdminContentItem[]> {
+  const query = new URLSearchParams();
+  if (typeof pagination?.limit === "number") {
+    query.set("limit", String(pagination.limit));
+  }
+  if (typeof pagination?.offset === "number") {
+    query.set("offset", String(pagination.offset));
+  }
+
+  const queryString = query.size > 0 ? `?${query.toString()}` : "";
+
   const response = await fetch(
-    `${getApiBase()}/admin/content/items/type/${contentTypeId}`,
+    `${getApiBase()}/admin/content/items/type/${contentTypeId}${queryString}`,
     {
       headers: buildHeaders(),
       cache: "no-store",

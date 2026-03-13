@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { resolveApiUrl } from "./api";
 
 export type HeroContent = {
@@ -274,6 +275,9 @@ export type SiteConfiguration = {
   defaultTitleSuffix: string | null;
 };
 
+const DEFAULT_ARCHIVE_PAGE_SIZE = 100;
+const DEFAULT_SITEMAP_PAGE_SIZE = 200;
+
 function asRecord(value: unknown): Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value)
     ? (value as Record<string, unknown>)
@@ -302,6 +306,73 @@ async function fetchContent<T>(path: string): Promise<T | null> {
     console.error(`Content request failed for ${path}`, error);
     return null;
   }
+}
+
+async function fetchAllContentItemsByTypeSlug(
+  contentTypeSlug: string,
+  pageSize: number,
+): Promise<ApiContentItem[]> {
+  const items: ApiContentItem[] = [];
+  let offset = 0;
+
+  while (true) {
+    const page = await fetchContent<ApiContentItem[]>(
+      `/public/content/items/type-slug/${encodeURIComponent(contentTypeSlug)}?offset=${offset}&limit=${pageSize}`,
+    );
+
+    if (!page || page.length === 0) {
+      break;
+    }
+
+    items.push(...page);
+
+    if (page.length < pageSize) {
+      break;
+    }
+
+    offset += page.length;
+  }
+
+  return items;
+}
+
+async function fetchAllSitemapPages(
+  pageSize: number,
+): Promise<SitemapPageEntry[]> {
+  const pages: SitemapPageEntry[] = [];
+  let offset = 0;
+
+  while (true) {
+    const batch = await fetchContent<
+      Array<{
+        slug: string;
+        canonicalUrl: string | null;
+        updatedAt: string;
+        noIndex: boolean;
+      }>
+    >(`/public/content/pages?offset=${offset}&limit=${pageSize}`);
+
+    if (!batch || batch.length === 0) {
+      break;
+    }
+
+    pages.push(
+      ...batch.map((page) => ({
+        slug: page.slug,
+        canonicalUrl: page.canonicalUrl ?? null,
+        updatedAt: page.updatedAt,
+        noIndex: Boolean(page.noIndex),
+      })),
+    );
+
+    if (batch.length < pageSize) {
+      break;
+    }
+
+    offset += batch.length;
+  }
+
+  return pages;
 }
 
 function mapApiPageBlock(block: ApiPageBlock): ContentBlock | null {
@@ -467,7 +538,9 @@ function mapHeroFromPage(page: ContentPage): HeroContent | null {
 }
 
 export async function getHomepageContent(): Promise<HeroContent> {
-  const apiPage = await fetchContent<ApiPage>("/public/content/pages/slug/home");
+  const apiPage = await fetchContent<ApiPage>(
+    "/public/content/pages/slug/home",
+  );
   if (!apiPage) {
     return {
       eyebrow: "",
@@ -574,24 +647,45 @@ function mapPublicContentType(type: ApiContentType): PublicContentType | null {
   };
 }
 
-export async function getPublicContentTypes(): Promise<PublicContentType[]> {
-  const types = await fetchContent<ApiContentType[]>("/public/content/types");
-  if (!types) {
-    return [];
-  }
+const getCachedPublicContentTypes = cache(
+  async (): Promise<PublicContentType[]> => {
+    const types = await fetchContent<ApiContentType[]>("/public/content/types");
+    if (!types) {
+      return [];
+    }
 
-  return types
-    .map(mapPublicContentType)
-    .filter(
-      (type): type is PublicContentType => type !== null && type.isPublic,
+    return types
+      .map(mapPublicContentType)
+      .filter(
+        (type): type is PublicContentType => type !== null && type.isPublic,
+      );
+  },
+);
+
+const getCachedPublicContentTypeBySlug = cache(
+  async (slug: string): Promise<PublicContentType | null> => {
+    const type = await fetchContent<ApiContentType | null>(
+      `/public/content/types/${encodeURIComponent(slug)}`,
     );
+
+    const mapped = type ? mapPublicContentType(type) : null;
+    if (mapped) {
+      return mapped;
+    }
+
+    const types = await getCachedPublicContentTypes();
+    return types.find((entry) => entry.slug === slug) ?? null;
+  },
+);
+
+export async function getPublicContentTypes(): Promise<PublicContentType[]> {
+  return getCachedPublicContentTypes();
 }
 
 export async function getPublicContentTypeBySlug(
   slug: string,
 ): Promise<PublicContentType | null> {
-  const types = await getPublicContentTypes();
-  return types.find((type) => type.slug === slug) ?? null;
+  return getCachedPublicContentTypeBySlug(slug);
 }
 
 function mapGenericArchiveItem(
@@ -608,19 +702,37 @@ function mapGenericArchiveItem(
 
 export async function getContentTypeArchiveItems(
   contentTypeSlug: string,
+  pagination?: { offset?: number; limit?: number },
 ): Promise<GenericContentArchiveItem[]> {
   const contentType = await getPublicContentTypeBySlug(contentTypeSlug);
   if (!contentType) {
     return [];
   }
 
-  const items = await fetchContent<ApiContentItem[]>(
-    `/public/content/items/type-slug/${encodeURIComponent(contentTypeSlug)}`,
-  );
+  const hasPagination =
+    typeof pagination?.offset === "number" ||
+    typeof pagination?.limit === "number";
 
-  if (!items) {
-    return [];
+  if (hasPagination) {
+    const params = new URLSearchParams();
+    if (typeof pagination?.offset === "number") {
+      params.set("offset", String(pagination.offset));
+    }
+    if (typeof pagination?.limit === "number") {
+      params.set("limit", String(pagination.limit));
+    }
+
+    const items = await fetchContent<ApiContentItem[]>(
+      `/public/content/items/type-slug/${encodeURIComponent(contentTypeSlug)}?${params.toString()}`,
+    );
+
+    return (items ?? []).map(mapGenericArchiveItem);
   }
+
+  const items = await fetchAllContentItemsByTypeSlug(
+    contentTypeSlug,
+    DEFAULT_ARCHIVE_PAGE_SIZE,
+  );
 
   return items.map(mapGenericArchiveItem);
 }
@@ -687,7 +799,10 @@ async function getServiceTaxonomyTermNames(
 
 export async function resolveServiceBySlug(
   slug: string,
-): Promise<{ redirect: ResolvedRedirect | null; item: ServiceDetailItem | null }> {
+): Promise<{
+  redirect: ResolvedRedirect | null;
+  item: ServiceDetailItem | null;
+}> {
   const [response, services, templateKey] = await Promise.all([
     fetchContent<ApiContentItem | ApiSlugRedirect>(
       `/public/content/items/type-slug/services/${encodeURIComponent(slug)}`,
@@ -806,7 +921,9 @@ export async function getPageContentBySlug(
 }
 
 export async function getPublicSiteSettings(): Promise<PublicSiteSettings> {
-  const settings = await fetchContent<ApiSiteSetting[]>("/public/content/settings");
+  const settings = await fetchContent<ApiSiteSetting[]>(
+    "/public/content/settings",
+  );
   if (!settings) {
     return {};
   }
@@ -890,25 +1007,7 @@ type SitemapContentItemEntry = {
 };
 
 export async function getSitemapPages(): Promise<SitemapPageEntry[]> {
-  const pages = await fetchContent<
-    Array<{
-      slug: string;
-      canonicalUrl: string | null;
-      updatedAt: string;
-      noIndex: boolean;
-    }>
-  >("/public/content/pages");
-
-  if (!pages) {
-    return [];
-  }
-
-  return pages.map((page) => ({
-    slug: page.slug,
-    canonicalUrl: page.canonicalUrl ?? null,
-    updatedAt: page.updatedAt,
-    noIndex: Boolean(page.noIndex),
-  }));
+  return fetchAllSitemapPages(DEFAULT_SITEMAP_PAGE_SIZE);
 }
 
 function normalizePathSegment(value: string): string {
@@ -963,20 +1062,14 @@ export function sanitizeInternalRedirectTarget(target: string): string | null {
 export async function getSitemapContentItems(): Promise<
   SitemapContentItemEntry[]
 > {
-  const types = await fetchContent<ApiContentType[]>("/public/content/types");
-  if (!types) {
-    return [];
-  }
+  const types = await getPublicContentTypes();
 
   const allItems = await Promise.all(
     types.map(async (type) => {
-      const items = await fetchContent<ApiContentItem[]>(
-        `/public/content/items/type-slug/${encodeURIComponent(type.slug)}`,
+      const items = await fetchAllContentItemsByTypeSlug(
+        type.slug,
+        DEFAULT_SITEMAP_PAGE_SIZE,
       );
-
-      if (!items) {
-        return [];
-      }
 
       return items.map((item) => ({
         contentTypeSlug: type.slug,
@@ -1021,7 +1114,9 @@ export function getPagePath(slug: string): string | null {
 }
 
 export async function getPublicNavigationTree(): Promise<NavigationTreeItem[]> {
-  const items = await fetchContent<unknown[]>("/public/content/navigation-items");
+  const items = await fetchContent<unknown[]>(
+    "/public/content/navigation-items",
+  );
   if (!Array.isArray(items)) {
     return [];
   }

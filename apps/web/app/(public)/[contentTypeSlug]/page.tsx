@@ -52,7 +52,10 @@ export async function generateMetadata({
   }
 
   const canonicalPath = `/${contentType.slug}`;
-  const title = withTitleSuffix(contentType.name, siteConfig.defaultTitleSuffix);
+  const title = withTitleSuffix(
+    contentType.name,
+    siteConfig.defaultTitleSuffix,
+  );
 
   return {
     title,
@@ -64,8 +67,10 @@ export async function generateMetadata({
 
 export default async function ContentTypeArchivePage({
   params,
+  searchParams,
 }: {
   params: Promise<{ contentTypeSlug: string }>;
+  searchParams: Promise<{ page?: string }>;
 }) {
   const { contentTypeSlug } = await params;
   const pageResolution = await resolvePageContentBySlug(contentTypeSlug);
@@ -105,7 +110,18 @@ export default async function ContentTypeArchivePage({
     notFound();
   }
 
-  const items = await getContentTypeArchiveItems(contentTypeSlug);
+  const { page: rawPage } = await searchParams;
+  const currentPage = Math.max(1, Number.parseInt(rawPage ?? "1", 10) || 1);
+  const PAGE_SIZE = 20;
+  const offset = (currentPage - 1) * PAGE_SIZE;
+
+  const items = await getContentTypeArchiveItems(contentTypeSlug, {
+    offset,
+    limit: PAGE_SIZE + 1,
+  });
+
+  const hasNextPage = items.length > PAGE_SIZE;
+  const visibleItems = hasNextPage ? items.slice(0, PAGE_SIZE) : items;
   const Template = resolveContentTypeTemplate(contentType.templateKey);
 
   return (
@@ -113,7 +129,7 @@ export default async function ContentTypeArchivePage({
       <section className="public-block public-block--news-page section stack">
         <h1 className="public-block__title">{contentType.name}</h1>
         <ul className="news-list news-list--page stack">
-          {items.map((item) => (
+          {visibleItems.map((item) => (
             <li key={item.slug} className="news-list__item stack">
               <p className="news-list__meta">{item.publishedAt}</p>
               <h2 className="news-list__title">{item.title}</h2>
@@ -130,6 +146,28 @@ export default async function ContentTypeArchivePage({
             </li>
           ))}
         </ul>
+        <nav
+          aria-label="Archive pagination"
+          className="stack"
+          style={{ marginTop: "1rem" }}
+        >
+          {currentPage > 1 ? (
+            <Link
+              href={`/${contentTypeSlug}?page=${currentPage - 1}`}
+              className="news-list__link"
+            >
+              Previous page
+            </Link>
+          ) : null}
+          {hasNextPage ? (
+            <Link
+              href={`/${contentTypeSlug}?page=${currentPage + 1}`}
+              className="news-list__link"
+            >
+              Next page
+            </Link>
+          ) : null}
+        </nav>
       </section>
     </Template>
   );

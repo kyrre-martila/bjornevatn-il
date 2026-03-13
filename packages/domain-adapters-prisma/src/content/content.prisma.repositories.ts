@@ -4,6 +4,7 @@ import type { InputJsonValue } from "@prisma/client/runtime/library";
 import type {
   ContentItem,
   ContentItemsRepository,
+  PaginationParams,
   ContentItemTreeNode,
   ContentType,
   ContentFieldDefinition,
@@ -677,7 +678,9 @@ export class ContentTypesPrismaRepository implements ContentTypesRepository {
     id: string,
     data: Partial<Omit<ContentType, "id" | "createdAt" | "updatedAt">>,
   ): Promise<ContentType> {
-    const existing = await this.prisma.contentType.findUnique({ where: { id } });
+    const existing = await this.prisma.contentType.findUnique({
+      where: { id },
+    });
     if (!existing) {
       throw new DomainError("VALIDATION_ERROR", "Content type not found.");
     }
@@ -706,27 +709,49 @@ export class ContentTypesPrismaRepository implements ContentTypesRepository {
 export class ContentItemsPrismaRepository implements ContentItemsRepository {
   private readonly prisma = getPrisma();
 
-  async findMany(): Promise<ContentItem[]> {
+  async findMany(pagination?: PaginationParams): Promise<ContentItem[]> {
     const items = await this.prisma.contentItem.findMany({
       orderBy: [{ sortOrder: "asc" }, { createdAt: "desc" }],
+      ...(typeof pagination?.offset === "number"
+        ? { skip: pagination.offset }
+        : {}),
+      ...(typeof pagination?.limit === "number"
+        ? { take: pagination.limit }
+        : {}),
     });
     return this.resolveReferences(items.map(mapContentItem));
   }
 
-  async findManyByContentTypeId(contentTypeId: string): Promise<ContentItem[]> {
+  async findManyByContentTypeId(
+    contentTypeId: string,
+    pagination?: PaginationParams,
+  ): Promise<ContentItem[]> {
     const items = await this.prisma.contentItem.findMany({
       where: { contentTypeId },
       orderBy: [{ sortOrder: "asc" }, { createdAt: "desc" }],
+      ...(typeof pagination?.offset === "number"
+        ? { skip: pagination.offset }
+        : {}),
+      ...(typeof pagination?.limit === "number"
+        ? { take: pagination.limit }
+        : {}),
     });
     return this.resolveReferences(items.map(mapContentItem));
   }
 
   async findManyByContentTypeSlug(
     contentTypeSlug: string,
+    pagination?: PaginationParams,
   ): Promise<ContentItem[]> {
     const items = await this.prisma.contentItem.findMany({
       where: { contentType: { slug: contentTypeSlug } },
       orderBy: [{ sortOrder: "asc" }, { createdAt: "desc" }],
+      ...(typeof pagination?.offset === "number"
+        ? { skip: pagination.offset }
+        : {}),
+      ...(typeof pagination?.limit === "number"
+        ? { take: pagination.limit }
+        : {}),
     });
     return this.resolveReferences(items.map(mapContentItem));
   }
@@ -1284,9 +1309,15 @@ export class SiteSettingsPrismaRepository implements SiteSettingsRepository {
 export class MediaPrismaRepository implements MediaRepository {
   private readonly prisma = getPrisma();
 
-  async findMany(): Promise<Media[]> {
+  async findMany(pagination?: PaginationParams): Promise<Media[]> {
     const media = await this.prisma.media.findMany({
       orderBy: { createdAt: "desc" },
+      ...(typeof pagination?.offset === "number"
+        ? { skip: pagination.offset }
+        : {}),
+      ...(typeof pagination?.limit === "number"
+        ? { take: pagination.limit }
+        : {}),
     });
     return media.map(mapMedia);
   }

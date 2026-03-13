@@ -34,8 +34,21 @@ function buildHeaders() {
   return headers;
 }
 
-export async function listAdminMedia(): Promise<AdminMedia[]> {
-  const response = await fetch(`${getApiBase()}/admin/media`, {
+export async function listAdminMedia(pagination?: {
+  limit?: number;
+  offset?: number;
+}): Promise<AdminMedia[]> {
+  const query = new URLSearchParams();
+  if (typeof pagination?.limit === "number") {
+    query.set("limit", String(pagination.limit));
+  }
+  if (typeof pagination?.offset === "number") {
+    query.set("offset", String(pagination.offset));
+  }
+
+  const queryString = query.size > 0 ? `?${query.toString()}` : "";
+
+  const response = await fetch(`${getApiBase()}/admin/media${queryString}`, {
     headers: buildHeaders(),
     cache: "no-store",
   });

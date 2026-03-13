@@ -23,11 +23,13 @@ import {
   IsObject,
   IsNotEmpty,
   IsOptional,
+  IsNumber,
   IsString,
   IsUrl,
   Matches,
   Min,
   ValidateNested,
+  Max,
 } from "class-validator";
 import { Type } from "class-transformer";
 import type {
@@ -586,6 +588,38 @@ class ListContentItemsQueryDto {
   @IsString()
   @IsIn(["flat", "tree"])
   mode?: "flat" | "tree";
+
+  @ApiProperty({ required: false, minimum: 0 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  offset?: number;
+
+  @ApiProperty({ required: false, minimum: 1, maximum: 500 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(1)
+  @Max(500)
+  limit?: number;
+}
+
+class ListMediaQueryDto {
+  @ApiProperty({ required: false, minimum: 0 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  offset?: number;
+
+  @ApiProperty({ required: false, minimum: 1, maximum: 500 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(1)
+  @Max(500)
+  limit?: number;
 }
 
 class CreateNavigationItemDto {
@@ -944,12 +978,15 @@ export class ContentController {
     @Query() query: ListContentItemsQueryDto,
   ) {
     await requireMinimumRole(req, this.auth, "editor");
-    const items = await this.contentItems.findMany();
     if (query.mode === "tree") {
+      const items = await this.contentItems.findMany();
       return this.toContentItemTree(items);
     }
 
-    return items;
+    return this.contentItems.findMany({
+      offset: query.offset,
+      limit: query.limit,
+    });
   }
 
   @Get("items/:id")
@@ -969,7 +1006,10 @@ export class ContentController {
       return this.contentItems.findTreeByContentTypeId(contentTypeId);
     }
 
-    return this.contentItems.findManyByContentTypeId(contentTypeId);
+    return this.contentItems.findManyByContentTypeId(contentTypeId, {
+      offset: query.offset,
+      limit: query.limit,
+    });
   }
 
   @Get("items/type-slug/:slug")
@@ -984,7 +1024,10 @@ export class ContentController {
       return this.filterPublishedContentItemTree(items);
     }
 
-    const items = await this.contentItems.findManyByContentTypeSlug(slug);
+    const items = await this.contentItems.findManyByContentTypeSlug(slug, {
+      offset: query.offset,
+      limit: query.limit,
+    });
     return items.filter((item) => item.published);
   }
 
@@ -1752,10 +1795,10 @@ export class ContentController {
   }
 
   @Get("media")
-  async listMedia(@Req() req: Request) {
+  async listMedia(@Req() req: Request, @Query() query: ListMediaQueryDto) {
     await requireMinimumRole(req, this.auth, "editor");
     const [mediaItems, usage] = await Promise.all([
-      this.media.findMany(),
+      this.media.findMany({ offset: query.offset, limit: query.limit }),
       this.getReferencedMediaUsage(),
     ]);
 

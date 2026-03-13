@@ -13,6 +13,11 @@ import type {
   ContentItemTerm,
 } from "./content.entity";
 
+export type PaginationParams = {
+  offset?: number;
+  limit?: number;
+};
+
 export interface PagesRepository {
   findMany(): Promise<Page[]>;
   findById(id: string): Promise<Page | null>;
@@ -55,9 +60,15 @@ export interface ContentTypesRepository {
 }
 
 export interface ContentItemsRepository {
-  findMany(): Promise<ContentItem[]>;
-  findManyByContentTypeId(contentTypeId: string): Promise<ContentItem[]>;
-  findManyByContentTypeSlug(contentTypeSlug: string): Promise<ContentItem[]>;
+  findMany(pagination?: PaginationParams): Promise<ContentItem[]>;
+  findManyByContentTypeId(
+    contentTypeId: string,
+    pagination?: PaginationParams,
+  ): Promise<ContentItem[]>;
+  findManyByContentTypeSlug(
+    contentTypeSlug: string,
+    pagination?: PaginationParams,
+  ): Promise<ContentItem[]>;
   findTreeByContentTypeId(
     contentTypeId: string,
   ): Promise<ContentItemTreeNode[]>;
@@ -102,7 +113,7 @@ export interface SiteSettingsRepository {
 }
 
 export interface MediaRepository {
-  findMany(): Promise<Media[]>;
+  findMany(pagination?: PaginationParams): Promise<Media[]>;
   findById(id: string): Promise<Media | null>;
   create(data: Omit<Media, "id" | "createdAt">): Promise<Media>;
   update(

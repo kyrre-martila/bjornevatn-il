@@ -2,13 +2,21 @@ import { NextResponse } from "next/server";
 import { requireMinimumAdminRole } from "../auth";
 import { buildForwardHeaders, getApiBase } from "../utils";
 
-export async function GET() {
+export async function GET(request: Request) {
   const denied = await requireMinimumAdminRole("admin");
   if (denied) {
     return denied;
   }
 
-  const res = await fetch(`${getApiBase()}/admin/media`, {
+  const { searchParams } = new URL(request.url);
+  const limit = searchParams.get("limit");
+  const offset = searchParams.get("offset");
+  const upstreamParams = new URLSearchParams();
+  if (limit) upstreamParams.set("limit", limit);
+  if (offset) upstreamParams.set("offset", offset);
+  const query = upstreamParams.size > 0 ? `?${upstreamParams.toString()}` : "";
+
+  const res = await fetch(`${getApiBase()}/admin/media${query}`, {
     headers: buildForwardHeaders(),
     cache: "no-store",
   });

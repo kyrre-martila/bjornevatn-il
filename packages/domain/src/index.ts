@@ -41,6 +41,7 @@ export type {
   PageBlocksRepository,
   ContentTypesRepository,
   ContentItemsRepository,
+  PaginationParams,
   NavigationItemsRepository,
   SiteSettingsRepository,
   MediaRepository,

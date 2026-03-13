@@ -1,6 +1,7 @@
 import { Controller, Get, Inject, Param, Query } from "@nestjs/common";
 import { ApiProperty, ApiTags } from "@nestjs/swagger";
-import { IsIn, IsOptional, IsString } from "class-validator";
+import { Type } from "class-transformer";
+import { IsIn, IsInt, IsOptional, IsString, Max, Min } from "class-validator";
 import type {
   ContentItem,
   ContentItemTreeNode,
@@ -40,6 +41,21 @@ class PublicListContentItemsQueryDto {
   @IsString()
   @IsIn(LIST_MODES)
   mode?: (typeof LIST_MODES)[number];
+
+  @ApiProperty({ required: false, minimum: 0 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  offset?: number;
+
+  @ApiProperty({ required: false, minimum: 1, maximum: 500 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(500)
+  limit?: number;
 }
 
 type PublicContentItemDto = {
@@ -137,6 +153,23 @@ class PublicPageListItemDto {
   noIndex!: boolean;
 }
 
+class PublicListPagesQueryDto {
+  @ApiProperty({ required: false, minimum: 0 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  offset?: number;
+
+  @ApiProperty({ required: false, minimum: 1, maximum: 1000 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(1000)
+  limit?: number;
+}
+
 class PublicNavigationItemDto {
   id!: string;
   label!: string;
@@ -168,16 +201,24 @@ export class PublicContentController {
   ) {}
 
   @Get("pages")
-  async listPages(): Promise<PublicPageListItemDto[]> {
+  async listPages(
+    @Query() query: PublicListPagesQueryDto,
+  ): Promise<PublicPageListItemDto[]> {
     const pages = await this.pages.findMany();
-    return pages
-      .filter((page) => page.published)
-      .map((page) => ({
-        slug: page.slug,
-        canonicalUrl: page.canonicalUrl,
-        updatedAt: page.updatedAt,
-        noIndex: page.noIndex,
-      }));
+    const publishedPages = pages.filter((page) => page.published);
+    const offset = query.offset ?? 0;
+    const limit = query.limit;
+    const pagedPages =
+      typeof limit === "number"
+        ? publishedPages.slice(offset, offset + limit)
+        : publishedPages.slice(offset);
+
+    return pagedPages.map((page) => ({
+      slug: page.slug,
+      canonicalUrl: page.canonicalUrl,
+      updatedAt: page.updatedAt,
+      noIndex: page.noIndex,
+    }));
   }
 
   @Get("pages/slug/:slug")
@@ -204,6 +245,14 @@ export class PublicContentController {
     return types.map((type) => this.mapPublicContentType(type));
   }
 
+  @Get("types/:slug")
+  async getContentTypeBySlug(
+    @Param("slug") slug: string,
+  ): Promise<PublicContentTypeDto | null> {
+    const type = await this.contentTypes.findPublicBySlug(slug);
+    return type ? this.mapPublicContentType(type) : null;
+  }
+
   @Get("items/type-slug/:slug")
   async listContentItemsByTypeSlug(
     @Param("slug") slug: string,
@@ -221,7 +270,10 @@ export class PublicContentController {
       );
     }
 
-    const items = await this.contentItems.findManyByContentTypeSlug(slug);
+    const items = await this.contentItems.findManyByContentTypeSlug(slug, {
+      offset: query.offset,
+      limit: query.limit,
+    });
     return items
       .filter((item) => item.published)
       .map((item) => this.mapPublicContentItem(item));
@@ -258,7 +310,6 @@ export class PublicContentController {
 
     return this.mapPublicContentItem(result.entity);
   }
-
 
   @Get("items/:id/service-categories")
   async listServiceCategoriesForItem(
