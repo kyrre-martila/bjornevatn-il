@@ -349,7 +349,15 @@ const newsListBlock: BlockDefinition<NewsListData> = {
       return null;
     }
 
-    const items = await getContentTypeArchiveItems(configuredContentTypeSlug);
+    const limit =
+      typeof data.count === "number" && data.count > 0
+        ? Math.floor(data.count)
+        : undefined;
+
+    const items = await getContentTypeArchiveItems(configuredContentTypeSlug, {
+      offset: 0,
+      limit,
+    });
     return (
       <NewsListBlock
         data={data}

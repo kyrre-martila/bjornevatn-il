@@ -16,10 +16,11 @@ import type {
 export type PaginationParams = {
   offset?: number;
   limit?: number;
+  published?: boolean;
 };
 
 export interface PagesRepository {
-  findMany(): Promise<Page[]>;
+  findMany(pagination?: PaginationParams): Promise<Page[]>;
   findById(id: string): Promise<Page | null>;
   findBySlug(slug: string): Promise<Page | null>;
   findBySlugOrRedirect(slug: string): Promise<SlugLookupResult<Page> | null>;
@@ -44,8 +45,8 @@ export interface PageBlocksRepository {
 }
 
 export interface ContentTypesRepository {
-  findMany(): Promise<ContentType[]>;
-  findManyPublic(): Promise<ContentType[]>;
+  findMany(pagination?: PaginationParams): Promise<ContentType[]>;
+  findManyPublic(pagination?: PaginationParams): Promise<ContentType[]>;
   findById(id: string): Promise<ContentType | null>;
   findBySlug(slug: string): Promise<ContentType | null>;
   findPublicBySlug(slug: string): Promise<ContentType | null>;
