@@ -19,9 +19,10 @@ Required minimum:
 - `DATABASE_URL`
 - `JWT_SECRET`
 - `COOKIE_SECRET`
-- `ENCRYPTION_KEY`
 - `NEXT_PUBLIC_SITE_URL`
 - `API_CORS_ORIGINS`
+
+Use cryptographically random values for `JWT_SECRET` and `COOKIE_SECRET` (32+ chars, mixed character types).
 
 ## 3) Apply database migrations
 

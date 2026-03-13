@@ -26,7 +26,6 @@ env:
     NODE_OPTIONS: --max-old-space-size=256
     JWT_SECRET: ""
     COOKIE_SECRET: ""
-    ENCRYPTION_KEY: ""
     DATABASE_URL: ""
     API_CORS_ORIGINS: ""
   WEB:

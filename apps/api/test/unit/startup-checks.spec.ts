@@ -12,10 +12,9 @@ describe("startup checks", () => {
           DATABASE_URL: "",
           JWT_SECRET: "",
           COOKIE_SECRET: "cookie-secret",
-          ENCRYPTION_KEY: undefined,
         }),
       ).toThrow(
-        "Missing required environment variables: DATABASE_URL, JWT_SECRET, ENCRYPTION_KEY",
+        "Missing required environment variables: DATABASE_URL, JWT_SECRET",
       );
     });
 
@@ -25,7 +24,6 @@ describe("startup checks", () => {
           DATABASE_URL: "postgresql://postgres:postgres@localhost:5432/appdb",
           JWT_SECRET: "jwt-secret",
           COOKIE_SECRET: "cookie-secret",
-          ENCRYPTION_KEY: "encryption-key",
         }),
       ).not.toThrow();
     });
@@ -36,7 +34,6 @@ describe("startup checks", () => {
           DATABASE_URL: "postgresql://postgres:postgres@localhost:5432/appdb",
           JWT_SECRET: "jwt-secret",
           COOKIE_SECRET: "cookie-secret",
-          ENCRYPTION_KEY: "encryption-key",
           MEDIA_STORAGE_PROVIDER: "s3",
         }),
       ).toThrow('Unsupported MEDIA_STORAGE_PROVIDER "s3"');

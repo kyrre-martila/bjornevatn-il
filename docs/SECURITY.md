@@ -4,11 +4,11 @@ Security guidance for the content website blueprint (public site + admin/editor 
 
 ## Required Secrets
 
-- `JWT_SECRET`: HMAC signing key for access tokens (minimum 32 characters).
-- `COOKIE_SECRET`: Encryption/signature for session cookies (minimum 32 characters).
-- `ENCRYPTION_KEY`: key for at-rest sensitive fields (minimum 32 characters).
+- `JWT_SECRET`: HMAC signing key for access tokens. Must be 32+ characters, include at least 10 unique characters, and mix at least three character classes (lower/upper/number/symbol).
+- `COOKIE_SECRET`: Signature key for cookies/CSRF derivation. Must be 32+ characters, include at least 10 unique characters, and mix at least three character classes (lower/upper/number/symbol).
 - `COOKIE_DOMAIN`: Shared domain for web cookies (prod uses apex domain).
 - `API_CORS_ORIGINS`: Comma-separated list of allowed origins (required in production).
+- `ENCRYPTION_KEY` is no longer startup-required because field-level encryption is not wired in this blueprint yet; add and enforce it only when encrypted-at-rest fields are implemented.
 
 ## Cookie Policy
 
@@ -43,7 +43,7 @@ Security guidance for the content website blueprint (public site + admin/editor 
 
 ## Incident Response Checklist
 
-1. Rotate `JWT_SECRET`, `COOKIE_SECRET`, and `ENCRYPTION_KEY`.
+1. Rotate `JWT_SECRET` and `COOKIE_SECRET`.
 2. Trigger forced logout by revoking active rows in the `Session` table (or rotating JWT secrets for broad invalidation).
 3. Revoke active tokens and invalidate caches.
 4. Update `API_CORS_ORIGINS` if origin compromise suspected.
