@@ -58,17 +58,13 @@ class PublicListContentItemsQueryDto {
   limit?: number;
 }
 
-type PublicContentItemDto = {
+type PublicContentItemArchiveDto = {
   id: string;
   slug: string;
   title: string;
   summary: string;
-  body: string;
   shortDescription: string;
   featuredImage: string | null;
-  callToActionLabel: string;
-  callToActionUrl: string;
-  relatedItemIds: string[];
   publishedAt: string;
   canonicalUrl: string | null;
   noIndex: boolean;
@@ -76,7 +72,17 @@ type PublicContentItemDto = {
   parentId?: string;
 };
 
-type PublicContentItemTreeDto = PublicContentItemDto & {
+type PublicContentItemDetailDto = PublicContentItemArchiveDto & {
+  body: string;
+  callToActionLabel: string;
+  callToActionUrl: string;
+  relatedItemIds: string[];
+  seoTitle: string | null;
+  seoDescription: string | null;
+  seoImage: string | null;
+};
+
+type PublicContentItemTreeDto = PublicContentItemArchiveDto & {
   children: PublicContentItemTreeDto[];
 };
 
@@ -276,14 +282,16 @@ export class PublicContentController {
     });
     return items
       .filter((item) => item.published)
-      .map((item) => this.mapPublicContentItem(item));
+      .map((item) => this.mapPublicContentItemArchive(item));
   }
 
   @Get("items/type-slug/:contentTypeSlug/:slug")
   async getContentItemBySlug(
     @Param("contentTypeSlug") contentTypeSlug: string,
     @Param("slug") slug: string,
-  ) {
+  ): Promise<
+    PublicContentItemDetailDto | { redirectTo: string; permanent: true } | null
+  > {
     const type = await this.contentTypes.findPublicBySlug(contentTypeSlug);
     if (!type) {
       return null;
@@ -308,13 +316,23 @@ export class PublicContentController {
       return null;
     }
 
-    return this.mapPublicContentItem(result.entity);
+    return this.mapPublicContentItemDetail(result.entity);
   }
 
   @Get("items/:id/service-categories")
   async listServiceCategoriesForItem(
     @Param("id") id: string,
   ): Promise<string[]> {
+    const item = await this.contentItems.findById(id);
+    if (!item || !item.published) {
+      return [];
+    }
+
+    const contentType = await this.contentTypes.findById(item.contentTypeId);
+    if (!contentType || !contentType.isPublic) {
+      return [];
+    }
+
     const serviceTaxonomy = (await this.taxonomies.findMany()).find(
       (taxonomy) => taxonomy.slug === "service-category",
     );
@@ -520,7 +538,9 @@ export class PublicContentController {
     return null;
   }
 
-  private mapPublicContentItem(item: ContentItem): PublicContentItemDto {
+  private mapPublicContentItemArchive(
+    item: ContentItem,
+  ): PublicContentItemArchiveDto {
     const data = this.asRecord(item.data);
     const publishedAt =
       typeof data.publishedAt === "string"
@@ -539,11 +559,27 @@ export class PublicContentController {
             : typeof data.shortDescription === "string"
               ? data.shortDescription
               : "",
-      body: typeof data.body === "string" ? data.body : "",
       shortDescription:
         typeof data.shortDescription === "string" ? data.shortDescription : "",
       featuredImage:
         typeof data.featuredImage === "string" ? data.featuredImage : null,
+      publishedAt,
+      canonicalUrl: item.canonicalUrl,
+      noIndex: item.noIndex,
+      updatedAt: item.updatedAt,
+      ...(item.parentId ? { parentId: item.parentId } : {}),
+    };
+  }
+
+  private mapPublicContentItemDetail(
+    item: ContentItem,
+  ): PublicContentItemDetailDto {
+    const archive = this.mapPublicContentItemArchive(item);
+    const data = this.asRecord(item.data);
+
+    return {
+      ...archive,
+      body: typeof data.body === "string" ? data.body : "",
       callToActionLabel:
         typeof data.callToActionLabel === "string"
           ? data.callToActionLabel
@@ -555,11 +591,9 @@ export class PublicContentController {
             (entry): entry is string => typeof entry === "string",
           )
         : [],
-      publishedAt,
-      canonicalUrl: item.canonicalUrl,
-      noIndex: item.noIndex,
-      updatedAt: item.updatedAt,
-      ...(item.parentId ? { parentId: item.parentId } : {}),
+      seoTitle: item.seoTitle,
+      seoDescription: item.seoDescription,
+      seoImage: item.seoImage,
     };
   }
 
@@ -567,7 +601,7 @@ export class PublicContentController {
     item: ContentItemTreeNode,
   ): PublicContentItemTreeDto {
     return {
-      ...this.mapPublicContentItem(item),
+      ...this.mapPublicContentItemArchive(item),
       children: item.children.map((child) =>
         this.mapPublicContentItemTree(child),
       ),
