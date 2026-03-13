@@ -3,10 +3,13 @@ import * as React from "react";
 
 import type {
   ContentBlockType,
+  GenericContentArchiveItem,
   HeroContent,
-  NewsItem,
 } from "../../../../../lib/content";
-import { getContentItemPath, getNewsListing } from "../../../../../lib/content";
+import {
+  getContentItemPath,
+  getContentTypeArchiveItems,
+} from "../../../../../lib/content";
 
 type RichTextData = { paragraphs: string[] };
 type ImageData = {
@@ -22,7 +25,12 @@ type CtaData = {
   href: string;
   label: string;
 };
-type NewsListData = { title?: string; count?: number };
+type NewsListData = {
+  title?: string;
+  count?: number;
+  contentTypeSlug?: string;
+  linkLabel?: string;
+};
 
 export type BlockRenderResult = React.ReactNode | Promise<React.ReactNode>;
 
@@ -133,16 +141,18 @@ function CtaBlock({ data }: { data: CtaData }) {
 function NewsListBlock({
   data,
   items,
+  contentTypeSlug,
 }: {
   data: NewsListData;
-  items: NewsItem[];
+  items: GenericContentArchiveItem[];
+  contentTypeSlug: string;
 }) {
   const itemCount = typeof data.count === "number" ? data.count : items.length;
   const visibleItems = items.slice(0, itemCount);
 
   return (
     <section className="public-block public-block--news section stack">
-      <h2 className="public-block__title">{data.title ?? "News"}</h2>
+      <h2 className="public-block__title">{data.title ?? "Latest content"}</h2>
       <ul className="news-list news-list--block stack">
         {visibleItems.map((item) => (
           <li key={item.slug} className="news-list__item stack">
@@ -151,11 +161,12 @@ function NewsListBlock({
             <p className="news-list__excerpt">{item.summary}</p>
             <Link
               href={
-                getContentItemPath("news", item.slug) ?? `/news/${item.slug}`
+                getContentItemPath(contentTypeSlug, item.slug) ??
+                `/${contentTypeSlug}/${item.slug}`
               }
               className="news-list__link"
             >
-              Read more
+              {data.linkLabel ?? "Read more"}
             </Link>
           </li>
         ))}
@@ -275,12 +286,25 @@ const newsListSchema: BlockSchema<NewsListData> = {
     if (record.count !== undefined && typeof record.count !== "number") {
       return { valid: false };
     }
+    if (
+      record.contentTypeSlug !== undefined &&
+      !isString(record.contentTypeSlug)
+    ) {
+      return { valid: false };
+    }
+    if (record.linkLabel !== undefined && !isString(record.linkLabel)) {
+      return { valid: false };
+    }
 
     return {
       valid: true,
       data: {
         title: isString(record.title) ? record.title : undefined,
         count: typeof record.count === "number" ? record.count : undefined,
+        contentTypeSlug: isString(record.contentTypeSlug)
+          ? record.contentTypeSlug
+          : undefined,
+        linkLabel: isString(record.linkLabel) ? record.linkLabel : undefined,
       },
     };
   },
@@ -316,8 +340,23 @@ const newsListBlock: BlockDefinition<NewsListData> = {
   type: "news_list",
   schema: newsListSchema,
   renderer: async (data) => {
-    const items = await getNewsListing();
-    return <NewsListBlock data={data} items={items} />;
+    const configuredContentTypeSlug =
+      data.contentTypeSlug?.trim() ||
+      process.env.NEXT_PUBLIC_FEATURED_CONTENT_TYPE_SLUG?.trim() ||
+      "";
+
+    if (!configuredContentTypeSlug) {
+      return null;
+    }
+
+    const items = await getContentTypeArchiveItems(configuredContentTypeSlug);
+    return (
+      <NewsListBlock
+        data={data}
+        items={items}
+        contentTypeSlug={configuredContentTypeSlug}
+      />
+    );
   },
 };
 

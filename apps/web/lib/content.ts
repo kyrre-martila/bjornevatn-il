@@ -10,6 +10,11 @@ export type HeroContent = {
   secondaryCta: { href: string; label: string };
 };
 
+type HeroCtaDefaults = {
+  href: string;
+  label: string;
+};
+
 export type NewsItem = {
   slug: string;
   title: string;
@@ -284,6 +289,29 @@ export type SiteConfiguration = {
 
 const DEFAULT_ARCHIVE_PAGE_SIZE = 100;
 const DEFAULT_SITEMAP_PAGE_SIZE = 200;
+const DEFAULT_FEATURED_CONTENT_TYPE_SLUG =
+  process.env.NEXT_PUBLIC_FEATURED_CONTENT_TYPE_SLUG?.trim() || "";
+
+function getFeaturedArchivePath(): string {
+  return DEFAULT_FEATURED_CONTENT_TYPE_SLUG
+    ? `/${DEFAULT_FEATURED_CONTENT_TYPE_SLUG}`
+    : "/";
+}
+
+function getHomepageDefaultPrimaryCta(): HeroCtaDefaults {
+  if (DEFAULT_FEATURED_CONTENT_TYPE_SLUG) {
+    return {
+      href: getFeaturedArchivePath(),
+      label: `Browse ${DEFAULT_FEATURED_CONTENT_TYPE_SLUG}`,
+    };
+  }
+
+  return { href: "/", label: "Browse content" };
+}
+
+function getHomepageDefaultSecondaryCta(): HeroCtaDefaults {
+  return { href: "/", label: "Home" };
+}
 
 function asRecord(value: unknown): Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value)
@@ -520,23 +548,32 @@ function mapHeroFromPage(page: ContentPage): HeroContent | null {
   const primaryCta = asRecord(data.primaryCta);
   const secondaryCta = asRecord(data.secondaryCta);
 
+  const defaultPrimaryCta = getHomepageDefaultPrimaryCta();
+  const defaultSecondaryCta = getHomepageDefaultSecondaryCta();
+
   return {
     eyebrow: typeof data.eyebrow === "string" ? data.eyebrow : "",
     title: typeof data.title === "string" ? data.title : page.title,
     subtitle: typeof data.subtitle === "string" ? data.subtitle : "",
     primaryCta: {
-      href: typeof primaryCta.href === "string" ? primaryCta.href : "/news",
+      href:
+        typeof primaryCta.href === "string"
+          ? primaryCta.href
+          : defaultPrimaryCta.href,
       label:
         typeof primaryCta.label === "string"
           ? primaryCta.label
-          : "Read latest news",
+          : defaultPrimaryCta.label,
     },
     secondaryCta: {
-      href: typeof secondaryCta.href === "string" ? secondaryCta.href : "/news",
+      href:
+        typeof secondaryCta.href === "string"
+          ? secondaryCta.href
+          : defaultSecondaryCta.href,
       label:
         typeof secondaryCta.label === "string"
           ? secondaryCta.label
-          : "Browse news",
+          : defaultSecondaryCta.label,
     },
   };
 }
@@ -546,36 +583,41 @@ export async function getHomepageContent(): Promise<HeroContent> {
     "/public/content/pages/slug/home",
   );
   if (!apiPage) {
+    const primaryCta = getHomepageDefaultPrimaryCta();
+    const secondaryCta = getHomepageDefaultSecondaryCta();
+
     return {
       eyebrow: "",
       title: "",
       subtitle: "",
-      primaryCta: { href: "/news", label: "News" },
-      secondaryCta: { href: "/", label: "Home" },
+      primaryCta,
+      secondaryCta,
     };
   }
 
   const hero = mapHeroFromPage(mapApiPage(apiPage));
+  const primaryCta = getHomepageDefaultPrimaryCta();
+  const secondaryCta = getHomepageDefaultSecondaryCta();
+
   return (
     hero ?? {
       eyebrow: "",
       title: apiPage.title,
       subtitle: "",
-      primaryCta: { href: "/news", label: "News" },
-      secondaryCta: { href: "/", label: "Home" },
+      primaryCta,
+      secondaryCta,
     }
   );
 }
 
 export async function getNewsListing(): Promise<NewsItem[]> {
-  const items = await fetchContent<ApiContentItemArchive[]>(
-    "/public/content/items/type-slug/news",
-  );
-  if (!items) {
-    return [];
-  }
-
-  return items.map(mapApiContentItem);
+  const items = await getContentTypeArchiveItems("news");
+  return items.map((item) => ({
+    ...item,
+    templateKey: DEFAULT_TEMPLATE_KEY,
+    canonicalUrl: null,
+    noIndex: false,
+  }));
 }
 
 function mapServiceListItem(
@@ -787,10 +829,18 @@ export async function resolveContentItemBySlug(
 }
 
 async function getServiceTaxonomyTermNames(
+  contentTypeSlug: string,
   contentItemId: string,
 ): Promise<string[]> {
+  const taxonomySlug =
+    process.env.NEXT_PUBLIC_SERVICE_TAXONOMY_SLUG?.trim() || "";
+
+  if (!taxonomySlug) {
+    return [];
+  }
+
   const terms = await fetchContent<string[]>(
-    `/public/content/items/${encodeURIComponent(contentItemId)}/service-categories`,
+    `/public/content/items/type-slug/${encodeURIComponent(contentTypeSlug)}/${encodeURIComponent(contentItemId)}/taxonomies/${encodeURIComponent(taxonomySlug)}`,
   );
 
   return Array.isArray(terms)
@@ -802,14 +852,16 @@ export async function resolveServiceBySlug(slug: string): Promise<{
   redirect: ResolvedRedirect | null;
   item: ServiceDetailItem | null;
 }> {
+  const serviceContentTypeSlug = "services";
+
   const [response, services, templateKey] = await Promise.all([
     fetchContent<ApiContentItemDetail | ApiSlugRedirect>(
-      `/public/content/items/type-slug/services/${encodeURIComponent(slug)}`,
+      `/public/content/items/type-slug/${encodeURIComponent(serviceContentTypeSlug)}/${encodeURIComponent(slug)}`,
     ),
     fetchContent<ApiContentItemTree[]>(
-      "/public/content/items/type-slug/services?mode=tree",
+      `/public/content/items/type-slug/${encodeURIComponent(serviceContentTypeSlug)}?mode=tree`,
     ),
-    getContentTypeTemplateKey("services"),
+    getContentTypeTemplateKey(serviceContentTypeSlug),
   ]);
 
   const redirect = toResolvedRedirect(response);
@@ -835,7 +887,10 @@ export async function resolveServiceBySlug(slug: string): Promise<{
     .filter((entry) => entry.parentId === item.id)
     .map((entry) => ({ slug: entry.slug, title: entry.title }));
 
-  const taxonomyTerms = await getServiceTaxonomyTermNames(item.id);
+  const taxonomyTerms = await getServiceTaxonomyTermNames(
+    serviceContentTypeSlug,
+    item.id,
+  );
 
   return {
     redirect: null,
