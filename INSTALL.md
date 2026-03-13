@@ -103,3 +103,12 @@ By default:
 
 - web: `http://localhost:3000`
 - API: `http://localhost:4000`
+
+## Authentication (implemented behavior)
+
+- Web auth is cookie-based by default: successful `register`/`login` set an HttpOnly `access` cookie.
+- Sessions are persisted in PostgreSQL (`Session` table) and validated on every authenticated request.
+- `GET /api/v1/me` resolves the current user from the access token (cookie or Bearer header) and returns `{ user }`.
+- `POST /api/v1/auth/logout` revokes the active server-side session and clears the `access` cookie.
+- Refresh tokens are not implemented; when access tokens expire, users must sign in again.
+

@@ -70,3 +70,12 @@ The provided production compose setup uses Traefik as this proxy layer.
 - `DATABASE_URL` points to the target database/schema
 - migrations applied during deploy (`pnpm db:migrate`)
 - automated backups and restore process in place
+
+
+## Authentication deployment notes
+
+- This blueprint currently runs access-token + server-side-session auth (no refresh-token flow).
+- Browser clients rely on the HttpOnly `access` cookie; preserve forwarded proto/host headers so secure-cookie behavior is correct behind proxies.
+- Session revocation is DB-backed (`Session` table), so API instances must share the same database to keep logout/forced-revoke behavior consistent.
+
+**Implemented vs planned:** refresh-token rotation and third-party OAuth/SSO are planned/customization items, not part of the default runtime behavior.

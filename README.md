@@ -12,8 +12,8 @@ This repository is a blueprint, not a finished product. The architecture and def
 
 ### Implemented vs planned (high level)
 
-- **Implemented now:** local auth (JWT + cookies), role-aware admin area, Prisma/Postgres content model, local file and cloud storage adapters (S3/R2/Supabase), migrations + seed workflow, and production-oriented API/web deployment scaffolding.
-- **Planned/customize per project:** identity provider integrations (OAuth/SSO), richer editorial workflows/approval flows, object-storage policies, and tenant-specific session hardening.
+- **Implemented now:** local auth with JWT access tokens + server-side `Session` validation, cookie-first web auth, role-aware admin area, Prisma/Postgres content model, migrations + seed workflow, and production-oriented API/web deployment scaffolding.
+- **Planned/customize per project:** identity provider integrations (OAuth/SSO), refresh-token/rotation strategy (if needed), richer editorial workflows/approval flows, object-storage provider implementations (S3/R2/Supabase), and tenant-specific session hardening.
 
 ## One root-level workflow
 
@@ -81,8 +81,15 @@ Set up environment variables first (see [docs/OPERATIONS.md](docs/OPERATIONS.md#
 
 - `POST /api/v1/auth/register`
 - `POST /api/v1/auth/login`
+- `POST /api/v1/auth/logout`
+- `GET /api/v1/me`
 
-Both endpoints accept JSON bodies and respond with `{ user, accessToken }` payloads.
+Auth behavior in this blueprint today:
+
+- `register` and `login` accept JSON credentials, create a server-side session row, set an HttpOnly `access` cookie, and return `{ user }`.
+- `/me` reads the access token from cookie or `Authorization: Bearer` header, validates JWT + active `Session`, and returns the authenticated profile.
+- `logout` revokes the active `Session` and clears the `access` cookie.
+- Refresh-token rotation is **not implemented**. The web `/api/auth/refresh` route returns `410 Gone` by design, so clients must re-authenticate when access tokens expire.
 
 ## License
 

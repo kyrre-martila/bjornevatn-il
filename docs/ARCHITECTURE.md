@@ -10,13 +10,15 @@ This blueprint is structured for content-driven websites: a public website exper
 
 ## Login / Session Sequence
 
-1. Client submits credentials to `/api/v1/auth/login`.
+1. Client submits credentials to `/api/v1/auth/login` (or `/api/v1/auth/register`).
 2. Controller validates payload and calls `AuthService`.
-3. `AuthService` verifies credentials and issues a JWT access token containing a random session id (`sid`).
-4. The same `sid` is persisted in the `Session` table with expiry metadata.
-5. Protected endpoints validate both JWT integrity and the server-side `Session` state.
-6. Logout revokes the current session row immediately.
-7. When an access token expires, clients sign in again (no refresh-token endpoint).
+3. `AuthService` verifies credentials, issues a JWT access token with a random session id (`sid`), and stores session state in the `Session` table.
+4. API sets the JWT in the HttpOnly `access` cookie for browser flows; non-browser clients may send it as `Authorization: Bearer`.
+5. Protected endpoints (including `/api/v1/me`) validate both JWT integrity and active server-side `Session` state.
+6. `POST /api/v1/auth/logout` revokes the current session row and clears the `access` cookie.
+7. There is no refresh-token exchange in the API auth module; when access tokens expire, clients re-authenticate.
+
+**Implemented vs planned:** stateful JWT+Session auth is implemented; refresh-token rotation and external IdP/OAuth flows are planned customization work.
 
 ## ADR References
 

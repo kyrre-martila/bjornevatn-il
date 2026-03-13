@@ -15,6 +15,9 @@ This guarantees revoked sessions are rejected immediately, even if the JWT itsel
 
 ## Refresh tokens
 
-Refresh tokens are **not implemented** in this module right now.
-To avoid a misleading partial implementation, session lifecycle for access tokens is the source of truth.
-If refresh tokens are added later, they should also map to `Session` (or a child token table) with explicit revocation and rotation semantics.
+Refresh tokens are **not implemented** in this module.
+The source of truth for auth state is the active `Session` row referenced by the JWT `sid`.
+
+**Implemented vs planned:**
+- Implemented: access-token issuance + server-side session validation/revocation.
+- Planned (optional): refresh-token rotation semantics (and storage model) if a project needs longer-lived re-auth flows.
