@@ -17,6 +17,7 @@ import { IsOptional, IsString } from "class-validator";
 import type { Request } from "express";
 import { UsersService as UsersDomainService } from "@org/domain";
 
+import { readAccessToken } from "../../common/auth/read-access-token";
 import { AuthService } from "../auth/auth.service";
 
 class UpdateMeDto {
@@ -85,9 +86,7 @@ export class UsersController {
   @ApiCookieAuth("access")
   @ApiOkResponse({ type: MeResponseDto })
   async me(@Req() req: Request): Promise<MeResponseDto> {
-    const access =
-      (req.cookies?.access as string) ||
-      (req.headers.authorization ?? "").replace(/^Bearer\s+/i, "");
+    const access = readAccessToken(req);
     if (!access) throw new UnauthorizedException("Missing token");
 
     const { payload } = await this.auth.authenticate(access);
@@ -123,9 +122,7 @@ export class UsersController {
     @Req() req: Request,
     @Body() body: UpdateMeDto,
   ): Promise<MeResponseDto> {
-    const access =
-      (req.cookies?.access as string) ||
-      (req.headers.authorization ?? "").replace(/^Bearer\s+/i, "");
+    const access = readAccessToken(req);
 
     if (!access) throw new UnauthorizedException("Missing token");
 

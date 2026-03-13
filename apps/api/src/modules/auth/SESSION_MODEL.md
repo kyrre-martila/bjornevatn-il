@@ -4,12 +4,12 @@ The API uses **stateful server-side sessions backed by the `Session` table** whi
 
 ## How it works
 
-1. On login/register, the API creates a random session id (`sid`) and includes it in the JWT payload.
+1. On login/register, the API creates a random session id (`sid`) and includes it in the JWT payload, then sets that JWT in the HttpOnly `access` cookie for browser clients.
 2. The same `sid` is persisted in the `Session.token` field with metadata (`userId`, IP, user-agent, expiry).
 3. Every authenticated request validates both:
    - JWT signature/expiry, and
    - session state in the database (must exist, not revoked, and not expired).
-4. Logout revokes the active session by setting `revokedAt`.
+4. Logout revokes the active session by setting `revokedAt` and clears the `access` cookie.
 
 This guarantees revoked sessions are rejected immediately, even if the JWT itself has not yet expired.
 

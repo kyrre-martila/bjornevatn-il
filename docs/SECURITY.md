@@ -35,7 +35,8 @@ Security guidance for the content website blueprint (public site + admin/editor 
 - Access tokens are short-lived and include a session id (`sid`).
 - API accepts a token only when JWT verification succeeds **and** the referenced `Session` row is active.
 - Logout and forced sign-out revoke the server-side session immediately.
-- Web can store access tokens in secure cookies and/or send bearer tokens explicitly.
+- Web/admin authentication is cookie-first: login/register set the `access` HttpOnly cookie, SSR forwards cookies to `/me`, and logout revokes the server-side session then clears the cookie.
+- Bearer `Authorization` headers remain supported for non-browser API clients and tooling.
 
 ## Incident Response Checklist
 

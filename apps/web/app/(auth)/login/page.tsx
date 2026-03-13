@@ -2,7 +2,6 @@
 
 import React, { useState, FormEvent } from "react";
 import { useRouter } from "next/navigation";
-import type { AuthResponse } from "../../../lib/api/auth";
 import { login as loginRequest, AuthError } from "../../../lib/api/auth";
 
 export default function LoginPage() {
@@ -23,18 +22,10 @@ export default function LoginPage() {
 
     setSubmitting(true);
     try {
-      const result: AuthResponse = await loginRequest({
+      await loginRequest({
         email: email.trim(),
         password,
       });
-
-      if (typeof window !== "undefined") {
-        const payload = {
-          user: result.user,
-          accessToken: result.accessToken,
-        };
-        window.localStorage.setItem("bp_auth", JSON.stringify(payload));
-      }
 
       router.push("/admin");
     } catch (err) {

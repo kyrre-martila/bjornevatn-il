@@ -53,11 +53,9 @@ const usersRepositoryStub: UsersRepository = {
 const authServiceStub: Partial<AuthService> = {
   login: async () => ({
     user: { id: testUser.id, email: testUser.email, name: testUser.name ?? null },
-    accessToken: "access-token",
   }),
   register: async () => ({
     user: { id: testUser.id, email: testUser.email, name: testUser.name ?? null },
-    accessToken: "access-token",
   }),
   decodeToken: () => ({ sub: testUser.id, email: testUser.email }),
 };

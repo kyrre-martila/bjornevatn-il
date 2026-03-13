@@ -5,6 +5,7 @@ import {
 import type { Request } from "express";
 
 import { AuthService } from "../../modules/auth/auth.service";
+import { readAccessToken } from "./read-access-token";
 
 export type UserRole = "editor" | "admin" | "super_admin";
 
@@ -27,26 +28,12 @@ function normalizeRole(role: string | undefined | null): UserRole | null {
   return null;
 }
 
-function readToken(req: Request): string | null {
-  const fromCookie = req.cookies?.access as string | undefined;
-  if (fromCookie?.trim()) {
-    return fromCookie.trim();
-  }
-
-  const header = req.headers.authorization;
-  if (!header) {
-    return null;
-  }
-
-  return header.replace(/^Bearer\s+/i, "").trim() || null;
-}
-
 export async function requireMinimumRole(
   req: Request,
   auth: AuthService,
   minimumRole: UserRole,
 ): Promise<UserRole> {
-  const token = readToken(req);
+  const token = readAccessToken(req);
   if (!token) {
     throw new UnauthorizedException("Missing token");
   }

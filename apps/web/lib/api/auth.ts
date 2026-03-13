@@ -1,5 +1,4 @@
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL?.replace(/\/+$/, '') || 'http://localhost:3333';
+import { apiFetch } from "../api";
 
 export type AuthUser = {
   id: string;
@@ -9,7 +8,6 @@ export type AuthUser = {
 
 export type AuthResponse = {
   user: AuthUser;
-  accessToken: string;
 };
 
 export class AuthError extends Error {
@@ -17,17 +15,17 @@ export class AuthError extends Error {
 
   constructor(message: string, status?: number) {
     super(message);
-    this.name = 'AuthError';
+    this.name = "AuthError";
     this.status = status;
   }
 }
 
 async function handleResponse(res: Response): Promise<AuthResponse> {
-  const contentType = res.headers.get('content-type') ?? '';
-  const isJson = contentType.includes('application/json');
+  const contentType = res.headers.get("content-type") ?? "";
+  const isJson = contentType.includes("application/json");
 
   if (!res.ok) {
-    let message = 'Unexpected error';
+    let message = "Unexpected error";
     if (isJson) {
       try {
         const data = await res.json();
@@ -36,17 +34,16 @@ async function handleResponse(res: Response): Promise<AuthResponse> {
         // ignore
       }
     }
-    const err = new AuthError(message, res.status);
-    throw err;
+    throw new AuthError(message, res.status);
   }
 
   if (!isJson) {
-    throw new AuthError('Invalid response from server', res.status);
+    throw new AuthError("Invalid response from server", res.status);
   }
 
   const data = (await res.json()) as AuthResponse;
-  if (!data || !data.accessToken || !data.user) {
-    throw new AuthError('Malformed auth response', res.status);
+  if (!data || !data.user) {
+    throw new AuthError("Malformed auth response", res.status);
   }
 
   return data;
@@ -56,10 +53,10 @@ export async function login(input: {
   email: string;
   password: string;
 }): Promise<AuthResponse> {
-  const res = await fetch(`${API_BASE_URL}/auth/login`, {
-    method: 'POST',
+  const res = await apiFetch("/auth/login", {
+    method: "POST",
     headers: {
-      'Content-Type': 'application/json',
+      "Content-Type": "application/json",
     },
     body: JSON.stringify(input),
   });
@@ -72,10 +69,10 @@ export async function register(input: {
   password: string;
   name?: string;
 }): Promise<AuthResponse> {
-  const res = await fetch(`${API_BASE_URL}/auth/register`, {
-    method: 'POST',
+  const res = await apiFetch("/auth/register", {
+    method: "POST",
     headers: {
-      'Content-Type': 'application/json',
+      "Content-Type": "application/json",
     },
     body: JSON.stringify(input),
   });
