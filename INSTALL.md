@@ -61,7 +61,8 @@ Update at least:
 - `DATABASE_URL`
 - `JWT_SECRET`
 - `COOKIE_SECRET`
-- `ENCRYPTION_KEY`
+
+Use cryptographically random values for `JWT_SECRET` and `COOKIE_SECRET` (32+ chars, mixed character types).
 
 ## 3) Start the database
 

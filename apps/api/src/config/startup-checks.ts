@@ -13,7 +13,6 @@ const REQUIRED_ENV_VARS = [
   "DATABASE_URL",
   "JWT_SECRET",
   "COOKIE_SECRET",
-  "ENCRYPTION_KEY",
 ] as const;
 
 export function validateRequiredEnvVariables(env: Env = process.env) {

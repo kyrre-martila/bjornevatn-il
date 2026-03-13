@@ -7,18 +7,26 @@ describe("validateSecurityConfig", () => {
         NODE_ENV: "production",
         JWT_SECRET: "short-secret",
         COOKIE_SECRET: "also-short",
-        ENCRYPTION_KEY: "tiny",
       }),
     ).toThrow("must be at least 32 characters long");
   });
 
-  it("passes when auth-critical secrets meet minimum length", () => {
+  it("throws when secrets are long but weak", () => {
     expect(() =>
       validateSecurityConfig({
         NODE_ENV: "production",
-        JWT_SECRET: "j".repeat(32),
-        COOKIE_SECRET: "c".repeat(32),
-        ENCRYPTION_KEY: "e".repeat(32),
+        JWT_SECRET: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        COOKIE_SECRET: "passwordpasswordpasswordpassword",
+      }),
+    ).toThrow("too weak");
+  });
+
+  it("passes when auth-critical secrets are strong", () => {
+    expect(() =>
+      validateSecurityConfig({
+        NODE_ENV: "production",
+        JWT_SECRET: "A9!zv8#Qw2@Lm4$Np6%Rt1^Yx3&Bk5*Dd",
+        COOKIE_SECRET: "M7@qd2!Vx9#Lp4$Hz6^Tw1%Cn8&Jr3*Qp",
       }),
     ).not.toThrow();
   });
