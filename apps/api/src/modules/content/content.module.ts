@@ -13,6 +13,7 @@ import {
 } from "@org/domain-adapters-prisma";
 import { ContentController } from "./content.controller";
 import { PublicContentController } from "./public-content.controller";
+import { TaxonomiesAdminController } from "./taxonomies-admin.controller";
 import { LocalFileStorageProvider } from "./local-file-storage.provider";
 import { MediaController } from "./media.controller";
 import { MediaService } from "./media.service";
@@ -25,7 +26,12 @@ import { resolveMediaStorageProvider } from "./media-storage-provider.config";
 
 @Module({
   imports: [AuthModule],
-  controllers: [PublicContentController, ContentController, MediaController],
+  controllers: [
+    PublicContentController,
+    ContentController,
+    TaxonomiesAdminController,
+    MediaController,
+  ],
   providers: [
     {
       provide: "PagesRepository",

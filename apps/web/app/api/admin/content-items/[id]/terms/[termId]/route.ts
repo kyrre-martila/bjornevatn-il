@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireMinimumAdminRole } from "../../../../auth";
-import { buildForwardHeaders, getApiBase } from "../../../../utils";
+import { proxyAdminJson } from "../../../../upstream";
 
 type Params = { params: Promise<{ id: string; termId: string }> };
 
@@ -9,21 +9,17 @@ export async function DELETE(_: Request, { params }: Params) {
   if (denied) return denied;
 
   const { id, termId } = await params;
-  const res = await fetch(
-    `${getApiBase()}/admin/content/items/${encodeURIComponent(id)}/terms/${encodeURIComponent(termId)}`,
+  const res = await proxyAdminJson(
+    `/admin/content/items/${encodeURIComponent(id)}/terms/${encodeURIComponent(termId)}`,
     {
       method: "DELETE",
-      headers: buildForwardHeaders(true),
+      errorMessage: "Failed to remove term assignment",
     },
   );
 
-  if (!res.ok) {
-    const data = await res.json().catch(() => null);
-    return NextResponse.json(
-      data ?? { error: "Failed to remove term assignment" },
-      { status: res.status },
-    );
+  if (res.ok) {
+    return new NextResponse(null, { status: 204 });
   }
 
-  return new NextResponse(null, { status: 204 });
+  return res;
 }

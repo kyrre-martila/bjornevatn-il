@@ -42,9 +42,6 @@ import type {
   ContentFieldDefinition,
   ContentItem,
   ContentItemTreeNode,
-  TaxonomiesRepository,
-  TermsRepository,
-  ContentItemTermsRepository,
 } from "@org/domain";
 import { MediaService } from "./media.service";
 import { AuthService } from "../auth/auth.service";
@@ -487,101 +484,6 @@ class UpdateContentItemDto {
   published?: boolean;
 }
 
-class CreateTaxonomyDto {
-  @ApiProperty()
-  @IsString()
-  name!: string;
-
-  @ApiProperty()
-  @IsString()
-  slug!: string;
-
-  @ApiProperty()
-  @IsString()
-  description!: string;
-}
-
-class UpdateTaxonomyDto {
-  @ApiProperty({ required: false })
-  @IsOptional()
-  @IsString()
-  name?: string;
-
-  @ApiProperty({ required: false })
-  @IsOptional()
-  @IsString()
-  slug?: string;
-
-  @ApiProperty({ required: false })
-  @IsOptional()
-  @IsString()
-  description?: string;
-}
-
-class CreateTermDto {
-  @ApiProperty()
-  @IsString()
-  taxonomyId!: string;
-
-  @ApiProperty()
-  @IsString()
-  name!: string;
-
-  @ApiProperty()
-  @IsString()
-  slug!: string;
-
-  @ApiProperty()
-  @IsString()
-  description!: string;
-
-  @ApiProperty({ required: false })
-  @IsOptional()
-  @IsString()
-  parentId?: string;
-}
-
-class UpdateTermDto {
-  @ApiProperty({ required: false })
-  @IsOptional()
-  @IsString()
-  taxonomyId?: string;
-
-  @ApiProperty({ required: false })
-  @IsOptional()
-  @IsString()
-  name?: string;
-
-  @ApiProperty({ required: false })
-  @IsOptional()
-  @IsString()
-  slug?: string;
-
-  @ApiProperty({ required: false })
-  @IsOptional()
-  @IsString()
-  description?: string;
-
-  @ApiProperty({ required: false })
-  @IsOptional()
-  @IsString()
-  parentId?: string;
-}
-
-class AssignTermsDto {
-  @ApiProperty({ type: [String] })
-  @IsArray()
-  @IsString({ each: true })
-  termIds!: string[];
-}
-
-class ListTermsQueryDto {
-  @ApiProperty({ required: false })
-  @IsOptional()
-  @IsString()
-  taxonomyId?: string;
-}
-
 class ListContentItemsQueryDto {
   @ApiProperty({ required: false, enum: ["flat", "tree"], default: "flat" })
   @IsOptional()
@@ -773,12 +675,6 @@ export class ContentController {
     private readonly contentTypes: ContentTypesRepository,
     @Inject("ContentItemsRepository")
     private readonly contentItems: ContentItemsRepository,
-    @Inject("TaxonomiesRepository")
-    private readonly taxonomies: TaxonomiesRepository,
-    @Inject("TermsRepository")
-    private readonly terms: TermsRepository,
-    @Inject("ContentItemTermsRepository")
-    private readonly contentItemTerms: ContentItemTermsRepository,
     @Inject("NavigationItemsRepository")
     private readonly navigation: NavigationItemsRepository,
     @Inject("SiteSettingsRepository")
@@ -1587,120 +1483,6 @@ export class ContentController {
   async deleteContentItem(@Req() req: Request, @Param("id") id: string) {
     await requireMinimumRole(req, this.auth, "editor");
     await this.contentItems.delete(id);
-    return { ok: true };
-  }
-
-  @Get("taxonomies")
-  async listTaxonomies(@Req() req: Request) {
-    await requireMinimumRole(req, this.auth, "admin");
-    return this.taxonomies.findMany();
-  }
-
-  @Get("taxonomies/:id")
-  async getTaxonomy(@Req() req: Request, @Param("id") id: string) {
-    await requireMinimumRole(req, this.auth, "admin");
-    return this.taxonomies.findById(id);
-  }
-
-  @Post("taxonomies")
-  async createTaxonomy(@Req() req: Request, @Body() body: CreateTaxonomyDto) {
-    await requireSuperAdmin(req, this.auth);
-    return this.taxonomies.create(body);
-  }
-
-  @Patch("taxonomies/:id")
-  async updateTaxonomy(
-    @Req() req: Request,
-    @Param("id") id: string,
-    @Body() body: UpdateTaxonomyDto,
-  ) {
-    await requireSuperAdmin(req, this.auth);
-    return this.taxonomies.update(id, body);
-  }
-
-  @Delete("taxonomies/:id")
-  async deleteTaxonomy(@Req() req: Request, @Param("id") id: string) {
-    await requireSuperAdmin(req, this.auth);
-    await this.taxonomies.delete(id);
-    return { ok: true };
-  }
-
-  @Get("terms")
-  async listTerms(@Req() req: Request, @Query() query: ListTermsQueryDto) {
-    await requireMinimumRole(req, this.auth, "admin");
-    if (query.taxonomyId) {
-      return this.terms.findManyByTaxonomyId(query.taxonomyId);
-    }
-    return this.terms.findMany();
-  }
-
-  @Get("terms/:id")
-  async getTerm(@Req() req: Request, @Param("id") id: string) {
-    await requireMinimumRole(req, this.auth, "admin");
-    return this.terms.findById(id);
-  }
-
-  @Post("terms")
-  async createTerm(@Req() req: Request, @Body() body: CreateTermDto) {
-    await requireSuperAdmin(req, this.auth);
-    return this.terms.create({ ...body, parentId: body.parentId ?? null });
-  }
-
-  @Patch("terms/:id")
-  async updateTerm(
-    @Req() req: Request,
-    @Param("id") id: string,
-    @Body() body: UpdateTermDto,
-  ) {
-    await requireSuperAdmin(req, this.auth);
-    return this.terms.update(id, body);
-  }
-
-  @Delete("terms/:id")
-  async deleteTerm(@Req() req: Request, @Param("id") id: string) {
-    await requireSuperAdmin(req, this.auth);
-    await this.terms.delete(id);
-    return { ok: true };
-  }
-
-  @Get("items/:id/terms")
-  async listContentItemTerms(@Req() req: Request, @Param("id") id: string) {
-    await requireMinimumRole(req, this.auth, "editor");
-    const assignments = await this.contentItemTerms.findManyByContentItemId(id);
-    const terms = await this.terms.findManyByIds(
-      assignments.map((entry) => entry.termId),
-    );
-    const termsById = new Map(terms.map((term) => [term.id, term]));
-
-    return assignments.flatMap((entry) => {
-      const term = termsById.get(entry.termId);
-      return term ? [term] : [];
-    });
-  }
-
-  @Put("items/:id/terms")
-  async assignContentItemTerms(
-    @Req() req: Request,
-    @Param("id") id: string,
-    @Body() body: AssignTermsDto,
-  ) {
-    await requireMinimumRole(req, this.auth, "editor");
-    const item = await this.contentItems.findById(id);
-    if (!item) {
-      throw new BadRequestException("Content item not found.");
-    }
-
-    return this.contentItemTerms.assign(id, body.termIds);
-  }
-
-  @Delete("items/:id/terms/:termId")
-  async removeContentItemTerm(
-    @Req() req: Request,
-    @Param("id") id: string,
-    @Param("termId") termId: string,
-  ) {
-    await requireMinimumRole(req, this.auth, "editor");
-    await this.contentItemTerms.remove(id, termId);
     return { ok: true };
   }
 

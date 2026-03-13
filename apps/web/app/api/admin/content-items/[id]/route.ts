@@ -1,39 +1,27 @@
-import { NextResponse } from "next/server";
 import { requireMinimumAdminRole } from "../../auth";
-import { buildForwardHeaders, getApiBase } from "../../utils";
+import { proxyAdminJson } from "../../upstream";
 
-export async function PATCH(request: Request, { params }: { params: { id: string } }) {
+type Params = { params: Promise<{ id: string }> };
+
+export async function PATCH(request: Request, { params }: Params) {
   const denied = await requireMinimumAdminRole();
   if (denied) return denied;
 
-  const body = await request.text();
-  const res = await fetch(`${getApiBase()}/admin/content/items/${params.id}`, {
+  const { id } = await params;
+  return proxyAdminJson(`/admin/content/items/${encodeURIComponent(id)}`, {
     method: "PATCH",
-    headers: buildForwardHeaders(true),
-    body,
+    request,
+    errorMessage: "Failed to update content item",
   });
-
-  const data = await res.json().catch(() => null);
-  if (!res.ok) {
-    return NextResponse.json(data ?? { error: "Failed to update content item" }, { status: res.status });
-  }
-
-  return NextResponse.json(data);
 }
 
-export async function DELETE(_: Request, { params }: { params: { id: string } }) {
+export async function DELETE(_: Request, { params }: Params) {
   const denied = await requireMinimumAdminRole();
   if (denied) return denied;
 
-  const res = await fetch(`${getApiBase()}/admin/content/items/${params.id}`, {
+  const { id } = await params;
+  return proxyAdminJson(`/admin/content/items/${encodeURIComponent(id)}`, {
     method: "DELETE",
-    headers: buildForwardHeaders(),
+    errorMessage: "Failed to delete content item",
   });
-
-  const data = await res.json().catch(() => null);
-  if (!res.ok) {
-    return NextResponse.json(data ?? { error: "Failed to delete content item" }, { status: res.status });
-  }
-
-  return NextResponse.json(data ?? { ok: true });
 }

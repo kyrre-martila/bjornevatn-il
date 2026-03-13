@@ -1,49 +1,30 @@
-import { NextResponse } from "next/server";
 import { requireMinimumAdminRole, requireSuperAdmin } from "../auth";
-import { buildForwardHeaders, getApiBase } from "../utils";
+import { proxyAdminJson } from "../upstream";
 
 export async function GET(request: Request) {
   const denied = await requireMinimumAdminRole("admin");
   if (denied) return denied;
 
   const { searchParams } = new URL(request.url);
+  const query = new URLSearchParams();
   const taxonomyId = searchParams.get("taxonomyId");
-  const path = taxonomyId
-    ? `/admin/content/terms?taxonomyId=${encodeURIComponent(taxonomyId)}`
-    : "/admin/content/terms";
+  if (taxonomyId) query.set("taxonomyId", taxonomyId);
 
-  const res = await fetch(`${getApiBase()}${path}`, {
-    headers: buildForwardHeaders(),
+  return proxyAdminJson("/admin/content/terms", {
+    method: "GET",
+    query,
     cache: "no-store",
+    errorMessage: "Failed to load terms",
   });
-
-  const data = await res.json().catch(() => null);
-  if (!res.ok) {
-    return NextResponse.json(data ?? { error: "Failed to load terms" }, {
-      status: res.status,
-    });
-  }
-
-  return NextResponse.json(data);
 }
 
 export async function POST(request: Request) {
   const denied = await requireSuperAdmin();
   if (denied) return denied;
 
-  const body = await request.text();
-  const res = await fetch(`${getApiBase()}/admin/content/terms`, {
+  return proxyAdminJson("/admin/content/terms", {
     method: "POST",
-    headers: buildForwardHeaders(true),
-    body,
+    request,
+    errorMessage: "Failed to create term",
   });
-
-  const data = await res.json().catch(() => null);
-  if (!res.ok) {
-    return NextResponse.json(data ?? { error: "Failed to create term" }, {
-      status: res.status,
-    });
-  }
-
-  return NextResponse.json(data);
 }

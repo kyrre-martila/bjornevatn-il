@@ -1,6 +1,5 @@
-import { NextResponse } from "next/server";
 import { requireMinimumAdminRole } from "../../../auth";
-import { buildForwardHeaders, getApiBase } from "../../../utils";
+import { proxyAdminJson } from "../../../upstream";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -9,23 +8,11 @@ export async function GET(_: Request, { params }: Params) {
   if (denied) return denied;
 
   const { id } = await params;
-  const res = await fetch(
-    `${getApiBase()}/admin/content/items/${encodeURIComponent(id)}/terms`,
-    {
-      headers: buildForwardHeaders(),
-      cache: "no-store",
-    },
-  );
-
-  const data = await res.json().catch(() => null);
-  if (!res.ok) {
-    return NextResponse.json(
-      data ?? { error: "Failed to load content item terms" },
-      { status: res.status },
-    );
-  }
-
-  return NextResponse.json(data);
+  return proxyAdminJson(`/admin/content/items/${encodeURIComponent(id)}/terms`, {
+    method: "GET",
+    cache: "no-store",
+    errorMessage: "Failed to load content item terms",
+  });
 }
 
 export async function PUT(request: Request, { params }: Params) {
@@ -33,22 +20,9 @@ export async function PUT(request: Request, { params }: Params) {
   if (denied) return denied;
 
   const { id } = await params;
-  const body = await request.text();
-  const res = await fetch(
-    `${getApiBase()}/admin/content/items/${encodeURIComponent(id)}/terms`,
-    {
-      method: "PUT",
-      headers: buildForwardHeaders(true),
-      body,
-    },
-  );
-
-  const data = await res.json().catch(() => null);
-  if (!res.ok) {
-    return NextResponse.json(data ?? { error: "Failed to assign terms" }, {
-      status: res.status,
-    });
-  }
-
-  return NextResponse.json(data);
+  return proxyAdminJson(`/admin/content/items/${encodeURIComponent(id)}/terms`, {
+    method: "PUT",
+    request,
+    errorMessage: "Failed to assign terms",
+  });
 }
