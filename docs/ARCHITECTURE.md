@@ -39,8 +39,10 @@ Use this pattern when adding additional collections like case studies, team prof
 ## Public template model
 
 - A template is a complete page component (it may include header, main content, and footer).
+- Valid template keys are defined in one runtime contract: `apps/web/lib/templates.ts` (`TEMPLATE_KEYS`, `DEFAULT_TEMPLATE_KEY`, and `coerceTemplateKey`).
 - The web app keeps a central template registry in `apps/web/app/(public)/templates/template-registry.ts`.
 - Public rendering resolves templates by `templateKey` for:
   - `Page` records (`resolvePageTemplate`)
   - `ContentType` records (`resolveContentTypeTemplate`)
-- Missing or unknown template keys always fall back to `IndexTemplate`.
+- Resolution is deterministic and generic: all lookups go through `coerceTemplateKey` and then the shared registry.
+- Missing or unknown template keys are always fallback-safe and resolve to `IndexTemplate`.

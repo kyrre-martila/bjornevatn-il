@@ -70,3 +70,15 @@ When generating code for new client features:
 - Avoid architecture shortcuts that make fast demos but hard-to-maintain projects.
 
 If unsure, choose the option that is **more reusable, typed, and content-model-driven**.
+
+## 9) Public routing + template contract (must stay deterministic)
+
+- Valid public template keys live in one runtime contract: `apps/web/lib/templates.ts`.
+- Route renderers must resolve templates through the shared registry (`apps/web/app/(public)/templates/template-registry.ts`) and keep `IndexTemplate` as the fallback target.
+- Slug resolution precedence for single-segment public routes (`/[contentTypeSlug]`) is:
+  1. CMS `Page` by slug
+  2. `ContentType` archive by slug
+  3. Not found
+- Legacy `/page/[slug]` should remain redirect-only toward canonical page paths (`/${slug}` or `/` for `home`) and should not become a second canonical surface.
+- Redirect payloads from content APIs are internal-path only; invalid targets must be ignored and treated as unresolved content.
+

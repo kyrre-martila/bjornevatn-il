@@ -1,5 +1,6 @@
 import { cache } from "react";
 import { resolveApiUrl } from "./api";
+import { DEFAULT_TEMPLATE_KEY, coerceTemplateKey } from "./templates";
 
 export type HeroContent = {
   eyebrow: string;
@@ -401,10 +402,7 @@ function mapApiPage(page: ApiPage): ContentPage {
   return {
     slug: page.slug,
     title: page.title,
-    templateKey:
-      typeof page.templateKey === "string" && page.templateKey.trim()
-        ? page.templateKey
-        : "index",
+    templateKey: coerceTemplateKey(page.templateKey),
     seoTitle: page.seoTitle ?? null,
     seoDescription: page.seoDescription ?? null,
     seoImage: page.seoImage ?? null,
@@ -420,7 +418,7 @@ function mapApiContentItem(item: ApiContentItem): NewsItem {
     title: item.title,
     summary: item.summary,
     publishedAt: new Date(item.publishedAt).toISOString().slice(0, 10),
-    templateKey: "index",
+    templateKey: DEFAULT_TEMPLATE_KEY,
     canonicalUrl: item.canonicalUrl ?? null,
     noIndex: Boolean(item.noIndex),
   };
@@ -616,7 +614,7 @@ export async function getServicesListing(): Promise<ServiceListItem[]> {
 
 async function getContentTypeTemplateKey(slug: string): Promise<string> {
   const type = await getPublicContentTypeBySlug(slug);
-  return type?.templateKey ?? "index";
+  return coerceTemplateKey(type?.templateKey);
 }
 
 function mapPublicContentType(type: ApiContentType): PublicContentType | null {
@@ -639,10 +637,7 @@ function mapPublicContentType(type: ApiContentType): PublicContentType | null {
     slug: type.slug,
     name:
       typeof type.name === "string" && type.name.trim() ? type.name : type.slug,
-    templateKey:
-      typeof type.templateKey === "string" && type.templateKey.trim()
-        ? type.templateKey
-        : "index",
+    templateKey: coerceTemplateKey(type.templateKey),
     isPublic,
   };
 }
@@ -747,7 +742,7 @@ function mapGenericDetailItem(
     title: item.title,
     summary: item.summary,
     body: item.body,
-    templateKey: fallbackTemplateKey,
+    templateKey: coerceTemplateKey(fallbackTemplateKey),
     canonicalUrl: item.canonicalUrl ?? null,
     noIndex: Boolean(item.noIndex),
     publishedAt: new Date(item.publishedAt).toISOString().slice(0, 10),

@@ -1,16 +1,14 @@
+import {
+  coerceTemplateKey,
+  TEMPLATE_KEYS,
+  type TemplateKey,
+} from "../../../lib/templates";
 import { IndexTemplate } from "./IndexTemplate";
 import { LandingTemplate } from "./LandingTemplate";
 import { NewsTemplate } from "./NewsTemplate";
 import { ServiceTemplate } from "./ServiceTemplate";
 
-export const VALID_TEMPLATE_KEYS = [
-  "index",
-  "service",
-  "news",
-  "landing",
-] as const;
-
-export type TemplateKey = (typeof VALID_TEMPLATE_KEYS)[number];
+export const VALID_TEMPLATE_KEYS = TEMPLATE_KEYS;
 
 type TemplateComponent = typeof IndexTemplate;
 type TemplateRegistry = Record<TemplateKey, TemplateComponent>;
@@ -28,12 +26,6 @@ const templates: TemplateRegistry = {
   landing: LandingTemplate,
 };
 
-const INDEX_TEMPLATE_KEY: TemplateKey = "index";
-
-function isTemplateKey(value: string): value is TemplateKey {
-  return VALID_TEMPLATE_KEYS.includes(value as TemplateKey);
-}
-
 export const pageTemplateRegistry: TemplateRegistry = templates;
 
 export const contentTypeTemplateRegistry: TemplateRegistry = templates;
@@ -41,13 +33,7 @@ export const contentTypeTemplateRegistry: TemplateRegistry = templates;
 export function resolveTemplate(
   templateKey: string | null | undefined,
 ): TemplateComponent {
-  if (!templateKey) {
-    return templates[INDEX_TEMPLATE_KEY];
-  }
-
-  return isTemplateKey(templateKey)
-    ? templates[templateKey]
-    : templates[INDEX_TEMPLATE_KEY];
+  return templates[coerceTemplateKey(templateKey)];
 }
 
 export function resolvePageTemplate(
