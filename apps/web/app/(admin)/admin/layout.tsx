@@ -11,11 +11,11 @@ const adminNavItems = [
   { href: "/admin/content", label: "Content", visible: () => true },
   { href: "/admin/media", label: "Media", visible: () => true },
   { href: "/admin/navigation", label: "Taxonomies", visible: canManageUsers },
+  { href: "/admin/users", label: "Users", visible: canManageUsers },
   { href: "/admin/settings", label: "Site settings", visible: canManageUsers },
   { href: "/admin/content", label: "Content models", visible: canAccessSchema },
   { href: "/admin/system", label: "System", visible: canAccessSchema },
   { href: "/admin/staging", label: "Developer tools", visible: canAccessSchema },
-  { href: "/admin/profile", label: "My profile", visible: () => true },
 ] as const;
 
 export default async function AdminLayout({

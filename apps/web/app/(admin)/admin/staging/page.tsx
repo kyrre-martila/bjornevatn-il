@@ -1,11 +1,11 @@
 import { redirect } from "next/navigation";
 
 import { getMe } from "../../../../lib/me";
-import { hasMinimumRole } from "../../../../lib/rbac";
+import { hasRole } from "../../../../lib/rbac";
 
 export default async function AdminStagingPage() {
   const me = await getMe();
-  if (!me?.user || !hasMinimumRole(me.user.role, "admin")) {
+  if (!me?.user || !hasRole(me.user.role, "super_admin")) {
     redirect("/access-denied");
   }
 
