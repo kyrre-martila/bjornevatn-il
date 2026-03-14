@@ -1,6 +1,6 @@
 import { PageEditorClient } from "../PageEditorClient";
 import { getMe } from "../../../../../lib/me";
-import { hasMinimumRole } from "../../../../../lib/rbac";
+import { hasMinimumRole, hasRole } from "../../../../../lib/rbac";
 
 export default async function NewAdminPage() {
   const me = await getMe();
@@ -8,6 +8,7 @@ export default async function NewAdminPage() {
     <PageEditorClient
       initialPage={null}
       canManageStructure={hasMinimumRole(me?.user?.role, "admin")}
+      canEditRawJson={hasRole(me?.user?.role, "super_admin")}
     />
   );
 }

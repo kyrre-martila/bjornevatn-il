@@ -32,77 +32,111 @@ const BLOCK_TYPE_DESCRIPTIONS: Record<AdminPageBlockType, string> = {
   news_list: "Auto-generated list of recent news items.",
 };
 
-const BLOCK_FIELD_LABELS: Record<
-  AdminPageBlockType,
-  Record<string, string>
-> = {
-  hero: {
-    heading: "Heading",
-    text: "Supporting text",
-    imageUrl: "Image URL",
-    imageWidth: "Image width",
-    imageHeight: "Image height",
-  },
-  rich_text: {
-    body: "Body",
-  },
-  image: {
-    src: "Image URL",
-    alt: "Alt text",
-    width: "Width",
-    height: "Height",
-  },
-  cta: {
-    heading: "Heading",
-    text: "Supporting text",
-    buttonText: "Button text",
-    href: "Button URL",
-  },
-  news_list: {
-    heading: "Heading",
-    limit: "Number of articles",
-  },
+type BlockFieldWidget =
+  | "text"
+  | "textarea"
+  | "rich_text"
+  | "image"
+  | "date"
+  | "boolean"
+  | "relation";
+
+type BlockFieldSchema = {
+  key: string;
+  label: string;
+  widget: BlockFieldWidget;
+  required?: boolean;
+  description?: string;
+  placeholder?: string;
+  relationOptions?: Array<{ value: string; label: string }>;
 };
 
 type EditableBlock = {
   id: string;
   type: AdminPageBlockType;
-  dataJson: string;
+  data: Record<string, unknown>;
 };
 
-type BlockFieldMeta = {
-  label: string;
-  description?: string;
-  placeholder?: string;
-};
-
-const BLOCK_FIELD_META: Record<AdminPageBlockType, Record<string, BlockFieldMeta>> = {
-  hero: {
-    heading: { label: "Heading", placeholder: "Welcome to our site" },
-    text: { label: "Supporting text", placeholder: "One short paragraph" },
-    imageUrl: { label: "Hero image URL", description: "Use media library to fill this automatically." },
-    imageWidth: { label: "Image width" },
-    imageHeight: { label: "Image height" },
-  },
-  rich_text: {
-    body: { label: "Body content", placeholder: "Add page copy here" },
-  },
-  image: {
-    src: { label: "Image URL", description: "Use media library to avoid copy/paste errors." },
-    alt: { label: "Image description (alt text)", placeholder: "Describe the image for accessibility" },
-    width: { label: "Width" },
-    height: { label: "Height" },
-  },
-  cta: {
-    heading: { label: "Heading" },
-    text: { label: "Supporting text" },
-    buttonText: { label: "Button label", placeholder: "Read more" },
-    href: { label: "Button link", placeholder: "/contact" },
-  },
-  news_list: {
-    heading: { label: "Section heading", placeholder: "Latest news" },
-    limit: { label: "Number of articles", description: "How many recent news items to show." },
-  },
+const BLOCK_SCHEMAS: Record<AdminPageBlockType, BlockFieldSchema[]> = {
+  hero: [
+    {
+      key: "heading",
+      label: "Heading",
+      widget: "text",
+      required: true,
+      placeholder: "Welcome to our site",
+    },
+    {
+      key: "text",
+      label: "Supporting text",
+      widget: "textarea",
+      placeholder: "One short paragraph",
+    },
+    {
+      key: "imageUrl",
+      label: "Hero image URL",
+      widget: "image",
+      description: "Use media library to fill this automatically.",
+    },
+    { key: "imageWidth", label: "Image width", widget: "text" },
+    { key: "imageHeight", label: "Image height", widget: "text" },
+  ],
+  rich_text: [
+    {
+      key: "body",
+      label: "Body content",
+      widget: "rich_text",
+      required: true,
+      placeholder: "Add page copy here",
+    },
+  ],
+  image: [
+    {
+      key: "src",
+      label: "Image URL",
+      widget: "image",
+      required: true,
+      description: "Use media library to avoid copy/paste errors.",
+    },
+    {
+      key: "alt",
+      label: "Image description (alt text)",
+      widget: "text",
+      placeholder: "Describe the image for accessibility",
+    },
+    { key: "width", label: "Width", widget: "text" },
+    { key: "height", label: "Height", widget: "text" },
+  ],
+  cta: [
+    { key: "heading", label: "Heading", widget: "text", required: true },
+    { key: "text", label: "Supporting text", widget: "textarea" },
+    {
+      key: "buttonText",
+      label: "Button label",
+      widget: "text",
+      placeholder: "Read more",
+    },
+    {
+      key: "href",
+      label: "Button link",
+      widget: "text",
+      placeholder: "/contact",
+    },
+  ],
+  news_list: [
+    {
+      key: "heading",
+      label: "Section heading",
+      widget: "text",
+      placeholder: "Latest news",
+    },
+    {
+      key: "limit",
+      label: "Number of articles",
+      widget: "text",
+      description: "How many recent news items to show.",
+    },
+  ],
 };
 
 function normalizeSlug(value: string): string {
@@ -125,7 +159,7 @@ function toEditableBlocks(page: AdminPage | null): EditableBlock[] {
     .map((block, index) => ({
       id: block.id || `block-${index}`,
       type: block.type,
-      dataJson: JSON.stringify(block.data, null, 2),
+      data: block.data,
     }));
 }
 
@@ -133,36 +167,34 @@ function getBlockTypeLabel(type: AdminPageBlockType) {
   return BLOCK_TYPES.find((item) => item.value === type)?.label ?? type;
 }
 
-function defaultBlockJson(type: AdminPageBlockType): string {
+function defaultBlockData(type: AdminPageBlockType): Record<string, unknown> {
   if (type === "hero") {
-    return JSON.stringify({ heading: "", text: "", imageUrl: "" }, null, 2);
+    return { heading: "", text: "", imageUrl: "" };
   }
 
   if (type === "image") {
-    return JSON.stringify({ src: "", alt: "" }, null, 2);
+    return { src: "", alt: "" };
   }
 
   if (type === "cta") {
-    return JSON.stringify(
-      { heading: "", text: "", buttonText: "", href: "" },
-      null,
-      2,
-    );
+    return { heading: "", text: "", buttonText: "", href: "" };
   }
 
   if (type === "news_list") {
-    return JSON.stringify({ heading: "Latest news", limit: 3 }, null, 2);
+    return { heading: "Latest news", limit: 3 };
   }
 
-  return JSON.stringify({ body: "" }, null, 2);
+  return { body: "" };
 }
 
 export function PageEditorClient({
   initialPage,
   canManageStructure,
+  canEditRawJson,
 }: {
   initialPage: AdminPage | null;
   canManageStructure: boolean;
+  canEditRawJson: boolean;
 }) {
   const router = useRouter();
   const [title, setTitle] = React.useState(initialPage?.title ?? "");
@@ -223,7 +255,7 @@ export function PageEditorClient({
       {
         id: nextId,
         type,
-        dataJson: defaultBlockJson(type),
+        data: defaultBlockData(type),
       },
     ]);
     setActiveBlockId(nextId);
@@ -268,31 +300,41 @@ export function PageEditorClient({
     setError(null);
   }
 
-  function updateBlockDataField(index: number, key: string, value: string) {
+  function updateBlockDataField(index: number, key: string, value: unknown) {
     const block = blocks[index];
-    if (!block) {
-      return;
-    }
+    if (!block) return;
 
+    updateBlock(index, {
+      data: {
+        ...block.data,
+        [key]: value,
+      },
+    });
+    setError(null);
+  }
+
+  function getSchemaForBlock(type: AdminPageBlockType): BlockFieldSchema[] {
+    return BLOCK_SCHEMAS[type] ?? [];
+  }
+
+  function updateBlockDataFromJson(index: number, value: string) {
     try {
-      const current = JSON.parse(block.dataJson) as Record<string, unknown>;
-      const existingValue = current[key];
-      const nextValue =
-        typeof existingValue === "number" && value.trim() !== ""
-          ? Number(value)
-          : value;
-      const nextData = { ...current, [key]: nextValue };
-      updateBlock(index, { dataJson: JSON.stringify(nextData, null, 2) });
+      const parsed = JSON.parse(value) as unknown;
+      if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
+        setError("Advanced JSON must be an object.");
+        return;
+      }
+
+      updateBlock(index, { data: parsed as Record<string, unknown> });
       setError(null);
     } catch {
-      setError(
-        `Block #${index + 1} has invalid JSON. Fix it before editing guided fields.`,
-      );
+      setError("Advanced JSON is invalid. Fix it before saving.");
     }
   }
 
-  function getFieldMeta(type: AdminPageBlockType, key: string): BlockFieldMeta {
-    return BLOCK_FIELD_META[type][key] ?? { label: BLOCK_FIELD_LABELS[type][key] ?? key };
+  function getFieldValueAsString(value: unknown): string {
+    if (value === null || value === undefined) return "";
+    return String(value);
   }
 
   function setBlockMedia(index: number, selectedMediaId: string) {
@@ -302,13 +344,8 @@ export function PageEditorClient({
     }
 
     try {
-      const current = JSON.parse(blocks[index]?.dataJson ?? "{}") as Record<
-        string,
-        unknown
-      >;
-      const nextData: Record<string, unknown> = {
-        ...current,
-      };
+      const current = blocks[index]?.data ?? {};
+      const nextData: Record<string, unknown> = { ...current };
 
       if (blocks[index]?.type === "image") {
         nextData.src = selected.url;
@@ -331,13 +368,11 @@ export function PageEditorClient({
         }
       }
 
-      updateBlock(index, { dataJson: JSON.stringify(nextData, null, 2) });
+      updateBlock(index, { data: nextData });
       setStatus("Media selected for block.");
       setError(null);
     } catch {
-      setError(
-        `Block #${index + 1} has invalid JSON. Fix it before selecting media.`,
-      );
+      setError(`Block #${index + 1} has invalid block data.`);
     }
   }
 
@@ -368,32 +403,50 @@ export function PageEditorClient({
     }> = [];
 
     for (const [index, block] of blocks.entries()) {
-      try {
-        const parsed = JSON.parse(block.dataJson) as unknown;
-        if (
-          typeof parsed !== "object" ||
-          parsed === null ||
-          Array.isArray(parsed)
-        ) {
+      if (
+        typeof block.data !== "object" ||
+        block.data === null ||
+        Array.isArray(block.data)
+      ) {
+        setError(
+          `Block #${index + 1} (${getBlockTypeLabel(block.type)}) has invalid data.`,
+        );
+        setActiveBlockId(block.id);
+        return;
+      }
+
+      const schema = getSchemaForBlock(block.type);
+      for (const field of schema) {
+        const rawValue = block.data[field.key];
+        const textValue =
+          typeof rawValue === "string"
+            ? rawValue.trim()
+            : rawValue === undefined || rawValue === null
+              ? ""
+              : String(rawValue).trim();
+
+        if (field.required && !textValue) {
           setError(
-            `Block #${index + 1} (${getBlockTypeLabel(block.type)}) must be a JSON object.`,
+            `Block #${index + 1} (${getBlockTypeLabel(block.type)}): ${field.label} is required.`,
           );
           setActiveBlockId(block.id);
           return;
         }
 
-        parsedBlocks.push({
-          type: block.type,
-          data: parsed as Record<string, unknown>,
-          order: index,
-        });
-      } catch {
-        setError(
-          `Block #${index + 1} (${getBlockTypeLabel(block.type)}) has invalid JSON.`,
-        );
-        setActiveBlockId(block.id);
-        return;
+        if (field.widget === "date" && textValue && Number.isNaN(Date.parse(textValue))) {
+          setError(
+            `Block #${index + 1} (${getBlockTypeLabel(block.type)}): ${field.label} must be a valid date.`,
+          );
+          setActiveBlockId(block.id);
+          return;
+        }
       }
+
+      parsedBlocks.push({
+        type: block.type,
+        data: block.data,
+        order: index,
+      });
     }
 
     setIsSaving(true);
@@ -498,21 +551,10 @@ export function PageEditorClient({
     (block) => block.id === activeBlockId,
   );
   const activeBlock = activeBlockIndex >= 0 ? blocks[activeBlockIndex] : null;
-  const activeBlockData = React.useMemo(() => {
-    if (!activeBlock) {
-      return null;
-    }
-
-    try {
-      const parsed = JSON.parse(activeBlock.dataJson) as unknown;
-      if (typeof parsed === "object" && parsed !== null && !Array.isArray(parsed)) {
-        return parsed as Record<string, unknown>;
-      }
-      return null;
-    } catch {
-      return null;
-    }
-  }, [activeBlock]);
+  const activeBlockData = activeBlock?.data ?? null;
+  const activeBlockJson = activeBlock
+    ? JSON.stringify(activeBlock.data, null, 2)
+    : "";
 
   return (
     <section className="page-editor">
@@ -522,8 +564,7 @@ export function PageEditorClient({
         </Link>
         <h1>{initialPage ? "Edit page" : "Create page"}</h1>
         <p className="page-editor__help">
-          Use guided fields to edit what visitors see. Advanced structure
-          controls are available only to admins.
+          Use guided fields to edit what visitors see. Raw JSON is restricted to super admins as an advanced fallback.
         </p>
       </div>
 
@@ -706,35 +747,66 @@ export function PageEditorClient({
                 {activeBlockData && (
                   <fieldset className="page-editor__guided-fields">
                     <legend>Guided fields</legend>
-                    {Object.entries(activeBlockData).map(([key, value]) => (
-                      <label key={key}>
-                        {getFieldMeta(activeBlock.type, key).label}
-                        {getFieldMeta(activeBlock.type, key).description ? (
-                          <small className="page-editor__field-help">
-                            {getFieldMeta(activeBlock.type, key).description}
-                          </small>
-                        ) : null}
-                        <input
-                          value={String(value ?? "")}
-                          onChange={(e) =>
-                            updateBlockDataField(
-                              activeBlockIndex,
-                              key,
-                              e.target.value,
-                            )
-                          }
-                          placeholder={getFieldMeta(activeBlock.type, key).placeholder}
-                        />
-                      </label>
-                    ))}
+                    {getSchemaForBlock(activeBlock.type).map((field) => {
+                      const value = activeBlockData[field.key];
+                      const normalizedValue = getFieldValueAsString(value);
+                      return (
+                        <label key={field.key}>
+                          {field.label}
+                          {field.description ? (
+                            <small className="page-editor__field-help">{field.description}</small>
+                          ) : null}
+                          {field.widget === "textarea" || field.widget === "rich_text" ? (
+                            <textarea
+                              rows={field.widget === "rich_text" ? 6 : 3}
+                              value={normalizedValue}
+                              onChange={(e) =>
+                                updateBlockDataField(activeBlockIndex, field.key, e.target.value)
+                              }
+                              placeholder={field.placeholder}
+                            />
+                          ) : field.widget === "boolean" ? (
+                            <select
+                              value={normalizedValue || "false"}
+                              onChange={(e) =>
+                                updateBlockDataField(
+                                  activeBlockIndex,
+                                  field.key,
+                                  e.target.value === "true",
+                                )
+                              }
+                            >
+                              <option value="false">No</option>
+                              <option value="true">Yes</option>
+                            </select>
+                          ) : field.widget === "relation" ? (
+                            <select
+                              value={normalizedValue}
+                              onChange={(e) =>
+                                updateBlockDataField(activeBlockIndex, field.key, e.target.value)
+                              }
+                            >
+                              <option value="">Select an option</option>
+                              {(field.relationOptions ?? []).map((option) => (
+                                <option key={option.value} value={option.value}>
+                                  {option.label}
+                                </option>
+                              ))}
+                            </select>
+                          ) : (
+                            <input
+                              type={field.widget === "date" ? "date" : "text"}
+                              value={normalizedValue}
+                              onChange={(e) =>
+                                updateBlockDataField(activeBlockIndex, field.key, e.target.value)
+                              }
+                              placeholder={field.placeholder}
+                            />
+                          )}
+                        </label>
+                      );
+                    })}
                   </fieldset>
-                )}
-
-                {!activeBlockData && (
-                  <p className="page-editor__error">
-                    Guided fields are unavailable until this block has valid
-                    JSON object data.
-                  </p>
                 )}
 
                 {canManageStructure && (
@@ -746,7 +818,7 @@ export function PageEditorClient({
                         onChange={(e) =>
                           updateBlock(activeBlockIndex, {
                             type: e.target.value as AdminPageBlockType,
-                            dataJson: defaultBlockJson(
+                            data: defaultBlockData(
                               e.target.value as AdminPageBlockType,
                             ),
                           })
@@ -760,18 +832,18 @@ export function PageEditorClient({
                       </select>
                     </label>
 
-                    <label>
-                      Advanced data (JSON)
-                      <textarea
-                        rows={14}
-                        value={activeBlock.dataJson}
-                        onChange={(e) =>
-                          updateBlock(activeBlockIndex, {
-                            dataJson: e.target.value,
-                          })
-                        }
-                      />
-                    </label>
+                    {canEditRawJson && (
+                      <label>
+                        Advanced data (JSON)
+                        <textarea
+                          rows={14}
+                          value={activeBlockJson}
+                          onChange={(e) =>
+                            updateBlockDataFromJson(activeBlockIndex, e.target.value)
+                          }
+                        />
+                      </label>
+                    )}
                   </>
                 )}
 

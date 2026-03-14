@@ -182,6 +182,32 @@ function buildDataFromFields(
   return data;
 }
 
+function validateContentItemInput(
+  fields: AdminContentFieldDefinition[],
+  data: Record<string, unknown>,
+): string | null {
+  for (const field of fields) {
+    const value = data[field.key];
+    const hasValue =
+      value !== undefined &&
+      value !== null &&
+      (typeof value !== "string" || value.trim().length > 0) &&
+      (!Array.isArray(value) || value.length > 0);
+
+    if (field.required && !hasValue) {
+      return `${getFieldLabel(field)} is required.`;
+    }
+
+    if (field.type === "date" && typeof value === "string" && value.trim()) {
+      if (Number.isNaN(Date.parse(value))) {
+        return `${getFieldLabel(field)} must be a valid date.`;
+      }
+    }
+  }
+
+  return null;
+}
+
 function emptyDraft(contentType: AdminContentType): ContentItemDraft {
   const values = contentType.fields.reduce<Record<string, string>>(
     (acc, field) => {
@@ -828,6 +854,12 @@ export function ContentAdminClient({
     if (!selectedType) return;
     setError(null);
     setStatus(null);
+
+    const validationError = validateContentItemInput(selectedType.fields, payload.data);
+    if (validationError) {
+      setError(validationError);
+      return;
+    }
 
     const requestPayload = {
       contentTypeId: selectedType.id,
