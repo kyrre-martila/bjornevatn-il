@@ -98,16 +98,16 @@ const BLOCK_SCHEMAS: Record<AdminPageBlockType, BlockEditorSchema> = {
     ],
   },
   rich_text: {
-    sectionLabel: "Intro text section",
+    sectionLabel: "Body content section",
     sectionDescription: "Main paragraph content for this area of the page.",
     summaryField: "body",
     fields: [
       {
         key: "body",
-        label: "Intro text",
+        label: "Body copy",
         widget: "rich_text",
         required: true,
-        placeholder: "Add page copy here",
+        placeholder: "Write clear, scannable copy for visitors",
       },
     ],
   },
@@ -118,16 +118,16 @@ const BLOCK_SCHEMAS: Record<AdminPageBlockType, BlockEditorSchema> = {
     fields: [
       {
         key: "src",
-        label: "Section image",
+        label: "Image",
         widget: "image",
         required: true,
-        description: "Use media library to avoid copy/paste errors.",
+        description: "Use media library to avoid copy/paste errors and keep metadata in sync.",
       },
       {
         key: "alt",
-        label: "Image description (alt text)",
+        label: "Image alt text",
         widget: "text",
-        placeholder: "Describe the image for accessibility",
+        placeholder: "Describe the image context for someone who cannot see it",
       },
       {
         key: "width",
@@ -164,7 +164,7 @@ const BLOCK_SCHEMAS: Record<AdminPageBlockType, BlockEditorSchema> = {
       },
       {
         key: "href",
-        label: "CTA link",
+        label: "CTA link URL",
         widget: "text",
         placeholder: "/contact",
       },
@@ -707,7 +707,7 @@ export function PageEditorClient({
 
       <form className="page-editor__form" onSubmit={savePage}>
         <label>
-          Title
+          Page title
           <input
             value={title}
             onChange={(e) => setTitle(e.target.value)}
@@ -716,7 +716,7 @@ export function PageEditorClient({
         </label>
 
         <label>
-          Slug
+          Page URL slug
           <input
             value={slug}
             onChange={(e) => setSlug(normalizeSlug(e.target.value))}
@@ -724,6 +724,9 @@ export function PageEditorClient({
           />
           <small className="page-editor__field-help">
             URL preview: /page/{normalizeSlug(slug) || "your-page"}
+          </small>
+          <small className="page-editor__field-help">
+            Changing a published slug may require a redirect from the old URL.
           </small>
         </label>
 
@@ -733,28 +736,36 @@ export function PageEditorClient({
             checked={published}
             onChange={(e) => setPublished(e.target.checked)}
           />
-          Published
+          Visible to visitors
         </label>
 
         <fieldset className="page-editor__seo">
-          <legend>SEO</legend>
+          <legend>SEO and social sharing</legend>
           <label>
-            SEO Title
+            SEO title
             <input
               value={seoTitle}
               onChange={(e) => setSeoTitle(e.target.value)}
+              placeholder="Leave blank to use the page title"
             />
+            <small className="page-editor__field-help">
+              Aim for about 50–60 characters.
+            </small>
           </label>
           <label>
-            SEO Description
+            SEO description
             <textarea
               rows={3}
               value={seoDescription}
               onChange={(e) => setSeoDescription(e.target.value)}
+              placeholder="Summarize this page in one compelling sentence"
             />
+            <small className="page-editor__field-help">
+              Aim for about 140–160 characters.
+            </small>
           </label>
           <label>
-            SEO Image
+            SEO image URL
             <input
               value={seoImage}
               onChange={(e) => setSeoImage(e.target.value)}
@@ -775,7 +786,7 @@ export function PageEditorClient({
               checked={noIndex}
               onChange={(e) => setNoIndex(e.target.checked)}
             />
-            Noindex
+            Hide from search engines (noindex)
           </label>
         </fieldset>
 
@@ -884,7 +895,7 @@ export function PageEditorClient({
 
                 {activeBlockData && (
                   <fieldset className="page-editor__guided-fields">
-                    <legend>Guided fields</legend>
+                    <legend>Guided section fields</legend>
                     {getVisibleFields(activeBlock.type).map((field) => {
                       const value = activeBlockData[field.key];
                       const normalizedValue = getFieldValueAsString(value);
@@ -1006,7 +1017,7 @@ export function PageEditorClient({
                 {(activeBlock.type === "image" ||
                   activeBlock.type === "hero") && (
                   <label>
-                    Select media
+                    Select media from library
                     <select
                       defaultValue=""
                       onChange={(e) =>
@@ -1020,6 +1031,7 @@ export function PageEditorClient({
                         </option>
                       ))}
                     </select>
+                    <small className="page-editor__field-help">Choose media with descriptive alt text already filled in.</small>
                   </label>
                 )}
               </div>

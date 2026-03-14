@@ -17,6 +17,7 @@ export type AdminContentFieldDefinition = {
   label?: string;
   description?: string;
   placeholder?: string;
+  helpText?: string;
   type: AdminContentFieldType;
   required: boolean;
   relation?: {

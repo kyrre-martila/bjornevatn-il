@@ -93,6 +93,7 @@ export type ContentFieldDefinition = {
   label?: string;
   description?: string;
   placeholder?: string;
+  helpText?: string;
   type: ContentFieldType;
   required: boolean;
   relation?: ContentFieldRelationConfig;

@@ -105,8 +105,17 @@ function describeApiError(fallback: string, payload: unknown): string {
   return fallback;
 }
 
+function humanizeFieldKey(key: string): string {
+  return key
+    .replace(/[_-]+/g, " ")
+    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+    .trim()
+    .replace(/\s+/g, " ")
+    .replace(/^./, (match) => match.toUpperCase());
+}
+
 function getFieldLabel(field: AdminContentFieldDefinition) {
-  return field.label?.trim() || field.key;
+  return field.label?.trim() || humanizeFieldKey(field.key) || "Field";
 }
 
 function fieldTypeInputType(type: AdminContentFieldDefinition["type"]) {
@@ -320,6 +329,7 @@ function emptyFieldDefinition(): AdminContentFieldDefinition {
     label: "",
     description: "",
     placeholder: "",
+    helpText: "",
     type: "text",
     required: false,
   };
@@ -368,6 +378,14 @@ function FieldDefinitionEditor({
           value={field.placeholder ?? ""}
           onChange={(e) => onChange({ ...field, placeholder: e.target.value })}
           placeholder="Optional hint inside the input"
+        />
+      </label>
+      <label>
+        Extra editorial guidance
+        <input
+          value={field.helpText ?? ""}
+          onChange={(e) => onChange({ ...field, helpText: e.target.value })}
+          placeholder="Optional guidance for how this field should be written"
         />
       </label>
       <label>
@@ -724,23 +742,31 @@ function ContentItemEditor({
           placeholder="about-us"
           required
         />
+        <small>
+          Changing a published slug can break existing links unless a redirect is created.
+        </small>
       </label>
       <label>
-        Published
+        Visible to visitors
         <input
           type="checkbox"
           checked={published}
           onChange={(e) => setPublished(e.target.checked)}
         />
+        <small>
+          Turn this on only when the content is ready. Draft entries stay hidden from public pages.
+        </small>
       </label>
       <fieldset className="page-editor__seo">
-        <legend>Search appearance</legend>
+        <legend>Search appearance (SEO)</legend>
         <label>
           Search title
           <input
             value={seoTitle}
             onChange={(e) => setSeoTitle(e.target.value)}
+            placeholder="Leave blank to use the entry title"
           />
+          <small>Recommended: around 50–60 characters for search listings.</small>
         </label>
         <label>
           Search summary
@@ -748,7 +774,9 @@ function ContentItemEditor({
             rows={3}
             value={seoDescription}
             onChange={(e) => setSeoDescription(e.target.value)}
+            placeholder="One clear sentence that explains this page"
           />
+          <small>Recommended: around 140–160 characters.</small>
         </label>
       </fieldset>
       {contentType.fields.length > 0 ? (
@@ -756,6 +784,7 @@ function ContentItemEditor({
           <label key={field.key}>
             {getFieldLabel(field)}
             {field.description ? <small>{field.description}</small> : null}
+            {field.helpText ? <small>{field.helpText}</small> : null}
             <ContentFieldInput
               field={field}
               value={values[field.key] ?? ""}
@@ -1451,6 +1480,7 @@ export function ContentAdminClient({
             <label>
               Title
               <input
+                placeholder="Internal title editors will recognize"
                 value={createDraft.title}
                 onChange={(e) =>
                   setCreateDrafts((curr) => ({
@@ -1467,6 +1497,7 @@ export function ContentAdminClient({
             <label>
               Web address (slug)
               <input
+                placeholder="about-us"
                 value={createDraft.slug}
                 onChange={(e) =>
                   setCreateDrafts((curr) => ({
@@ -1477,10 +1508,14 @@ export function ContentAdminClient({
                 required
               />
             </label>
+            <small>
+              If you change a slug after publishing, remember to configure a redirect from the old URL.
+            </small>
             {selectedType.fields.map((field) => (
               <label key={field.key}>
                 {getFieldLabel(field)}
                 {field.description ? <small>{field.description}</small> : null}
+                {field.helpText ? <small>{field.helpText}</small> : null}
                 <ContentFieldInput
                   field={field}
                   value={createDraft.values[field.key] ?? ""}

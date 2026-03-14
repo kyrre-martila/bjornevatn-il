@@ -280,6 +280,12 @@ class ContentFieldDefinitionDto {
   @IsNotEmpty()
   placeholder?: string;
 
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  @IsNotEmpty()
+  helpText?: string;
+
   @ApiProperty({ enum: CONTENT_FIELD_TYPES })
   @IsString()
   @IsIn(CONTENT_FIELD_TYPES)
