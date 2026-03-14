@@ -1,12 +1,13 @@
 import Link from "next/link";
 import { listAdminPages } from "../../../../lib/admin/pages";
 import { getMe } from "../../../../lib/me";
-import { hasMinimumRole } from "../../../../lib/rbac";
+import { canEditSlug } from "../../../../lib/roles";
 
 export default async function AdminPagesListPage() {
   const me = await getMe();
-  const canCreateDeletePages = hasMinimumRole(me?.user?.role, "admin");
-  const canEditPages = hasMinimumRole(me?.user?.role, "editor");
+  const role = me?.user?.role;
+  const canCreateDeletePages = canEditSlug(role);
+  const canEditPages = Boolean(role);
   const pages = await listAdminPages();
   const publishedCount = pages.filter((page) => page.published).length;
 

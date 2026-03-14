@@ -2,7 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import { PageEditorClient } from "../PageEditorClient";
 import { getAdminPage } from "../../../../../lib/admin/pages";
 import { getMe } from "../../../../../lib/me";
-import { canAccessSchema, canEditSlug } from "../../../../../lib/feature-guards";
+import { canAccessSchema, canEditSlug } from "../../../../../lib/roles";
 import { hasMinimumRole } from "../../../../../lib/rbac";
 
 export default async function EditAdminPage({ params }: { params: { id: string } }) {
@@ -20,7 +20,7 @@ export default async function EditAdminPage({ params }: { params: { id: string }
   return (
     <PageEditorClient
       initialPage={page}
-      canManageStructure={hasMinimumRole(me?.user?.role, "admin")}
+      canManageStructure={canEditSlug(me?.user?.role)}
       canEditSlug={canEditSlug(me?.user?.role)}
       canEditRawJson={canAccessSchema(me?.user?.role)}
     />

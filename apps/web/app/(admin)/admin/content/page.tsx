@@ -1,5 +1,9 @@
 import { getMe } from "../../../../lib/me";
-import { canAccessSchema, canEditRelations, canEditSlug } from "../../../../lib/feature-guards";
+import {
+  canAccessSchema,
+  canEditSlug,
+  canManageTaxonomies,
+} from "../../../../lib/roles";
 import { hasMinimumRole } from "../../../../lib/rbac";
 import { ContentAdminClient } from "./ContentAdminClient";
 import {
@@ -40,7 +44,7 @@ export default async function AdminContentPage({
       initialGroupedItems={groupedItems}
       canUseMediaLibrary={canUseMediaLibrary}
       canEditSlug={canEditSlug(role)}
-      canEditRelations={canEditRelations(role)}
+      canEditRelations={canManageTaxonomies(role)}
       initialSelectedTypeSlug={initialSelectedTypeSlug}
     />
   );

@@ -3,19 +3,24 @@ import { redirect } from "next/navigation";
 
 import { AppShell } from "../../AppShell";
 import { getMe } from "../../../lib/me";
-import { canAccessSchema, canManageUsers } from "../../../lib/feature-guards";
+import {
+  canAccessDeveloperTools,
+  canAccessSchema,
+  canManageTaxonomies,
+  canManageUsers,
+} from "../../../lib/roles";
 import { hasMinimumRole } from "../../../lib/rbac";
 
 const adminNavItems = [
   { href: "/admin/pages", label: "Pages", visible: () => true },
   { href: "/admin/content", label: "Content", visible: () => true },
   { href: "/admin/media", label: "Media", visible: () => true },
-  { href: "/admin/navigation", label: "Taxonomies", visible: canManageUsers },
+  { href: "/admin/navigation", label: "Taxonomies", visible: canManageTaxonomies },
   { href: "/admin/users", label: "Users", visible: canManageUsers },
   { href: "/admin/settings", label: "Site settings", visible: canManageUsers },
   { href: "/admin/content", label: "Content models", visible: canAccessSchema },
   { href: "/admin/system", label: "System", visible: canAccessSchema },
-  { href: "/admin/staging", label: "Developer tools", visible: canAccessSchema },
+  { href: "/admin/staging", label: "Developer tools", visible: canAccessDeveloperTools },
 ] as const;
 
 export default async function AdminLayout({

@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 
-import { canManageUsers } from "../../../../lib/feature-guards";
+import { canManageUsers } from "../../../../lib/roles";
 import { getMe } from "../../../../lib/me";
 
 export default async function AdminUsersPage() {

@@ -2,7 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { getMe } from "../../../../lib/me";
-import { hasRole } from "../../../../lib/rbac";
+import { canAccessSchema } from "../../../../lib/roles";
 
 const SYSTEM_LINKS = [
   {
@@ -26,7 +26,7 @@ const SYSTEM_LINKS = [
 export default async function AdminSystemPage() {
   const me = await getMe();
 
-  if (!hasRole(me?.user?.role, "super_admin")) {
+  if (!canAccessSchema(me?.user?.role)) {
     redirect("/access-denied");
   }
 
