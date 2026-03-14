@@ -11,7 +11,8 @@ export default async function AdminMediaPage() {
     redirect("/access-denied");
   }
 
-  const media = await listAdminMedia();
+  const pageSize = 50;
+  const media = await listAdminMedia({ limit: pageSize, offset: 0 });
 
-  return <MediaManagerClient initialMedia={media} />;
+  return <MediaManagerClient initialMedia={media} pageSize={pageSize} />;
 }

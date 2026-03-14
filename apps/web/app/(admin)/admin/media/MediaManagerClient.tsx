@@ -5,20 +5,55 @@ import type { AdminMedia } from "../../../../lib/admin/media";
 
 export function MediaManagerClient({
   initialMedia,
+  pageSize,
 }: {
   initialMedia: AdminMedia[];
+  pageSize: number;
 }) {
   const [media, setMedia] = React.useState(initialMedia);
+  const [loadingMore, setLoadingMore] = React.useState(false);
+  const [hasMore, setHasMore] = React.useState(initialMedia.length >= pageSize);
   const [uploading, setUploading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
   async function refresh() {
-    const res = await fetch("/api/admin/media", { cache: "no-store" });
+    const res = await fetch(`/api/admin/media?offset=0&limit=${pageSize}`, { cache: "no-store" });
     if (!res.ok) {
       throw new Error("Failed to refresh media");
     }
 
-    setMedia((await res.json()) as AdminMedia[]);
+    const next = (await res.json()) as AdminMedia[];
+    setMedia(next);
+    setHasMore(next.length >= pageSize);
+  }
+
+  async function loadMore() {
+    setLoadingMore(true);
+    setError(null);
+
+    try {
+      const res = await fetch(
+        `/api/admin/media?offset=${media.length}&limit=${pageSize}`,
+        { cache: "no-store" },
+      );
+
+      if (!res.ok) {
+        throw new Error("Failed to load more media");
+      }
+
+      const nextBatch = (await res.json()) as AdminMedia[];
+      if (nextBatch.length === 0) {
+        setHasMore(false);
+        return;
+      }
+
+      setMedia((current) => [...current, ...nextBatch]);
+      setHasMore(nextBatch.length >= pageSize);
+    } catch {
+      setError("Unable to load more media.");
+    } finally {
+      setLoadingMore(false);
+    }
   }
 
   async function onUpload(event: React.FormEvent<HTMLFormElement>) {
@@ -165,6 +200,12 @@ export function MediaManagerClient({
           </article>
         ))}
       </div>
+
+      {hasMore ? (
+        <button type="button" onClick={() => void loadMore()} disabled={loadingMore}>
+          {loadingMore ? "Loading..." : "Load more"}
+        </button>
+      ) : null}
     </section>
   );
 }

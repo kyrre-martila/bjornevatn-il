@@ -110,8 +110,12 @@ export class MediaService {
     return normalized;
   }
 
-  async list(): Promise<Media[]> {
-    return this.mediaRepository.findMany();
+  async list(pagination?: { offset?: number; limit?: number }): Promise<Media[]> {
+    return this.mediaRepository.findMany(pagination);
+  }
+
+  async findById(mediaId: string): Promise<Media | null> {
+    return this.mediaRepository.findById(mediaId);
   }
 
   async update(mediaId: string, data: { alt?: string }): Promise<Media> {

@@ -17,6 +17,7 @@ import { TaxonomiesAdminController } from "./taxonomies-admin.controller";
 import { LocalFileStorageProvider } from "./local-file-storage.provider";
 import { MediaController } from "./media.controller";
 import { MediaService } from "./media.service";
+import { MediaUsageService } from "./media-usage.service";
 import { AuthModule } from "../auth/auth.module";
 import {
   MEDIA_UPLOAD_SCANNER,
@@ -88,6 +89,7 @@ import { resolveMediaStorageProvider } from "./media-storage-provider.config";
       useClass: NoopMediaUploadScanner,
     },
     MediaService,
+    MediaUsageService,
   ],
 })
 export class ContentModule {}

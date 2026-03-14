@@ -222,6 +222,27 @@ type ApiSlugRedirect = {
   permanent?: boolean;
 };
 
+type ApiSitemapPayload = {
+  pages?: Array<{
+    slug: string;
+    canonicalUrl: string | null;
+    updatedAt: string;
+    noIndex: boolean;
+  }>;
+  contentItems?: Array<{
+    contentTypeSlug: string;
+    slug: string;
+    canonicalUrl: string | null;
+    updatedAt: string;
+    noIndex: boolean;
+  }>;
+};
+
+const getCachedSitemapPayload = cache(async (): Promise<ApiSitemapPayload> => {
+  const payload = await fetchContent<ApiSitemapPayload>("/public/content/sitemap");
+  return payload ?? {};
+});
+
 export type ResolvedRedirect = {
   target: string;
   permanent: boolean;
@@ -288,7 +309,6 @@ export type SiteConfiguration = {
 };
 
 const DEFAULT_ARCHIVE_PAGE_SIZE = 100;
-const DEFAULT_SITEMAP_PAGE_SIZE = 200;
 const DEFAULT_FEATURED_CONTENT_TYPE_SLUG =
   process.env.NEXT_PUBLIC_FEATURED_CONTENT_TYPE_SLUG?.trim() || "";
 
@@ -371,44 +391,6 @@ async function fetchAllContentItemsByTypeSlug(
   return items;
 }
 
-async function fetchAllSitemapPages(
-  pageSize: number,
-): Promise<SitemapPageEntry[]> {
-  const pages: SitemapPageEntry[] = [];
-  let offset = 0;
-
-  while (true) {
-    const batch = await fetchContent<
-      Array<{
-        slug: string;
-        canonicalUrl: string | null;
-        updatedAt: string;
-        noIndex: boolean;
-      }>
-    >(`/public/content/pages?offset=${offset}&limit=${pageSize}`);
-
-    if (!batch || batch.length === 0) {
-      break;
-    }
-
-    pages.push(
-      ...batch.map((page) => ({
-        slug: page.slug,
-        canonicalUrl: page.canonicalUrl ?? null,
-        updatedAt: page.updatedAt,
-        noIndex: Boolean(page.noIndex),
-      })),
-    );
-
-    if (batch.length < pageSize) {
-      break;
-    }
-
-    offset += batch.length;
-  }
-
-  return pages;
-}
 
 function mapApiPageBlock(block: ApiPageBlock): ContentBlock | null {
   if (!isContentBlockType(block.type)) {
@@ -878,9 +860,10 @@ export async function resolveServiceBySlug(slug: string): Promise<{
   const tree = services ?? [];
   const allServices = flattenServiceTree(tree);
   const relatedIds = item.relatedItemIds;
+  const serviceById = new Map(allServices.map((entry) => [entry.id, entry]));
 
   const relatedServices = relatedIds
-    .map((id) => allServices.find((entry) => entry.id === id))
+    .map((id) => serviceById.get(id))
     .filter((entry): entry is ApiContentItemTree => Boolean(entry))
     .map((entry) => ({ slug: entry.slug, title: entry.title }));
 
@@ -1063,7 +1046,15 @@ type SitemapContentItemEntry = {
 };
 
 export async function getSitemapPages(): Promise<SitemapPageEntry[]> {
-  return fetchAllSitemapPages(DEFAULT_SITEMAP_PAGE_SIZE);
+  const payload = await getCachedSitemapPayload();
+  const pages = Array.isArray(payload.pages) ? payload.pages : [];
+
+  return pages.map((page) => ({
+    slug: page.slug,
+    canonicalUrl: page.canonicalUrl ?? null,
+    updatedAt: page.updatedAt,
+    noIndex: Boolean(page.noIndex),
+  }));
 }
 
 function normalizePathSegment(value: string): string {
@@ -1118,27 +1109,17 @@ export function sanitizeInternalRedirectTarget(target: string): string | null {
 export async function getSitemapContentItems(): Promise<
   SitemapContentItemEntry[]
 > {
-  const types = await getPublicContentTypes();
+  const payload = await getCachedSitemapPayload();
+  const items = Array.isArray(payload.contentItems) ? payload.contentItems : [];
 
-  const allItems = await Promise.all(
-    types.map(async (type) => {
-      const items = await fetchAllContentItemsByTypeSlug(
-        type.slug,
-        DEFAULT_SITEMAP_PAGE_SIZE,
-      );
-
-      return items.map((item) => ({
-        contentTypeSlug: type.slug,
-        slug: item.slug,
-        canonicalUrl: item.canonicalUrl ?? null,
-        updatedAt: item.updatedAt,
-        noIndex: Boolean(item.noIndex),
-      }));
-    }),
-  );
-
-  return allItems
-    .flat()
+  return items
+    .map((item) => ({
+      contentTypeSlug: item.contentTypeSlug,
+      slug: item.slug,
+      canonicalUrl: item.canonicalUrl ?? null,
+      updatedAt: item.updatedAt,
+      noIndex: Boolean(item.noIndex),
+    }))
     .filter((item) =>
       Boolean(
         item.canonicalUrl?.trim() ||

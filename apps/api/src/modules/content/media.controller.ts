@@ -4,23 +4,20 @@ import {
   Controller,
   Delete,
   Get,
-  Inject,
   Param,
   Patch,
+  Query,
   Post,
   Req,
   UploadedFile,
   UseInterceptors,
 } from "@nestjs/common";
 import { ApiBody, ApiConsumes, ApiProperty, ApiTags } from "@nestjs/swagger";
-import { IsOptional, IsString } from "class-validator";
+import { Type } from "class-transformer";
+import { IsInt, IsOptional, IsString, Max, Min } from "class-validator";
 import { FileInterceptor } from "@nestjs/platform-express";
-import type {
-  ContentItemsRepository,
-  ContentTypesRepository,
-  PagesRepository,
-} from "@org/domain";
 import { MediaService } from "./media.service";
+import { MediaUsageService } from "./media-usage.service";
 import { AuthService } from "../auth/auth.service";
 import { requireMinimumRole } from "../../common/auth/admin-access";
 import type { Request } from "express";
@@ -36,6 +33,23 @@ class UploadMediaDto {
   alt!: string;
 }
 
+class ListMediaQueryDto {
+  @ApiProperty({ required: false, minimum: 0 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  offset?: number;
+
+  @ApiProperty({ required: false, minimum: 1, maximum: 200 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(200)
+  limit?: number;
+}
+
 class UpdateMediaDto {
   @ApiProperty({ required: false })
   @IsOptional()
@@ -48,22 +62,20 @@ class UpdateMediaDto {
 export class MediaController {
   constructor(
     private readonly mediaService: MediaService,
-    @Inject("PagesRepository")
-    private readonly pages: PagesRepository,
-    @Inject("ContentTypesRepository")
-    private readonly contentTypes: ContentTypesRepository,
-    @Inject("ContentItemsRepository")
-    private readonly contentItems: ContentItemsRepository,
+    private readonly mediaUsageService: MediaUsageService,
     private readonly auth: AuthService,
   ) {}
 
   @Get()
-  async listMedia(@Req() req: Request) {
+  async listMedia(@Req() req: Request, @Query() query: ListMediaQueryDto) {
     await requireMinimumRole(req, this.auth, "editor");
-    const [media, usedUrls] = await Promise.all([
-      this.mediaService.list(),
-      this.getUsedMediaUrls(),
-    ]);
+    const media = await this.mediaService.list({
+      offset: query.offset,
+      limit: query.limit,
+    });
+    const usedUrls = await this.mediaUsageService.getUsedUrls(
+      media.map((item) => item.url),
+    );
 
     return media.map((item) => ({
       ...item,
@@ -135,14 +147,12 @@ export class MediaController {
     const nextAlt = body.alt === undefined ? undefined : body.alt.trim();
 
     if (nextAlt !== undefined && !nextAlt) {
-      const media = await this.mediaService.list();
-      const existing = media.find((entry) => entry.id === id);
+      const existing = await this.mediaService.findById(id);
       if (!existing) {
         throw new BadRequestException("Media item not found.");
       }
 
-      const usedUrls = await this.getUsedMediaUrls();
-      if (usedUrls.has(existing.url)) {
+      if (await this.mediaUsageService.isMediaUrlUsed(existing.url)) {
         throw new BadRequestException(
           "Alt text is required for media used in page blocks or content items.",
         );
@@ -152,50 +162,4 @@ export class MediaController {
     return this.mediaService.update(id, { alt: nextAlt });
   }
 
-  private async getUsedMediaUrls(): Promise<Set<string>> {
-    const urls = new Set<string>();
-
-    const pages = await this.pages.findMany();
-    for (const page of pages) {
-      for (const block of page.blocks) {
-        if (block.type === "image") {
-          const src = block.data.src;
-          if (typeof src === "string" && src.trim()) {
-            urls.add(src.trim());
-          }
-        }
-
-        if (block.type === "hero") {
-          const imageUrl = block.data.imageUrl;
-          if (typeof imageUrl === "string" && imageUrl.trim()) {
-            urls.add(imageUrl.trim());
-          }
-        }
-      }
-    }
-
-    const contentTypes = await this.contentTypes.findMany();
-    for (const contentType of contentTypes) {
-      const imageFields = contentType.fields.filter(
-        (field: { type: string }) => field.type === "image",
-      );
-      if (imageFields.length === 0) {
-        continue;
-      }
-
-      const items = await this.contentItems.findManyByContentTypeId(
-        contentType.id,
-      );
-      for (const item of items) {
-        for (const field of imageFields) {
-          const value = item.data[field.key];
-          if (typeof value === "string" && value.trim()) {
-            urls.add(value.trim());
-          }
-        }
-      }
-    }
-
-    return urls;
-  }
 }

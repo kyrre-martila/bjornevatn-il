@@ -43,21 +43,13 @@ import type {
   ContentItemTreeNode,
 } from "@org/domain";
 import { MediaService } from "./media.service";
+import { MediaUsageService } from "./media-usage.service";
 import { AuthService } from "../auth/auth.service";
 import {
   requireMinimumRole,
   requireSuperAdmin,
 } from "../../common/auth/admin-access";
 import type { Request } from "express";
-
-type MediaUsageContext =
-  | { kind: "page"; pageTitle: string; blockIndex: number; blockType: string }
-  | {
-      kind: "content";
-      contentType: string;
-      itemTitle: string;
-      fieldKey: string;
-    };
 
 const PAGE_BLOCK_TYPES = [
   "hero",
@@ -70,6 +62,10 @@ const PAGE_BLOCK_TYPES = [
 const ROUTE_SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const ROUTE_SLUG_VALIDATION_MESSAGE =
   "Slug must contain lowercase letters, numbers, and hyphens only.";
+
+function normalizeSlug(value: string): string {
+  return value.trim().toLowerCase();
+}
 
 class PageBlockInputDto {
   @ApiProperty({ enum: PAGE_BLOCK_TYPES })
@@ -711,6 +707,7 @@ export class ContentController {
     @Inject("MediaRepository")
     private readonly media: MediaRepository,
     private readonly mediaService: MediaService,
+    private readonly mediaUsageService: MediaUsageService,
     private readonly auth: AuthService,
   ) {}
 
@@ -1169,84 +1166,6 @@ export class ContentController {
     }
   }
 
-  private async getReferencedMediaUsage(): Promise<
-    Map<string, MediaUsageContext[]>
-  > {
-    const usage = new Map<string, MediaUsageContext[]>();
-
-    const pages = await this.pages.findMany();
-    for (const page of pages) {
-      for (const [index, block] of page.blocks.entries()) {
-        const urls = this.extractPageBlockMediaUrls({
-          type: block.type,
-          data: block.data,
-        });
-
-        for (const url of urls) {
-          const entries = usage.get(url) ?? [];
-          entries.push({
-            kind: "page",
-            pageTitle: page.title,
-            blockIndex: index + 1,
-            blockType: block.type,
-          });
-          usage.set(url, entries);
-        }
-      }
-    }
-
-    const contentTypes = await this.contentTypes.findMany();
-    const contentTypeImageFieldKeys = new Map<string, string[]>();
-
-    for (const contentType of contentTypes) {
-      const imageFieldKeys = contentType.fields
-        .filter((field: ContentFieldDefinition) => field.type === "image")
-        .map((field: ContentFieldDefinition) => field.key);
-
-      if (imageFieldKeys.length > 0) {
-        contentTypeImageFieldKeys.set(contentType.id, imageFieldKeys);
-      }
-    }
-
-    if (!contentTypeImageFieldKeys.size) {
-      return usage;
-    }
-
-    const items = await this.contentItems.findMany();
-    const contentTypeNameById = new Map(
-      contentTypes.map((contentType) => [contentType.id, contentType.name]),
-    );
-
-    for (const item of items) {
-      const imageFields = contentTypeImageFieldKeys.get(item.contentTypeId);
-      if (!imageFields || imageFields.length === 0) {
-        continue;
-      }
-
-      const contentTypeName = contentTypeNameById.get(item.contentTypeId);
-      if (!contentTypeName) {
-        continue;
-      }
-
-      for (const fieldKey of imageFields) {
-        const value = item.data[fieldKey];
-        if (typeof value !== "string" || !value.trim()) {
-          continue;
-        }
-
-        const entries = usage.get(value.trim()) ?? [];
-        entries.push({
-          kind: "content",
-          contentType: contentTypeName,
-          itemTitle: item.title,
-          fieldKey,
-        });
-        usage.set(value.trim(), entries);
-      }
-    }
-
-    return usage;
-  }
 
   private async validateMediaAltBeforeUpdate(
     mediaId: string,
@@ -1261,8 +1180,7 @@ export class ContentController {
       throw new BadRequestException("Media item not found.");
     }
 
-    const usage = await this.getReferencedMediaUsage();
-    if (!usage.has(mediaItem.url)) {
+    if (!(await this.mediaUsageService.isMediaUrlUsed(mediaItem.url))) {
       return;
     }
 
@@ -1755,14 +1673,17 @@ export class ContentController {
   @Get("media")
   async listMedia(@Req() req: Request, @Query() query: ListMediaQueryDto) {
     await requireMinimumRole(req, this.auth, "editor");
-    const [mediaItems, usage] = await Promise.all([
-      this.media.findMany({ offset: query.offset, limit: query.limit }),
-      this.getReferencedMediaUsage(),
-    ]);
+    const mediaItems = await this.media.findMany({
+      offset: query.offset,
+      limit: query.limit,
+    });
+    const usedUrls = await this.mediaUsageService.getUsedUrls(
+      mediaItems.map((item) => item.url),
+    );
 
     return mediaItems.map((item) => ({
       ...item,
-      isUsed: usage.has(item.url),
+      isUsed: usedUrls.has(item.url),
     }));
   }
 

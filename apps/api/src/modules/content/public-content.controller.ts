@@ -147,6 +147,22 @@ type PublicPageDto = {
   blocks: PublicPageBlockDto[];
 };
 
+type PublicSitemapEntryDto = {
+  pages: Array<{
+    slug: string;
+    canonicalUrl: string | null;
+    updatedAt: Date;
+    noIndex: boolean;
+  }>;
+  contentItems: Array<{
+    contentTypeSlug: string;
+    slug: string;
+    canonicalUrl: string | null;
+    updatedAt: Date;
+    noIndex: boolean;
+  }>;
+};
+
 class PublicSiteSettingDto {
   key!: string;
   value!: string;
@@ -205,6 +221,55 @@ export class PublicContentController {
     @Inject("ContentItemTermsRepository")
     private readonly contentItemTerms: ContentItemTermsRepository,
   ) {}
+
+  @Get("sitemap")
+  async getSitemapEntries(): Promise<PublicSitemapEntryDto> {
+    const [pages, types] = await Promise.all([
+      this.pages.findMany({ published: true }),
+      this.contentTypes.findManyPublic(),
+    ]);
+
+    const publicContentTypeById = new Map(
+      types.map((type) => [type.id, type.slug]),
+    );
+
+    const contentItems = (await this.contentItems.findMany({ published: true }))
+      .map((item) => {
+        const contentTypeSlug = publicContentTypeById.get(item.contentTypeId);
+        if (!contentTypeSlug) {
+          return null;
+        }
+
+        return {
+          contentTypeSlug,
+          slug: item.slug,
+          canonicalUrl: item.canonicalUrl,
+          updatedAt: item.updatedAt,
+          noIndex: item.noIndex,
+        };
+      })
+      .filter(
+        (
+          item,
+        ): item is {
+          contentTypeSlug: string;
+          slug: string;
+          canonicalUrl: string | null;
+          updatedAt: Date;
+          noIndex: boolean;
+        } => Boolean(item),
+      );
+
+    return {
+      pages: pages.map((page) => ({
+        slug: page.slug,
+        canonicalUrl: page.canonicalUrl,
+        updatedAt: page.updatedAt,
+        noIndex: page.noIndex,
+      })),
+      contentItems,
+    };
+  }
 
   @Get("pages")
   async listPages(
