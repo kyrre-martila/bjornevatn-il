@@ -10,13 +10,9 @@ const registrationEnabled =
 
 export default function RegisterPage() {
   const [form, setForm] = useState({
-    firstName: "",
-    lastName: "",
+    name: "",
     email: "",
-    phone: "",
-    birthDate: "",
     password: "",
-    acceptedTerms: false,
   });
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState<{
@@ -25,6 +21,32 @@ export default function RegisterPage() {
   } | null>(null);
   const { token: csrfToken, refresh: refreshCsrf } = useCsrfToken();
 
+  const parseErrorMessage = (raw: string) => {
+    if (!raw) {
+      return "Registration failed. Please try again.";
+    }
+
+    try {
+      const payload = JSON.parse(raw) as {
+        message?: string | string[];
+        error?: string;
+      };
+      if (Array.isArray(payload.message) && payload.message.length > 0) {
+        return payload.message.join(" ");
+      }
+      if (typeof payload.message === "string" && payload.message) {
+        return payload.message;
+      }
+      if (payload.error) {
+        return payload.error;
+      }
+    } catch {
+      // Fallback to plain text response.
+    }
+
+    return raw;
+  };
+
   const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
     const { name, value, type, checked } = event.target;
     setForm((f) => ({ ...f, [name]: type === "checkbox" ? checked : value }));
@@ -32,8 +54,29 @@ export default function RegisterPage() {
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    const trimmedName = form.name.trim();
+    const trimmedEmail = form.email.trim();
+
+    if (!trimmedEmail) {
+      setStatus({ tone: "error", message: "Email is required." });
+      return;
+    }
+
+    if (!form.password) {
+      setStatus({ tone: "error", message: "Password is required." });
+      return;
+    }
+
+    if (form.password.length < 8) {
+      setStatus({
+        tone: "error",
+        message: "Password must be at least 8 characters long.",
+      });
+      return;
+    }
+
     setLoading(true);
-    setStatus({ tone: "info", message: "Oppretter konto …" });
+    setStatus({ tone: "info", message: "Creating your account..." });
     try {
       if (!csrfToken) {
         await refreshCsrf();
@@ -42,26 +85,24 @@ export default function RegisterPage() {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
-          firstName: form.firstName.trim(),
-          lastName: form.lastName.trim(),
-          email: form.email.trim(),
-          phone: form.phone.trim(),
-          birthDate: form.birthDate || undefined,
+          ...(trimmedName ? { name: trimmedName } : {}),
+          email: trimmedEmail,
           password: form.password,
-          acceptedTerms: form.acceptedTerms,
         }),
       });
       if (res.ok) {
-        setStatus({ tone: "success", message: "Konto opprettet!" });
+        setStatus({ tone: "success", message: "Account created successfully." });
         window.location.href = "/admin/profile";
       } else {
         const err = await res.text();
-        setStatus({ tone: "error", message: `Feil: ${err}` });
+        setStatus({ tone: "error", message: parseErrorMessage(err) });
       }
     } catch (error: any) {
       setStatus({
         tone: "error",
-        message: `Feil: ${error?.message ?? "Ukjent feil"}`,
+        message: error?.message
+          ? `Request failed: ${error.message}`
+          : "Request failed due to an unknown error.",
       });
     } finally {
       setLoading(false);
@@ -74,13 +115,13 @@ export default function RegisterPage() {
         <div className="auth__visual-overlay">
           <p className="auth__tagline">Blueprint</p>
           <h2 className="auth__visual-title">
-            Klar til å bygge?
+            Ready to build?
             <br />
-            La oss komme i gang.
+            Let&apos;s get started.
           </h2>
           <p className="auth__visual-subtitle">
-            Registrer deg for å få tilgang til admin-grensesnittet, API-et og
-            alle andre deler av blueprinten.
+            Sign up to access the admin interface, API, and every part of the
+            blueprint.
           </p>
         </div>
       </div>
@@ -88,11 +129,10 @@ export default function RegisterPage() {
       <div className="auth__panel">
         <div className="auth__panel-inner">
           <header className="auth__header">
-            <p className="auth__eyebrow">Kom i gang</p>
-            <h1 className="auth__title">Opprett konto</h1>
+            <p className="auth__eyebrow">Get started</p>
+            <h1 className="auth__title">Create account</h1>
             <p className="auth__subtitle">
-              Fyll inn detaljene dine og bli klar til å bygge produkter med
-              Blueprint.
+              Enter your details to start building products with Blueprint.
             </p>
           </header>
 
@@ -114,36 +154,21 @@ export default function RegisterPage() {
           {registrationEnabled && (
             <form className="auth__form" onSubmit={submit} noValidate>
               <div className="auth__field">
-                <label className="auth__label" htmlFor="firstName">
-                  Fornavn
+                <label className="auth__label" htmlFor="name">
+                  Full name (optional)
                 </label>
                 <input
-                  id="firstName"
-                  name="firstName"
+                  id="name"
+                  name="name"
                   className="auth__input"
-                  value={form.firstName}
+                  value={form.name}
                   onChange={handleChange}
-                  required
-                />
-              </div>
-
-              <div className="auth__field">
-                <label className="auth__label" htmlFor="lastName">
-                  Etternavn
-                </label>
-                <input
-                  id="lastName"
-                  name="lastName"
-                  className="auth__input"
-                  value={form.lastName}
-                  onChange={handleChange}
-                  required
                 />
               </div>
 
               <div className="auth__field">
                 <label className="auth__label" htmlFor="email">
-                  E-post
+                  Email
                 </label>
                 <input
                   id="email"
@@ -152,42 +177,15 @@ export default function RegisterPage() {
                   className="auth__input"
                   value={form.email}
                   onChange={handleChange}
+                  placeholder="you@example.com"
                   autoComplete="email"
                   required
                 />
               </div>
 
               <div className="auth__field">
-                <label className="auth__label" htmlFor="phone">
-                  Telefon (valgfritt)
-                </label>
-                <input
-                  id="phone"
-                  name="phone"
-                  className="auth__input"
-                  value={form.phone}
-                  onChange={handleChange}
-                  autoComplete="tel"
-                />
-              </div>
-
-              <div className="auth__field">
-                <label className="auth__label" htmlFor="birthDate">
-                  Fødselsdato
-                </label>
-                <input
-                  id="birthDate"
-                  type="date"
-                  name="birthDate"
-                  className="auth__input"
-                  value={form.birthDate}
-                  onChange={handleChange}
-                />
-              </div>
-
-              <div className="auth__field">
                 <label className="auth__label" htmlFor="password">
-                  Passord (minst 8 tegn)
+                  Password (minimum 8 characters)
                 </label>
                 <input
                   id="password"
@@ -196,35 +194,22 @@ export default function RegisterPage() {
                   className="auth__input"
                   value={form.password}
                   onChange={handleChange}
+                  minLength={8}
                   autoComplete="new-password"
                   required
                 />
               </div>
 
-              <div className="auth__field auth__field--checkbox">
-                <label className="auth__checkbox-label" htmlFor="acceptedTerms">
-                  <input
-                    id="acceptedTerms"
-                    type="checkbox"
-                    name="acceptedTerms"
-                    checked={form.acceptedTerms}
-                    onChange={handleChange}
-                    required
-                  />
-                  <span>Jeg godtar vilkårene for bruk</span>
-                </label>
-              </div>
-
               <button type="submit" className="auth__submit" disabled={loading}>
-                {loading ? "Sender…" : "Opprett konto"}
+                {loading ? "Submitting..." : "Create account"}
               </button>
             </form>
           )}
 
           <p className="auth__footer-text">
-            Har du allerede en konto?{" "}
+            Already have an account?{" "}
             <a className="auth__link" href="/login">
-              Logg inn
+              Sign in
             </a>
           </p>
         </div>
