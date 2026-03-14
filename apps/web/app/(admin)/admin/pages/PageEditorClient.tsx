@@ -24,7 +24,6 @@ const BLOCK_TYPES: Array<{ value: AdminPageBlockType; label: string }> = [
   { value: "news_list", label: "News list" },
 ];
 
-
 type BlockFieldWidget =
   | "text"
   | "textarea"
@@ -146,7 +145,8 @@ const BLOCK_SCHEMAS: Record<AdminPageBlockType, BlockEditorSchema> = {
   },
   cta: {
     sectionLabel: "Call-to-action section",
-    sectionDescription: "Message and link that prompts visitors to take action.",
+    sectionDescription:
+      "Message and link that prompts visitors to take action.",
     summaryField: "buttonText",
     fields: [
       {
@@ -199,6 +199,28 @@ function normalizeSlug(value: string): string {
     .replace(/[^a-z0-9\s-]/g, "")
     .replace(/\s+/g, "-")
     .replace(/-+/g, "-");
+}
+
+function isValidSlug(value: string): boolean {
+  return /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(value);
+}
+
+function describeApiError(fallback: string, payload: unknown): string {
+  if (typeof payload === "string" && payload.trim()) {
+    return payload;
+  }
+
+  if (payload && typeof payload === "object") {
+    const error = payload as { message?: unknown; error?: unknown };
+    if (typeof error.message === "string" && error.message.trim()) {
+      return error.message;
+    }
+    if (typeof error.error === "string" && error.error.trim()) {
+      return error.error;
+    }
+  }
+
+  return fallback;
 }
 
 function toEditableBlocks(page: AdminPage | null): EditableBlock[] {
@@ -275,9 +297,8 @@ export function PageEditorClient({
   const [isSaving, setIsSaving] = React.useState(false);
   const [isDeleting, setIsDeleting] = React.useState(false);
   const [media, setMedia] = React.useState<AdminMedia[]>([]);
-  const [nextBlockType, setNextBlockType] = React.useState<AdminPageBlockType>(
-    "hero",
-  );
+  const [nextBlockType, setNextBlockType] =
+    React.useState<AdminPageBlockType>("hero");
 
   React.useEffect(() => {
     let active = true;
@@ -325,6 +346,14 @@ export function PageEditorClient({
   }
 
   function removeBlock(index: number) {
+    const confirmation = window.confirm(
+      "Remove this section from the page? This will discard the section content.",
+    );
+    if (!confirmation) {
+      setStatus("Section removal cancelled.");
+      return;
+    }
+
     setBlocks((current) => {
       const removed = current[index];
       const next = current.filter((_, idx) => idx !== index);
@@ -400,7 +429,11 @@ export function PageEditorClient({
   function updateBlockDataFromJson(index: number, value: string) {
     try {
       const parsed = JSON.parse(value) as unknown;
-      if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
+      if (
+        typeof parsed !== "object" ||
+        parsed === null ||
+        Array.isArray(parsed)
+      ) {
         setError("Advanced JSON must be an object.");
         return;
       }
@@ -420,6 +453,7 @@ export function PageEditorClient({
   function setBlockMedia(index: number, selectedMediaId: string) {
     const selected = media.find((item) => item.id === selectedMediaId);
     if (!selected) {
+      setError("Please choose a valid media item from the library list.");
       return;
     }
 
@@ -470,8 +504,13 @@ export function PageEditorClient({
     }
 
     if (!normalizedSlug) {
+      setError("Page web address is required before saving.");
+      return;
+    }
+
+    if (!isValidSlug(normalizedSlug)) {
       setError(
-        "Slug is required and can contain only letters, numbers, and hyphens.",
+        "Page web address can use only lowercase letters, numbers, and single hyphens.",
       );
       return;
     }
@@ -496,6 +535,17 @@ export function PageEditorClient({
       }
 
       const schema = getSchemaForBlock(block.type).fields;
+      if (block.type === "image") {
+        const altValue = getFieldValueAsString(block.data.alt).trim();
+        if (!altValue) {
+          setError(
+            `Block #${index + 1} (${getBlockTypeLabel(block.type)}): add image description (alt text) so all visitors can understand the image.`,
+          );
+          setActiveBlockId(block.id);
+          return;
+        }
+      }
+
       for (const field of schema) {
         const rawValue = block.data[field.key];
         const textValue =
@@ -513,7 +563,11 @@ export function PageEditorClient({
           return;
         }
 
-        if (field.widget === "date" && textValue && Number.isNaN(Date.parse(textValue))) {
+        if (
+          field.widget === "date" &&
+          textValue &&
+          Number.isNaN(Date.parse(textValue))
+        ) {
           setError(
             `Block #${index + 1} (${getBlockTypeLabel(block.type)}): ${field.label} must be a valid date.`,
           );
@@ -557,10 +611,11 @@ export function PageEditorClient({
 
       if (!res.ok) {
         const data = await res.json().catch(() => null);
-        const message =
-          (data && (data.message || data.error)) || "Unable to save page.";
         setError(
-          typeof message === "string" ? message : "Unable to save page.",
+          describeApiError(
+            "We could not save this page. Please review required fields, slug conflicts, and section details.",
+            data,
+          ),
         );
         return;
       }
@@ -610,10 +665,11 @@ export function PageEditorClient({
 
       if (!res.ok) {
         const data = await res.json().catch(() => null);
-        const message =
-          (data && (data.message || data.error)) || "Unable to delete page.";
         setError(
-          typeof message === "string" ? message : "Unable to delete page.",
+          describeApiError(
+            "We could not delete this page right now. Please try again.",
+            data,
+          ),
         );
         return;
       }
@@ -644,7 +700,8 @@ export function PageEditorClient({
         </Link>
         <h1>{initialPage ? "Edit page" : "Create page"}</h1>
         <p className="page-editor__help">
-          Use guided fields to edit what visitors see. Raw JSON is restricted to super admins as an advanced fallback.
+          Use guided fields to edit what visitors see. Raw JSON is restricted to
+          super admins as an advanced fallback.
         </p>
       </div>
 
@@ -777,7 +834,8 @@ export function PageEditorClient({
                         Section {index + 1} of {blocks.length}
                       </strong>
                       <small>
-                        {getSchemaForBlock(block.type).sectionLabel} · {getSectionSummary(block)}
+                        {getSchemaForBlock(block.type).sectionLabel} ·{" "}
+                        {getSectionSummary(block)}
                       </small>
                       <span>{isActive ? "Editing" : "Select"}</span>
                     </button>
@@ -817,7 +875,8 @@ export function PageEditorClient({
             {activeBlock && (
               <div className="page-editor__block-editor">
                 <h3>
-                  Editing section {activeBlockIndex + 1}: {getSchemaForBlock(activeBlock.type).sectionLabel}
+                  Editing section {activeBlockIndex + 1}:{" "}
+                  {getSchemaForBlock(activeBlock.type).sectionLabel}
                 </h3>
                 <p className="page-editor__field-help">
                   {getSchemaForBlock(activeBlock.type).sectionDescription}
@@ -833,14 +892,21 @@ export function PageEditorClient({
                         <label key={field.key}>
                           {field.label}
                           {field.description ? (
-                            <small className="page-editor__field-help">{field.description}</small>
+                            <small className="page-editor__field-help">
+                              {field.description}
+                            </small>
                           ) : null}
-                          {field.widget === "textarea" || field.widget === "rich_text" ? (
+                          {field.widget === "textarea" ||
+                          field.widget === "rich_text" ? (
                             <textarea
                               rows={field.widget === "rich_text" ? 6 : 3}
                               value={normalizedValue}
                               onChange={(e) =>
-                                updateBlockDataField(activeBlockIndex, field.key, e.target.value)
+                                updateBlockDataField(
+                                  activeBlockIndex,
+                                  field.key,
+                                  e.target.value,
+                                )
                               }
                               placeholder={field.placeholder}
                             />
@@ -862,7 +928,11 @@ export function PageEditorClient({
                             <select
                               value={normalizedValue}
                               onChange={(e) =>
-                                updateBlockDataField(activeBlockIndex, field.key, e.target.value)
+                                updateBlockDataField(
+                                  activeBlockIndex,
+                                  field.key,
+                                  e.target.value,
+                                )
                               }
                             >
                               <option value="">Select an option</option>
@@ -877,7 +947,11 @@ export function PageEditorClient({
                               type={field.widget === "date" ? "date" : "text"}
                               value={normalizedValue}
                               onChange={(e) =>
-                                updateBlockDataField(activeBlockIndex, field.key, e.target.value)
+                                updateBlockDataField(
+                                  activeBlockIndex,
+                                  field.key,
+                                  e.target.value,
+                                )
                               }
                               placeholder={field.placeholder}
                             />
@@ -918,7 +992,10 @@ export function PageEditorClient({
                           rows={14}
                           value={activeBlockJson}
                           onChange={(e) =>
-                            updateBlockDataFromJson(activeBlockIndex, e.target.value)
+                            updateBlockDataFromJson(
+                              activeBlockIndex,
+                              e.target.value,
+                            )
                           }
                         />
                       </label>

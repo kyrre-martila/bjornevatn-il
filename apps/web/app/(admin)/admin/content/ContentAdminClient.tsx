@@ -83,6 +83,28 @@ function normalizeSlug(value: string): string {
     .replace(/-+/g, "-");
 }
 
+function isValidSlug(value: string): boolean {
+  return /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(value);
+}
+
+function describeApiError(fallback: string, payload: unknown): string {
+  if (typeof payload === "string" && payload.trim()) {
+    return payload;
+  }
+
+  if (payload && typeof payload === "object") {
+    const error = payload as { message?: unknown; error?: unknown };
+    if (typeof error.message === "string" && error.message.trim()) {
+      return error.message;
+    }
+    if (typeof error.error === "string" && error.error.trim()) {
+      return error.error;
+    }
+  }
+
+  return fallback;
+}
+
 function getFieldLabel(field: AdminContentFieldDefinition) {
   return field.label?.trim() || field.key;
 }
@@ -203,6 +225,9 @@ function buildDataFromFields(
 function validateContentItemInput(
   fields: AdminContentFieldDefinition[],
   data: Record<string, unknown>,
+  getReferenceOptions: (
+    field: AdminContentFieldDefinition,
+  ) => ReferenceOption[],
 ): string | null {
   for (const field of fields) {
     const value = data[field.key];
@@ -213,12 +238,42 @@ function validateContentItemInput(
       (!Array.isArray(value) || value.length > 0);
 
     if (field.required && !hasValue) {
-      return `${getFieldLabel(field)} is required.`;
+      return `${getFieldLabel(field)} is required before saving.`;
     }
 
     if (field.type === "date" && typeof value === "string" && value.trim()) {
       if (Number.isNaN(Date.parse(value))) {
-        return `${getFieldLabel(field)} must be a valid date.`;
+        return `${getFieldLabel(field)} must be a real calendar date.`;
+      }
+    }
+
+    if (
+      field.type === "relation" ||
+      field.type === "media" ||
+      field.type === "contentItem" ||
+      field.type === "page"
+    ) {
+      const allowedValues = new Set(
+        getReferenceOptions(field).map((option) => option.id),
+      );
+      const relationValues = Array.isArray(value)
+        ? value.filter((entry): entry is string => typeof entry === "string")
+        : typeof value === "string" && value.trim()
+          ? [value.trim()]
+          : [];
+
+      if (relationValues.length > 0 && allowedValues.size === 0) {
+        return `${getFieldLabel(field)} cannot be saved yet because there are no selectable ${relationTargetTypeLabel(field)} records.`;
+      }
+
+      const invalidValue = relationValues.find(
+        (entry) => !allowedValues.has(entry),
+      );
+      if (invalidValue) {
+        if (field.type === "media") {
+          return `${getFieldLabel(field)} has an invalid media selection. Please choose an item from the media library list.`;
+        }
+        return `${getFieldLabel(field)} includes a relation that is no longer available. Please reselect from the current list.`;
       }
     }
   }
@@ -898,6 +953,18 @@ export function ContentAdminClient({
       fields: draft.fields,
     };
 
+    if (!payload.name) {
+      setError("Content model name is required before saving.");
+      return;
+    }
+
+    if (!payload.slug || !isValidSlug(payload.slug)) {
+      setError(
+        "Content model URL slug can use only lowercase letters, numbers, and single hyphens.",
+      );
+      return;
+    }
+
     const res = await fetch(
       draft.id
         ? `/api/admin/content-types/${draft.id}`
@@ -910,7 +977,13 @@ export function ContentAdminClient({
     );
 
     if (!res.ok) {
-      setError("Unable to save content type.");
+      const data = await res.json().catch(() => null);
+      setError(
+        describeApiError(
+          "We could not save this content model. Check required fields and slug conflicts, then try again.",
+          data,
+        ),
+      );
       return;
     }
 
@@ -938,14 +1011,26 @@ export function ContentAdminClient({
   }
 
   async function deleteContentType(id: string) {
+    const confirmation = window.prompt(
+      "To permanently delete this content model, type DELETE.",
+    );
+    if (confirmation !== "DELETE") {
+      setStatus("Delete cancelled. The content model is unchanged.");
+      return;
+    }
+
     setError(null);
     setStatus(null);
     const res = await fetch(`/api/admin/content-types/${id}`, {
       method: "DELETE",
     });
     if (!res.ok) {
+      const data = await res.json().catch(() => null);
       setError(
-        "Unable to delete content type. Delete all content items first.",
+        describeApiError(
+          "We could not delete this content model yet. Delete or move its entries first.",
+          data,
+        ),
       );
       return;
     }
@@ -976,9 +1061,23 @@ export function ContentAdminClient({
     setError(null);
     setStatus(null);
 
+    const trimmedTitle = payload.title.trim();
+    if (!trimmedTitle) {
+      setError("Entry title is required before saving.");
+      return;
+    }
+
+    if (!payload.slug || !isValidSlug(payload.slug)) {
+      setError(
+        "Entry slug can use only lowercase letters, numbers, and single hyphens.",
+      );
+      return;
+    }
+
     const validationError = validateContentItemInput(
       selectedType.fields,
       payload.data,
+      getReferenceOptions,
     );
     if (validationError) {
       setError(validationError);
@@ -988,6 +1087,7 @@ export function ContentAdminClient({
     const requestPayload = {
       contentTypeId: selectedType.id,
       ...payload,
+      title: trimmedTitle,
     };
 
     const res = await fetch(
@@ -1002,7 +1102,13 @@ export function ContentAdminClient({
     );
 
     if (!res.ok) {
-      setError("Unable to save content item.");
+      const data = await res.json().catch(() => null);
+      setError(
+        describeApiError(
+          "We could not save this entry. Please review highlighted fields and try again.",
+          data,
+        ),
+      );
       return;
     }
 
@@ -1018,13 +1124,28 @@ export function ContentAdminClient({
 
   async function deleteContentItem(id: string) {
     if (!selectedType) return;
+
+    const confirmation = window.prompt(
+      "To permanently delete this content entry, type DELETE.",
+    );
+    if (confirmation !== "DELETE") {
+      setStatus("Delete cancelled. The entry is unchanged.");
+      return;
+    }
+
     setError(null);
     setStatus(null);
     const res = await fetch(`/api/admin/content-items/${id}`, {
       method: "DELETE",
     });
     if (!res.ok) {
-      setError("Unable to delete content item.");
+      const data = await res.json().catch(() => null);
+      setError(
+        describeApiError(
+          "We could not delete this entry right now. Please try again.",
+          data,
+        ),
+      );
       return;
     }
 
@@ -1264,6 +1385,28 @@ export function ContentAdminClient({
               onClick={() => void saveContentType(newTypeDraft)}
             >
               Create content area
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                const confirmation = window.confirm(
+                  "Reset the new content area form? Unsaved changes will be lost.",
+                );
+                if (!confirmation) {
+                  return;
+                }
+                setNewTypeDraft({
+                  name: "",
+                  slug: "",
+                  description: "",
+                  isPublic: true,
+                  fields: [],
+                });
+                setStatus("New content area form reset.");
+                setError(null);
+              }}
+            >
+              Reset form
             </button>
           </article>
         </>
