@@ -62,6 +62,8 @@ const PAGE_BLOCK_TYPES = [
 const ROUTE_SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const ROUTE_SLUG_VALIDATION_MESSAGE =
   "Slug must contain lowercase letters, numbers, and hyphens only.";
+const DEFAULT_LIST_LIMIT = 50;
+const MAX_LIST_LIMIT = 200;
 
 function normalizeSlug(value: string): string {
   return value.trim().toLowerCase();
@@ -491,7 +493,6 @@ class UpdateContentItemDto {
   published?: boolean;
 }
 
-
 class AdminListQueryDto {
   @ApiProperty({ required: false, minimum: 0 })
   @IsOptional()
@@ -500,13 +501,23 @@ class AdminListQueryDto {
   @Min(0)
   offset?: number;
 
-  @ApiProperty({ required: false, minimum: 1, maximum: 500 })
+  @ApiProperty({
+    required: false,
+    minimum: 1,
+    maximum: MAX_LIST_LIMIT,
+    default: DEFAULT_LIST_LIMIT,
+  })
   @IsOptional()
   @Type(() => Number)
   @IsInt()
   @Min(1)
-  @Max(500)
+  @Max(MAX_LIST_LIMIT)
   limit?: number;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  cursor?: string;
 }
 
 class ListContentItemsQueryDto {
@@ -523,13 +534,23 @@ class ListContentItemsQueryDto {
   @Min(0)
   offset?: number;
 
-  @ApiProperty({ required: false, minimum: 1, maximum: 500 })
+  @ApiProperty({
+    required: false,
+    minimum: 1,
+    maximum: MAX_LIST_LIMIT,
+    default: DEFAULT_LIST_LIMIT,
+  })
   @IsOptional()
   @Type(() => Number)
   @IsNumber()
   @Min(1)
-  @Max(500)
+  @Max(MAX_LIST_LIMIT)
   limit?: number;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  cursor?: string;
 }
 
 class ListMediaQueryDto {
@@ -540,13 +561,23 @@ class ListMediaQueryDto {
   @Min(0)
   offset?: number;
 
-  @ApiProperty({ required: false, minimum: 1, maximum: 500 })
+  @ApiProperty({
+    required: false,
+    minimum: 1,
+    maximum: MAX_LIST_LIMIT,
+    default: DEFAULT_LIST_LIMIT,
+  })
   @IsOptional()
   @Type(() => Number)
   @IsNumber()
   @Min(1)
-  @Max(500)
+  @Max(MAX_LIST_LIMIT)
   limit?: number;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  cursor?: string;
 }
 
 class CreateNavigationItemDto {
@@ -712,12 +743,9 @@ export class ContentController {
   ) {}
 
   @Get("pages")
-  async listPages(
-    @Req() req: Request,
-    @Query() query: AdminListQueryDto,
-  ) {
+  async listPages(@Req() req: Request, @Query() query: AdminListQueryDto) {
     await requireMinimumRole(req, this.auth, "editor");
-    return this.pages.findMany({ offset: query.offset, limit: query.limit });
+    return this.pages.findMany(this.buildPagination(query));
   }
 
   @Get("pages/:id")
@@ -870,10 +898,7 @@ export class ContentController {
     @Query() query: AdminListQueryDto,
   ) {
     await requireMinimumRole(req, this.auth, "editor");
-    return this.contentTypes.findMany({
-      offset: query.offset,
-      limit: query.limit,
-    });
+    return this.contentTypes.findMany(this.buildPagination(query));
   }
 
   @Get("types/:id")
@@ -913,6 +938,23 @@ export class ContentController {
     }
 
     return this.contentTypes.update(id, body);
+  }
+
+  private buildPagination(query: {
+    offset?: number;
+    limit?: number;
+    cursor?: string;
+  }) {
+    const limit =
+      typeof query.limit === "number"
+        ? Math.min(MAX_LIST_LIMIT, Math.max(1, query.limit))
+        : DEFAULT_LIST_LIMIT;
+
+    return {
+      offset: query.offset,
+      cursor: query.cursor,
+      limit,
+    };
   }
 
   private async ensurePageSlugDoesNotConflict(slug: string, pageId?: string) {
@@ -979,14 +1021,13 @@ export class ContentController {
   ) {
     await requireMinimumRole(req, this.auth, "editor");
     if (query.mode === "tree") {
-      const items = await this.contentItems.findMany();
+      const items = await this.contentItems.findMany(
+        this.buildPagination(query),
+      );
       return this.toContentItemTree(items);
     }
 
-    return this.contentItems.findMany({
-      offset: query.offset,
-      limit: query.limit,
-    });
+    return this.contentItems.findMany(this.buildPagination(query));
   }
 
   @Get("items/:id")
@@ -1006,10 +1047,10 @@ export class ContentController {
       return this.contentItems.findTreeByContentTypeId(contentTypeId);
     }
 
-    return this.contentItems.findManyByContentTypeId(contentTypeId, {
-      offset: query.offset,
-      limit: query.limit,
-    });
+    return this.contentItems.findManyByContentTypeId(
+      contentTypeId,
+      this.buildPagination(query),
+    );
   }
 
   @Get("items/type-slug/:slug")
@@ -1025,9 +1066,8 @@ export class ContentController {
     }
 
     return this.contentItems.findManyByContentTypeSlug(slug, {
-      offset: query.offset,
-      limit: query.limit,
       published: true,
+      ...this.buildPagination(query),
     });
   }
 
@@ -1141,10 +1181,30 @@ export class ContentController {
   private async getMediaByUrlMap(): Promise<
     Map<string, { id: string; alt: string }>
   > {
-    const media = await this.media.findMany();
-    return new Map(
-      media.map((item) => [item.url, { id: item.id, alt: item.alt }]),
-    );
+    const mediaByUrl = new Map<string, { id: string; alt: string }>();
+    let cursor: string | undefined;
+
+    while (true) {
+      const mediaBatch = await this.media.findMany({
+        limit: MAX_LIST_LIMIT,
+        cursor,
+      });
+
+      if (mediaBatch.length === 0) {
+        break;
+      }
+
+      for (const item of mediaBatch) {
+        mediaByUrl.set(item.url, { id: item.id, alt: item.alt });
+      }
+
+      cursor = mediaBatch[mediaBatch.length - 1]?.id;
+      if (mediaBatch.length < MAX_LIST_LIMIT || !cursor) {
+        break;
+      }
+    }
+
+    return mediaByUrl;
   }
 
   private async validatePageBlocksMediaAlt(
@@ -1165,7 +1225,6 @@ export class ContentController {
       }
     }
   }
-
 
   private async validateMediaAltBeforeUpdate(
     mediaId: string,
@@ -1522,7 +1581,9 @@ export class ContentController {
     for (const field of relationFields) {
       const incoming = incomingData[field.key];
       const current = existingData ? existingData[field.key] : undefined;
-      if (JSON.stringify(incoming ?? null) !== JSON.stringify(current ?? null)) {
+      if (
+        JSON.stringify(incoming ?? null) !== JSON.stringify(current ?? null)
+      ) {
         throw new ForbiddenException(
           "Access denied: editors cannot modify relation fields.",
         );
@@ -1581,9 +1642,12 @@ export class ContentController {
   }
 
   @Get("navigation-items")
-  async listNavigationItems(@Req() req: Request) {
+  async listNavigationItems(
+    @Req() req: Request,
+    @Query() query: AdminListQueryDto,
+  ) {
     await requireMinimumRole(req, this.auth, "editor");
-    return this.navigation.findMany();
+    return this.navigation.findMany(this.buildPagination(query));
   }
 
   @Post("navigation-items")
@@ -1613,9 +1677,9 @@ export class ContentController {
   }
 
   @Get("settings")
-  async listSettings(@Req() req: Request) {
+  async listSettings(@Req() req: Request, @Query() query: AdminListQueryDto) {
     const role = await requireMinimumRole(req, this.auth, "admin");
-    const settings = await this.settings.findMany();
+    const settings = await this.settings.findMany(this.buildPagination(query));
     if (role === "superadmin") {
       return settings;
     }
@@ -1673,10 +1737,7 @@ export class ContentController {
   @Get("media")
   async listMedia(@Req() req: Request, @Query() query: ListMediaQueryDto) {
     await requireMinimumRole(req, this.auth, "editor");
-    const mediaItems = await this.media.findMany({
-      offset: query.offset,
-      limit: query.limit,
-    });
+    const mediaItems = await this.media.findMany(this.buildPagination(query));
     const usedUrls = await this.mediaUsageService.getUsedUrls(
       mediaItems.map((item) => item.url),
     );

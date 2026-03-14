@@ -34,6 +34,9 @@ const PUBLIC_SITE_SETTING_KEYS = [
 ] as const;
 
 const LIST_MODES = ["flat", "tree"] as const;
+const DEFAULT_LIST_LIMIT = 50;
+const MAX_LIST_LIMIT = 200;
+const SITEMAP_BATCH_SIZE = 200;
 
 class PublicListContentItemsQueryDto {
   @ApiProperty({ required: false, enum: LIST_MODES, default: "flat" })
@@ -49,13 +52,23 @@ class PublicListContentItemsQueryDto {
   @Min(0)
   offset?: number;
 
-  @ApiProperty({ required: false, minimum: 1, maximum: 500 })
+  @ApiProperty({
+    required: false,
+    minimum: 1,
+    maximum: MAX_LIST_LIMIT,
+    default: DEFAULT_LIST_LIMIT,
+  })
   @IsOptional()
   @Type(() => Number)
   @IsInt()
   @Min(1)
-  @Max(500)
+  @Max(MAX_LIST_LIMIT)
   limit?: number;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  cursor?: string;
 }
 
 type PublicContentItemArchiveDto = {
@@ -183,13 +196,23 @@ class PublicListPagesQueryDto {
   @Min(0)
   offset?: number;
 
-  @ApiProperty({ required: false, minimum: 1, maximum: 1000 })
+  @ApiProperty({
+    required: false,
+    minimum: 1,
+    maximum: MAX_LIST_LIMIT,
+    default: DEFAULT_LIST_LIMIT,
+  })
   @IsOptional()
   @Type(() => Number)
   @IsInt()
   @Min(1)
-  @Max(1000)
+  @Max(MAX_LIST_LIMIT)
   limit?: number;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  cursor?: string;
 }
 
 class PublicNavigationItemDto {
@@ -224,51 +247,79 @@ export class PublicContentController {
 
   @Get("sitemap")
   async getSitemapEntries(): Promise<PublicSitemapEntryDto> {
-    const [pages, types] = await Promise.all([
-      this.pages.findMany({ published: true }),
-      this.contentTypes.findManyPublic(),
-    ]);
+    const types = await this.contentTypes.findManyPublic({
+      limit: MAX_LIST_LIMIT,
+    });
 
     const publicContentTypeById = new Map(
       types.map((type) => [type.id, type.slug]),
     );
 
-    const contentItems = (await this.contentItems.findMany({ published: true }))
-      .map((item) => {
+    const pages: PublicSitemapEntryDto["pages"] = [];
+    let pageCursor: string | undefined;
+
+    while (true) {
+      const pageBatch = await this.pages.findMany({
+        published: true,
+        limit: SITEMAP_BATCH_SIZE,
+        cursor: pageCursor,
+      });
+
+      if (pageBatch.length === 0) {
+        break;
+      }
+
+      pages.push(
+        ...pageBatch.map((page) => ({
+          slug: page.slug,
+          canonicalUrl: page.canonicalUrl,
+          updatedAt: page.updatedAt,
+          noIndex: page.noIndex,
+        })),
+      );
+
+      pageCursor = pageBatch[pageBatch.length - 1]?.id;
+      if (pageBatch.length < SITEMAP_BATCH_SIZE || !pageCursor) {
+        break;
+      }
+    }
+
+    const contentItems: PublicSitemapEntryDto["contentItems"] = [];
+    let contentCursor: string | undefined;
+
+    while (true) {
+      const contentBatch = await this.contentItems.findMany({
+        published: true,
+        limit: SITEMAP_BATCH_SIZE,
+        cursor: contentCursor,
+      });
+
+      if (contentBatch.length === 0) {
+        break;
+      }
+
+      for (const item of contentBatch) {
         const contentTypeSlug = publicContentTypeById.get(item.contentTypeId);
         if (!contentTypeSlug) {
-          return null;
+          continue;
         }
 
-        return {
+        contentItems.push({
           contentTypeSlug,
           slug: item.slug,
           canonicalUrl: item.canonicalUrl,
           updatedAt: item.updatedAt,
           noIndex: item.noIndex,
-        };
-      })
-      .filter(
-        (
-          item,
-        ): item is {
-          contentTypeSlug: string;
-          slug: string;
-          canonicalUrl: string | null;
-          updatedAt: Date;
-          noIndex: boolean;
-        } => Boolean(item),
-      );
+        });
+      }
 
-    return {
-      pages: pages.map((page) => ({
-        slug: page.slug,
-        canonicalUrl: page.canonicalUrl,
-        updatedAt: page.updatedAt,
-        noIndex: page.noIndex,
-      })),
-      contentItems,
-    };
+      contentCursor = contentBatch[contentBatch.length - 1]?.id;
+      if (contentBatch.length < SITEMAP_BATCH_SIZE || !contentCursor) {
+        break;
+      }
+    }
+
+    return { pages, contentItems };
   }
 
   @Get("pages")
@@ -277,8 +328,7 @@ export class PublicContentController {
   ): Promise<PublicPageListItemDto[]> {
     const pages = await this.pages.findMany({
       published: true,
-      offset: query.offset,
-      limit: query.limit,
+      ...this.buildPagination(query),
     });
 
     return pages.map((page) => ({
@@ -339,9 +389,8 @@ export class PublicContentController {
     }
 
     const items = await this.contentItems.findManyByContentTypeSlug(slug, {
-      offset: query.offset,
-      limit: query.limit,
       published: true,
+      ...this.buildPagination(query),
     });
     return items.map((item) => this.mapPublicContentItemArchive(item));
   }
@@ -423,14 +472,16 @@ export class PublicContentController {
 
     const [links, taxonomies] = await Promise.all([
       this.contentItemTerms.findManyByContentItemId(id),
-      this.taxonomies.findMany(),
+      this.listAllTaxonomies(),
     ]);
 
     if (!links.length || !taxonomies.length) {
       return [];
     }
 
-    const terms = await this.terms.findManyByIds(links.map((link) => link.termId));
+    const terms = await this.terms.findManyByIds(
+      links.map((link) => link.termId),
+    );
     const termNamesByTaxonomyId = new Map<string, string[]>();
 
     for (const term of terms) {
@@ -464,8 +515,10 @@ export class PublicContentController {
       );
   }
   @Get("navigation-items")
-  async listNavigationItems(): Promise<PublicNavigationItemDto[]> {
-    const items = await this.navigation.findMany();
+  async listNavigationItems(
+    @Query() query: PublicListPagesQueryDto,
+  ): Promise<PublicNavigationItemDto[]> {
+    const items = await this.navigation.findMany(this.buildPagination(query));
     return items.map((item) => ({
       id: item.id,
       label: item.label,
@@ -476,12 +529,57 @@ export class PublicContentController {
   }
 
   @Get("settings")
-  async listSettings(): Promise<PublicSiteSettingDto[]> {
-    const settings = await this.settings.findMany();
+  async listSettings(
+    @Query() query: PublicListPagesQueryDto,
+  ): Promise<PublicSiteSettingDto[]> {
+    const settings = await this.settings.findMany(this.buildPagination(query));
     const allowed = new Set<string>(PUBLIC_SITE_SETTING_KEYS);
     return settings
       .filter((setting) => allowed.has(setting.key))
       .map((setting) => ({ key: setting.key, value: setting.value }));
+  }
+
+  private buildPagination(query: {
+    offset?: number;
+    limit?: number;
+    cursor?: string;
+  }) {
+    const limit =
+      typeof query.limit === "number"
+        ? Math.min(MAX_LIST_LIMIT, Math.max(1, query.limit))
+        : DEFAULT_LIST_LIMIT;
+
+    return {
+      offset: query.offset,
+      cursor: query.cursor,
+      limit,
+    };
+  }
+
+  private async listAllTaxonomies() {
+    const taxonomies = [] as Awaited<
+      ReturnType<TaxonomiesRepository["findMany"]>
+    >;
+    let cursor: string | undefined;
+
+    while (true) {
+      const batch = await this.taxonomies.findMany({
+        limit: MAX_LIST_LIMIT,
+        cursor,
+      });
+
+      if (batch.length === 0) {
+        break;
+      }
+
+      taxonomies.push(...batch);
+      cursor = batch[batch.length - 1]?.id;
+      if (batch.length < MAX_LIST_LIMIT || !cursor) {
+        break;
+      }
+    }
+
+    return taxonomies;
   }
 
   private mapPublicContentType(type: {
@@ -526,7 +624,7 @@ export class PublicContentController {
     contentItemId: string,
     taxonomySlug: string,
   ): Promise<string[]> {
-    const taxonomy = (await this.taxonomies.findMany()).find(
+    const taxonomy = (await this.listAllTaxonomies()).find(
       (entry) => entry.slug === taxonomySlug,
     );
 
@@ -534,12 +632,15 @@ export class PublicContentController {
       return [];
     }
 
-    const links = await this.contentItemTerms.findManyByContentItemId(contentItemId);
+    const links =
+      await this.contentItemTerms.findManyByContentItemId(contentItemId);
     if (!links.length) {
       return [];
     }
 
-    const terms = await this.terms.findManyByIds(links.map((link) => link.termId));
+    const terms = await this.terms.findManyByIds(
+      links.map((link) => link.termId),
+    );
 
     return terms
       .filter((term) => term.taxonomyId === taxonomy.id)

@@ -39,6 +39,45 @@ const PAGE_BLOCK_TYPES: PageBlockType[] = [
   "news_list",
 ];
 
+const DEFAULT_PAGINATION_LIMIT = 50;
+const MAX_PAGINATION_LIMIT = 200;
+
+function normalizePaginationLimit(limit?: number): number {
+  if (typeof limit !== "number" || Number.isNaN(limit)) {
+    return DEFAULT_PAGINATION_LIMIT;
+  }
+
+  return Math.min(MAX_PAGINATION_LIMIT, Math.max(1, Math.trunc(limit)));
+}
+
+function buildPaginationArgs(
+  pagination?: PaginationParams,
+  cursorField: "id" | "key" = "id",
+): { take: number; skip?: number; cursor?: { id: string } | { key: string } } {
+  const take = normalizePaginationLimit(pagination?.limit);
+  const cursor =
+    typeof pagination?.cursor === "string" && pagination.cursor.trim()
+      ? pagination.cursor.trim()
+      : undefined;
+
+  if (cursor) {
+    return {
+      take,
+      skip: 1,
+      cursor: cursorField === "key" ? { key: cursor } : { id: cursor },
+    };
+  }
+
+  if (typeof pagination?.offset === "number") {
+    return {
+      take,
+      skip: Math.max(0, Math.trunc(pagination.offset)),
+    };
+  }
+
+  return { take };
+}
+
 const ROUTE_SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const ROUTE_SLUG_VALIDATION_MESSAGE =
   "Slug must contain lowercase letters, numbers, and hyphens only.";
@@ -421,12 +460,7 @@ export class PagesPrismaRepository implements PagesRepository {
     const pages = await this.prisma.page.findMany({
       orderBy: { createdAt: "desc" },
       include: { blocks: { orderBy: { order: "asc" } } },
-      ...(typeof pagination?.offset === "number"
-        ? { skip: pagination.offset }
-        : {}),
-      ...(typeof pagination?.limit === "number"
-        ? { take: pagination.limit }
-        : {}),
+      ...buildPaginationArgs(pagination),
       ...(typeof pagination?.published === "boolean"
         ? { where: { published: pagination.published } }
         : {}),
@@ -640,12 +674,7 @@ export class ContentTypesPrismaRepository implements ContentTypesRepository {
   async findMany(pagination?: PaginationParams): Promise<ContentType[]> {
     const types = await this.prisma.contentType.findMany({
       orderBy: { createdAt: "desc" },
-      ...(typeof pagination?.offset === "number"
-        ? { skip: pagination.offset }
-        : {}),
-      ...(typeof pagination?.limit === "number"
-        ? { take: pagination.limit }
-        : {}),
+      ...buildPaginationArgs(pagination),
     });
     return types.map(mapContentType);
   }
@@ -654,12 +683,7 @@ export class ContentTypesPrismaRepository implements ContentTypesRepository {
     const types = await this.prisma.contentType.findMany({
       where: { isPublic: true },
       orderBy: { createdAt: "desc" },
-      ...(typeof pagination?.offset === "number"
-        ? { skip: pagination.offset }
-        : {}),
-      ...(typeof pagination?.limit === "number"
-        ? { take: pagination.limit }
-        : {}),
+      ...buildPaginationArgs(pagination),
     });
     return types.map(mapContentType);
   }
@@ -736,12 +760,7 @@ export class ContentItemsPrismaRepository implements ContentItemsRepository {
       ...(typeof pagination?.published === "boolean"
         ? { where: { published: pagination.published } }
         : {}),
-      ...(typeof pagination?.offset === "number"
-        ? { skip: pagination.offset }
-        : {}),
-      ...(typeof pagination?.limit === "number"
-        ? { take: pagination.limit }
-        : {}),
+      ...buildPaginationArgs(pagination),
     });
     return this.resolveReferences(items.map(mapContentItem));
   }
@@ -758,12 +777,7 @@ export class ContentItemsPrismaRepository implements ContentItemsRepository {
           : {}),
       },
       orderBy: [{ sortOrder: "asc" }, { createdAt: "desc" }],
-      ...(typeof pagination?.offset === "number"
-        ? { skip: pagination.offset }
-        : {}),
-      ...(typeof pagination?.limit === "number"
-        ? { take: pagination.limit }
-        : {}),
+      ...buildPaginationArgs(pagination),
     });
     return this.resolveReferences(items.map(mapContentItem));
   }
@@ -780,12 +794,7 @@ export class ContentItemsPrismaRepository implements ContentItemsRepository {
           : {}),
       },
       orderBy: [{ sortOrder: "asc" }, { createdAt: "desc" }],
-      ...(typeof pagination?.offset === "number"
-        ? { skip: pagination.offset }
-        : {}),
-      ...(typeof pagination?.limit === "number"
-        ? { take: pagination.limit }
-        : {}),
+      ...buildPaginationArgs(pagination),
     });
     return this.resolveReferences(items.map(mapContentItem));
   }
@@ -1156,9 +1165,10 @@ export class ContentItemsPrismaRepository implements ContentItemsRepository {
 export class TaxonomiesPrismaRepository implements TaxonomiesRepository {
   private readonly prisma = getPrisma();
 
-  async findMany(): Promise<Taxonomy[]> {
+  async findMany(pagination?: PaginationParams): Promise<Taxonomy[]> {
     const taxonomies = await this.prisma.taxonomy.findMany({
       orderBy: { createdAt: "desc" },
+      ...buildPaginationArgs(pagination),
     });
     return taxonomies.map(mapTaxonomy);
   }
@@ -1191,17 +1201,22 @@ export class TaxonomiesPrismaRepository implements TaxonomiesRepository {
 export class TermsPrismaRepository implements TermsRepository {
   private readonly prisma = getPrisma();
 
-  async findMany(): Promise<Term[]> {
+  async findMany(pagination?: PaginationParams): Promise<Term[]> {
     const terms = await this.prisma.term.findMany({
       orderBy: { createdAt: "desc" },
+      ...buildPaginationArgs(pagination),
     });
     return terms.map(mapTerm);
   }
 
-  async findManyByTaxonomyId(taxonomyId: string): Promise<Term[]> {
+  async findManyByTaxonomyId(
+    taxonomyId: string,
+    pagination?: PaginationParams,
+  ): Promise<Term[]> {
     const terms = await this.prisma.term.findMany({
       where: { taxonomyId },
       orderBy: [{ createdAt: "desc" }],
+      ...buildPaginationArgs(pagination),
     });
     return terms.map(mapTerm);
   }
@@ -1292,8 +1307,11 @@ export class NavigationItemsPrismaRepository
 {
   private readonly prisma = getPrisma();
 
-  async findMany(): Promise<NavigationItem[]> {
-    return this.prisma.navigationItem.findMany({ orderBy: { order: "asc" } });
+  async findMany(pagination?: PaginationParams): Promise<NavigationItem[]> {
+    return this.prisma.navigationItem.findMany({
+      orderBy: { order: "asc" },
+      ...buildPaginationArgs(pagination),
+    });
   }
 
   async findById(id: string): Promise<NavigationItem | null> {
@@ -1319,8 +1337,11 @@ export class NavigationItemsPrismaRepository
 export class SiteSettingsPrismaRepository implements SiteSettingsRepository {
   private readonly prisma = getPrisma();
 
-  async findMany(): Promise<SiteSetting[]> {
-    return this.prisma.siteSetting.findMany({ orderBy: { key: "asc" } });
+  async findMany(pagination?: PaginationParams): Promise<SiteSetting[]> {
+    return this.prisma.siteSetting.findMany({
+      orderBy: { key: "asc" },
+      ...buildPaginationArgs(pagination, "key"),
+    });
   }
 
   async findByKey(key: string): Promise<SiteSetting | null> {
@@ -1346,12 +1367,7 @@ export class MediaPrismaRepository implements MediaRepository {
   async findMany(pagination?: PaginationParams): Promise<Media[]> {
     const media = await this.prisma.media.findMany({
       orderBy: { createdAt: "desc" },
-      ...(typeof pagination?.offset === "number"
-        ? { skip: pagination.offset }
-        : {}),
-      ...(typeof pagination?.limit === "number"
-        ? { take: pagination.limit }
-        : {}),
+      ...buildPaginationArgs(pagination),
     });
     return media.map(mapMedia);
   }

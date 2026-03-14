@@ -16,6 +16,7 @@ import type {
 export type PaginationParams = {
   offset?: number;
   limit?: number;
+  cursor?: string;
   published?: boolean;
 };
 
@@ -96,7 +97,7 @@ export interface ContentItemsRepository {
 }
 
 export interface NavigationItemsRepository {
-  findMany(): Promise<NavigationItem[]>;
+  findMany(pagination?: PaginationParams): Promise<NavigationItem[]>;
   findById(id: string): Promise<NavigationItem | null>;
   create(data: Omit<NavigationItem, "id">): Promise<NavigationItem>;
   update(
@@ -107,7 +108,7 @@ export interface NavigationItemsRepository {
 }
 
 export interface SiteSettingsRepository {
-  findMany(): Promise<SiteSetting[]>;
+  findMany(pagination?: PaginationParams): Promise<SiteSetting[]>;
   findByKey(key: string): Promise<SiteSetting | null>;
   upsert(data: SiteSetting): Promise<SiteSetting>;
   delete(key: string): Promise<void>;
@@ -125,7 +126,7 @@ export interface MediaRepository {
 }
 
 export interface TaxonomiesRepository {
-  findMany(): Promise<Taxonomy[]>;
+  findMany(pagination?: PaginationParams): Promise<Taxonomy[]>;
   findById(id: string): Promise<Taxonomy | null>;
   create(
     data: Omit<Taxonomy, "id" | "createdAt" | "updatedAt">,
@@ -138,8 +139,11 @@ export interface TaxonomiesRepository {
 }
 
 export interface TermsRepository {
-  findMany(): Promise<Term[]>;
-  findManyByTaxonomyId(taxonomyId: string): Promise<Term[]>;
+  findMany(pagination?: PaginationParams): Promise<Term[]>;
+  findManyByTaxonomyId(
+    taxonomyId: string,
+    pagination?: PaginationParams,
+  ): Promise<Term[]>;
   findManyByIds(ids: string[]): Promise<Term[]>;
   findById(id: string): Promise<Term | null>;
   create(data: Omit<Term, "id" | "createdAt">): Promise<Term>;

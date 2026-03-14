@@ -13,7 +13,15 @@ import {
   Patch,
 } from "@nestjs/common";
 import { ApiProperty, ApiTags } from "@nestjs/swagger";
-import { IsArray, IsOptional, IsString } from "class-validator";
+import { Type } from "class-transformer";
+import {
+  IsArray,
+  IsInt,
+  IsOptional,
+  IsString,
+  Max,
+  Min,
+} from "class-validator";
 import type {
   ContentItemTermsRepository,
   ContentItemsRepository,
@@ -21,10 +29,11 @@ import type {
   TermsRepository,
 } from "@org/domain";
 import { AuthService } from "../auth/auth.service";
-import {
-  requireMinimumRole,
-} from "../../common/auth/admin-access";
+import { requireMinimumRole } from "../../common/auth/admin-access";
 import type { Request } from "express";
+
+const DEFAULT_LIST_LIMIT = 50;
+const MAX_LIST_LIMIT = 200;
 
 class CreateTaxonomyDto {
   @ApiProperty()
@@ -107,6 +116,33 @@ class UpdateTermDto {
   parentId?: string;
 }
 
+class AdminListQueryDto {
+  @ApiProperty({ required: false, minimum: 0 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  offset?: number;
+
+  @ApiProperty({
+    required: false,
+    minimum: 1,
+    maximum: MAX_LIST_LIMIT,
+    default: DEFAULT_LIST_LIMIT,
+  })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(MAX_LIST_LIMIT)
+  limit?: number;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  cursor?: string;
+}
+
 class AssignTermsDto {
   @ApiProperty({ type: [String] })
   @IsArray()
@@ -119,6 +155,31 @@ class ListTermsQueryDto {
   @IsOptional()
   @IsString()
   taxonomyId?: string;
+
+  @ApiProperty({ required: false, minimum: 0 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  offset?: number;
+
+  @ApiProperty({
+    required: false,
+    minimum: 1,
+    maximum: MAX_LIST_LIMIT,
+    default: DEFAULT_LIST_LIMIT,
+  })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(MAX_LIST_LIMIT)
+  limit?: number;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  cursor?: string;
 }
 
 @ApiTags("content")
@@ -136,10 +197,27 @@ export class TaxonomiesAdminController {
     private readonly auth: AuthService,
   ) {}
 
+  private buildPagination(query: {
+    offset?: number;
+    limit?: number;
+    cursor?: string;
+  }) {
+    const limit =
+      typeof query.limit === "number"
+        ? Math.min(MAX_LIST_LIMIT, Math.max(1, query.limit))
+        : DEFAULT_LIST_LIMIT;
+
+    return {
+      offset: query.offset,
+      cursor: query.cursor,
+      limit,
+    };
+  }
+
   @Get("taxonomies")
-  async listTaxonomies(@Req() req: Request) {
+  async listTaxonomies(@Req() req: Request, @Query() query: AdminListQueryDto) {
     await requireMinimumRole(req, this.auth, "admin");
-    return this.taxonomies.findMany();
+    return this.taxonomies.findMany(this.buildPagination(query));
   }
 
   @Get("taxonomies/:id")
@@ -175,10 +253,13 @@ export class TaxonomiesAdminController {
   async listTerms(@Req() req: Request, @Query() query: ListTermsQueryDto) {
     await requireMinimumRole(req, this.auth, "admin");
     if (query.taxonomyId) {
-      return this.terms.findManyByTaxonomyId(query.taxonomyId);
+      return this.terms.findManyByTaxonomyId(
+        query.taxonomyId,
+        this.buildPagination(query),
+      );
     }
 
-    return this.terms.findMany();
+    return this.terms.findMany(this.buildPagination(query));
   }
 
   @Get("terms/:id")
