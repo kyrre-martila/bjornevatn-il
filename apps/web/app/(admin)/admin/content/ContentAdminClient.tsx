@@ -1149,7 +1149,7 @@ export function ContentAdminClient({
       const data = await res.json().catch(() => null);
       setError(
         describeApiError(
-          "We could not save this content model. Check required fields and slug conflicts, then try again.",
+          "We could not save this content setup. Check required fields and slug conflicts, then try again.",
           data,
         ),
       );
@@ -1181,10 +1181,10 @@ export function ContentAdminClient({
 
   async function deleteContentType(id: string) {
     const confirmation = window.prompt(
-      "To permanently delete this content model, type DELETE.",
+      "To permanently delete this content setup, type DELETE.",
     );
     if (confirmation !== "DELETE") {
-      setStatus("Delete cancelled. The content model is unchanged.");
+      setStatus("Delete cancelled. The content setup is unchanged.");
       return;
     }
 
@@ -1197,7 +1197,7 @@ export function ContentAdminClient({
       const data = await res.json().catch(() => null);
       setError(
         describeApiError(
-          "We could not delete this content model yet. Delete or move its entries first.",
+          "We could not delete this content setup yet. Delete or move its entries first.",
           data,
         ),
       );
@@ -1374,14 +1374,14 @@ export function ContentAdminClient({
 
       {!canManageContentTypes && (
         <p>
-          Content model setup is restricted to super admins. You can safely
-          focus on editing entries.
+          Content setup is managed by super admins. You can safely focus on
+          editing entries.
         </p>
       )}
 
       {canManageContentTypes && (
         <>
-          <h2>Schema and content model setup</h2>
+          <h2>Content setup</h2>
           {contentTypes.map((type) => {
             const draft =
               contentTypeDrafts[type.id] ?? toContentTypeDraft(type);
@@ -1484,13 +1484,13 @@ export function ContentAdminClient({
                   type="button"
                   onClick={() => void saveContentType(draft)}
                 >
-                  Save content model
+                  Save content setup
                 </button>
                 <button
                   type="button"
                   onClick={() => void deleteContentType(type.id)}
                 >
-                  Delete content model
+                  Delete content setup
                 </button>
               </article>
             );

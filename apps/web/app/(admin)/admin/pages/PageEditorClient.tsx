@@ -753,8 +753,8 @@ export function PageEditorClient({
         </Link>
         <h1>{initialPage ? "Edit page" : "Create page"}</h1>
         <p className="page-editor__help">
-          Use guided fields to edit what visitors see. Raw JSON is restricted to
-          super admins as an advanced fallback.
+          Use guided fields to edit what visitors see. Advanced developer data
+          is restricted to super admins as a fallback option.
         </p>
       </div>
 
