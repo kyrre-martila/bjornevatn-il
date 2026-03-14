@@ -195,6 +195,18 @@ model NavigationItem {
   @@index([parentId])
 }
 
+
+model RedirectRule {
+  id         String   @id @default(cuid())
+  fromPath   String   @unique
+  toPath     String
+  statusCode Int
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([fromPath])
+}
+
 model SiteSetting {
   key   String @id
   value String

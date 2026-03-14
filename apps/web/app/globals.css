@@ -1436,6 +1436,25 @@ button:focus-visible {
   gap: var(--space-s);
 }
 
+.admin-list {
+  display: grid;
+  gap: var(--space-s);
+}
+
+.admin-list__item {
+  border: 1px solid var(--site-color-border, var(--color-border-subtle));
+  border-radius: var(--radius-m);
+  padding: var(--space-s);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-s);
+}
+
+.admin-list__item p {
+  margin: var(--space-3xs) 0 0;
+}
+
 .media-manager {
   display: grid;
   gap: var(--space-m);
