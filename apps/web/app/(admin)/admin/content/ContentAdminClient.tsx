@@ -163,6 +163,57 @@ function isMultipleReferenceField(field: AdminContentFieldDefinition): boolean {
   );
 }
 
+function getPublicItemPath(contentTypeSlug: string, itemSlug: string): string {
+  return `/${contentTypeSlug}/${itemSlug}`;
+}
+
+function getPublicArchivePath(contentTypeSlug: string): string {
+  return `/${contentTypeSlug}`;
+}
+
+type VisibilityState = {
+  editorialStatus: "Draft" | "Published";
+  publicVisibility:
+    | "Publicly visible"
+    | "Not visible to visitors"
+    | "Visible only to admins";
+  guidance: string;
+  canOpenPublicPreview: boolean;
+};
+
+function getVisibilityState(
+  published: boolean,
+  contentTypeIsPublic: boolean,
+): VisibilityState {
+  if (!published) {
+    return {
+      editorialStatus: "Draft",
+      publicVisibility: "Not visible to visitors",
+      guidance:
+        "Draft changes are private in admin. Publish when this entry is ready for visitors.",
+      canOpenPublicPreview: false,
+    };
+  }
+
+  if (!contentTypeIsPublic) {
+    return {
+      editorialStatus: "Published",
+      publicVisibility: "Visible only to admins",
+      guidance:
+        "This content type is configured as non-public, so visitors cannot open this URL.",
+      canOpenPublicPreview: false,
+    };
+  }
+
+  return {
+    editorialStatus: "Published",
+    publicVisibility: "Publicly visible",
+    guidance:
+      "This entry is available on the public site. Use Open preview to confirm what visitors see.",
+    canOpenPublicPreview: true,
+  };
+}
+
 function stringifyFieldValue(
   value: unknown,
   field: AdminContentFieldDefinition,
@@ -722,6 +773,10 @@ function ContentItemEditor({
     });
   }
 
+  const visibilityState = getVisibilityState(published, contentType.isPublic);
+  const publicItemPath = getPublicItemPath(contentType.slug, normalizeSlug(slug));
+  const publicArchivePath = getPublicArchivePath(contentType.slug);
+
   return (
     <form onSubmit={(e) => void submit(e)}>
       <h4>{item.title}</h4>
@@ -757,6 +812,36 @@ function ContentItemEditor({
           Turn this on only when the content is ready. Draft entries stay hidden from public pages.
         </small>
       </label>
+      <fieldset>
+        <legend>Publishing and preview</legend>
+        <p>
+          <strong>Editorial status:</strong> {visibilityState.editorialStatus}
+        </p>
+        <p>
+          <strong>Public visibility:</strong> {visibilityState.publicVisibility}
+        </p>
+        <small>{visibilityState.guidance}</small>
+        <div>
+          {visibilityState.canOpenPublicPreview ? (
+            <a href={publicItemPath} target="_blank" rel="noreferrer">
+              Open preview in new tab
+            </a>
+          ) : (
+            <small>
+              Public preview is unavailable until this entry is published in a
+              publicly visible content type.
+            </small>
+          )}
+          {contentType.isPublic ? (
+            <>
+              {" "}
+              <a href={publicArchivePath} target="_blank" rel="noreferrer">
+                Open public archive
+              </a>
+            </>
+          ) : null}
+        </div>
+      </fieldset>
       <fieldset className="page-editor__seo">
         <legend>Search appearance (SEO)</legend>
         <label>
@@ -1458,6 +1543,11 @@ export function ContentAdminClient({
           ))}
 
           <h3>Create new entry</h3>
+          <p>
+            New entries start as <strong>Draft</strong>. Save, then publish when
+            ready. Public preview links appear after saving and only for public
+            content types.
+          </p>
           <form
             onSubmit={(e) => {
               e.preventDefault();
