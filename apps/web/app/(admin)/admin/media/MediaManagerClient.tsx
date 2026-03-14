@@ -3,7 +3,11 @@
 import * as React from "react";
 import type { AdminMedia } from "../../../../lib/admin/media";
 
-export function MediaManagerClient({ initialMedia }: { initialMedia: AdminMedia[] }) {
+export function MediaManagerClient({
+  initialMedia,
+}: {
+  initialMedia: AdminMedia[];
+}) {
   const [media, setMedia] = React.useState(initialMedia);
   const [uploading, setUploading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
@@ -26,8 +30,15 @@ export function MediaManagerClient({ initialMedia }: { initialMedia: AdminMedia[
     const file = formData.get("file");
     const alt = formData.get("alt");
 
-    if (!(file instanceof File) || !file.name || typeof alt !== "string" || !alt.trim()) {
-      setError("A file and alt text are required.");
+    if (!(file instanceof File) || !file.name) {
+      setError("Please choose a file before uploading.");
+      return;
+    }
+
+    if (typeof alt !== "string" || !alt.trim()) {
+      setError(
+        "Please add alt text so clients using screen readers can understand the image.",
+      );
       return;
     }
 
@@ -40,7 +51,9 @@ export function MediaManagerClient({ initialMedia }: { initialMedia: AdminMedia[
 
       if (!res.ok) {
         const data = await res.json().catch(() => null);
-        setError((data && (data.message || data.error)) || "Unable to upload media.");
+        setError(
+          (data && (data.message || data.error)) || "Unable to upload media.",
+        );
         return;
       }
 
@@ -54,7 +67,11 @@ export function MediaManagerClient({ initialMedia }: { initialMedia: AdminMedia[
   }
 
   async function onDelete(id: string) {
-    if (!window.confirm("Delete this media item?")) {
+    const confirmation = window.prompt(
+      "To permanently delete this media item, type DELETE.",
+    );
+    if (confirmation !== "DELETE") {
+      setError("Delete cancelled. The media item is unchanged.");
       return;
     }
 
@@ -69,6 +86,13 @@ export function MediaManagerClient({ initialMedia }: { initialMedia: AdminMedia[
   }
 
   async function onUpdateAlt(id: string, alt: string) {
+    if (!alt.trim()) {
+      setError(
+        "Alt text cannot be empty. Please describe the image in plain language.",
+      );
+      return;
+    }
+
     const res = await fetch(`/api/admin/media/${id}`, {
       method: "PATCH",
       headers: { "content-type": "application/json" },
@@ -77,12 +101,16 @@ export function MediaManagerClient({ initialMedia }: { initialMedia: AdminMedia[
 
     if (!res.ok) {
       const data = await res.json().catch(() => null);
-      setError((data && (data.message || data.error)) || "Unable to update alt text.");
+      setError(
+        (data && (data.message || data.error)) || "Unable to update alt text.",
+      );
       return;
     }
 
     const updated = (await res.json()) as AdminMedia;
-    setMedia((current) => current.map((item) => (item.id === id ? updated : item)));
+    setMedia((current) =>
+      current.map((item) => (item.id === id ? updated : item)),
+    );
   }
 
   return (
@@ -92,7 +120,9 @@ export function MediaManagerClient({ initialMedia }: { initialMedia: AdminMedia[
       <form onSubmit={onUpload} className="media-manager__upload">
         <input name="file" type="file" required />
         <input name="alt" placeholder="Alt text" required />
-        <button type="submit" disabled={uploading}>{uploading ? "Uploading..." : "Upload"}</button>
+        <button type="submit" disabled={uploading}>
+          {uploading ? "Uploading..." : "Upload"}
+        </button>
       </form>
 
       {error ? <p className="page-editor__error">{error}</p> : null}
@@ -101,13 +131,20 @@ export function MediaManagerClient({ initialMedia }: { initialMedia: AdminMedia[
         {media.map((item) => (
           <article key={item.id} className="media-manager__item">
             <div className="media-manager__preview">
-              <img src={item.url} alt={item.alt || "Image"} loading="lazy" width={item.width ?? undefined} height={item.height ?? undefined} />
+              <img
+                src={item.url}
+                alt={item.alt || "Image"}
+                loading="lazy"
+                width={item.width ?? undefined}
+                height={item.height ?? undefined}
+              />
             </div>
             <p className="media-manager__date">
               Uploaded: {new Date(item.createdAt).toLocaleString()}
             </p>
             <p className="media-manager__date">
-              {item.mimeType || "unknown type"} • {item.width ?? "?"}×{item.height ?? "?"} • {item.sizeBytes ?? 0} bytes
+              {item.mimeType || "unknown type"} • {item.width ?? "?"}×
+              {item.height ?? "?"} • {item.sizeBytes ?? 0} bytes
             </p>
             <label>
               Alt text {item.isUsed ? "*" : ""}
