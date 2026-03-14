@@ -213,7 +213,13 @@ async function bootstrap() {
     new DomainErrorInterceptor(),
   );
 
-  app.use("/uploads", express.static(join(process.cwd(), "uploads")));
+  app.use(
+    "/uploads",
+    express.static(join(process.cwd(), "uploads"), {
+      maxAge: "30d",
+      etag: true,
+    }),
+  );
 
   const shouldEmitOpenApi =
     process.env.NODE_ENV !== "production" || process.env.EMIT_OPENAPI === "1";

@@ -166,6 +166,8 @@ This prevents test/dev token shortcuts from silently leaking into staging.
 
 Upload scanning uses a pluggable hook (`MediaUploadScanner`). The default is no-op; production environments with malware or compliance requirements should provide a concrete scanner implementation before go-live.
 
+Uploaded media is currently served by the API at `/uploads` with cache headers enabled. For production environments, media should eventually be served via a CDN or reverse proxy cache to keep repeated asset requests off the Node.js process.
+
 ## Production readiness checklist
 
 - [ ] Secrets set with strong random values (`JWT_SECRET`, `COOKIE_SECRET`).
