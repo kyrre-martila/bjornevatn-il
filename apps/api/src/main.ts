@@ -218,6 +218,7 @@ async function bootstrap() {
     express.static(join(process.cwd(), "uploads"), {
       maxAge: "30d",
       etag: true,
+      immutable: true,
     }),
   );
 
