@@ -734,6 +734,8 @@ function ContentItemEditor({
     field: AdminContentFieldDefinition,
   ) => ReferenceOption[];
   canUseMediaLibrary: boolean;
+  canEditSlug: boolean;
+  canEditRelations: boolean;
 }) {
   const [title, setTitle] = React.useState(item.title);
   const [slug, setSlug] = React.useState(item.slug);
@@ -766,7 +768,7 @@ function ContentItemEditor({
     await onSave({
       id: item.id,
       title,
-      slug: normalizeSlug(slug),
+      slug: canEditSlug ? normalizeSlug(slug) : normalizeSlug(item.slug),
       seoTitle: seoTitle.trim() || null,
       seoDescription: seoDescription.trim() || null,
       seoImage: seoImage.trim() || null,
@@ -778,7 +780,10 @@ function ContentItemEditor({
   }
 
   const visibilityState = getVisibilityState(published, contentType.isPublic);
-  const publicItemPath = getPublicItemPath(contentType.slug, normalizeSlug(slug));
+  const publicItemPath = getPublicItemPath(
+    contentType.slug,
+    normalizeSlug(slug),
+  );
   const publicArchivePath = getPublicArchivePath(contentType.slug);
 
   return (
@@ -793,23 +798,26 @@ function ContentItemEditor({
           required
         />
       </label>
-      <label>
-        Web address (slug)
-        <input
-          value={slug}
-          onChange={(e) => setSlug(e.target.value)}
-          placeholder="about-us"
-          required
-          readOnly={!canEditSlug}
-        />
-        {canEditSlug ? (
+      {canEditSlug ? (
+        <label>
+          Web address (slug)
+          <input
+            value={slug}
+            onChange={(e) => setSlug(e.target.value)}
+            placeholder="about-us"
+            required
+          />
           <small>
-            Changing a published slug can break existing links unless a redirect is created.
+            Changing a published slug can break existing links unless a redirect
+            is created.
           </small>
-        ) : (
-          <small>Only admins and superadmins can change entry URLs.</small>
-        )}
-      </label>
+        </label>
+      ) : (
+        <p>
+          Web address is managed by admins. Current URL: /{contentType.slug}/
+          {normalizeSlug(item.slug)}
+        </p>
+      )}
       <label>
         Visible to visitors
         <input
@@ -818,7 +826,8 @@ function ContentItemEditor({
           onChange={(e) => setPublished(e.target.checked)}
         />
         <small>
-          Turn this on only when the content is ready. Draft entries stay hidden from public pages.
+          Turn this on only when the content is ready. Draft entries stay hidden
+          from public pages.
         </small>
       </label>
       <fieldset>
@@ -860,7 +869,9 @@ function ContentItemEditor({
             onChange={(e) => setSeoTitle(e.target.value)}
             placeholder="Leave blank to use the entry title"
           />
-          <small>Recommended: around 50–60 characters for search listings.</small>
+          <small>
+            Recommended: around 50–60 characters for search listings.
+          </small>
         </label>
         <label>
           Search summary
@@ -874,18 +885,20 @@ function ContentItemEditor({
         </label>
       </fieldset>
       {contentType.fields.length > 0 ? (
-        contentType.fields.map((field) => (
-          <label key={field.key}>
-            {getFieldLabel(field)}
-            {field.description ? <small>{field.description}</small> : null}
-            {field.helpText ? <small>{field.helpText}</small> : null}
-            {(!canEditRelations &&
-            (field.type === "relation" ||
-              field.type === "media" ||
-              field.type === "contentItem" ||
-              field.type === "page")) ? (
-              <small>Relation fields are managed by admins.</small>
-            ) : (
+        contentType.fields
+          .filter(
+            (field) =>
+              canEditRelations ||
+              (field.type !== "relation" &&
+                field.type !== "media" &&
+                field.type !== "contentItem" &&
+                field.type !== "page"),
+          )
+          .map((field) => (
+            <label key={field.key}>
+              {getFieldLabel(field)}
+              {field.description ? <small>{field.description}</small> : null}
+              {field.helpText ? <small>{field.helpText}</small> : null}
               <ContentFieldInput
                 field={field}
                 value={values[field.key] ?? ""}
@@ -898,19 +911,19 @@ function ContentItemEditor({
                 options={getReferenceOptions(field)}
                 canUseMediaLibrary={canUseMediaLibrary}
               />
-            )}
-            {canEditRelations && (field.type === "relation" ||
-              field.type === "media" ||
-              field.type === "contentItem" ||
-              field.type === "page") &&
-            getReferenceOptions(field).length === 0 ? (
-              <small>
-                No selectable {relationTargetTypeLabel(field)} records are
-                available yet.
-              </small>
-            ) : null}
-          </label>
-        ))
+              {canEditRelations &&
+              (field.type === "relation" ||
+                field.type === "media" ||
+                field.type === "contentItem" ||
+                field.type === "page") &&
+              getReferenceOptions(field).length === 0 ? (
+                <small>
+                  No selectable {relationTargetTypeLabel(field)} records are
+                  available yet.
+                </small>
+              ) : null}
+            </label>
+          ))
       ) : (
         <p>
           This content area has no editable fields yet. Ask a super admin to add
@@ -974,6 +987,29 @@ export function ContentAdminClient({
   const [error, setError] = React.useState<string | null>(null);
   const [pages, setPages] = React.useState<AdminPageOption[]>([]);
   const [media, setMedia] = React.useState<AdminMediaOption[]>([]);
+  const [pendingSlugConfirmation, setPendingSlugConfirmation] = React.useState<{
+    oldUrl: string;
+    newUrl: string;
+  } | null>(null);
+  const slugConfirmationResolver = React.useRef<
+    ((confirmed: boolean) => void) | null
+  >(null);
+
+  function requestSlugChangeConfirmation(
+    oldUrl: string,
+    newUrl: string,
+  ): Promise<boolean> {
+    return new Promise((resolve) => {
+      slugConfirmationResolver.current = resolve;
+      setPendingSlugConfirmation({ oldUrl, newUrl });
+    });
+  }
+
+  function resolveSlugConfirmation(confirmed: boolean) {
+    slugConfirmationResolver.current?.(confirmed);
+    slugConfirmationResolver.current = null;
+    setPendingSlugConfirmation(null);
+  }
 
   const selectedType =
     contentTypes.find((type) => type.id === selectedTypeId) ?? null;
@@ -1218,15 +1254,9 @@ export function ContentAdminClient({
             return;
           }
 
-          const confirmed = window.confirm(
-            `Changing the slug will change the page URL.
-
-Old URL: /${selectedType.slug}/${previousSlug}
-New URL: /${selectedType.slug}/${nextSlug}
-
-This may break existing links and SEO.
-
-Continue?`,
+          const confirmed = await requestSlugChangeConfirmation(
+            `/${selectedType.slug}/${previousSlug}`,
+            `/${selectedType.slug}/${nextSlug}`,
           );
           if (!confirmed) {
             setStatus("Slug change cancelled.");
@@ -1603,7 +1633,9 @@ Continue?`,
               e.preventDefault();
               void saveContentItem({
                 title: createDraft.title,
-                slug: normalizeSlug(createDraft.slug),
+                slug: canEditSlug
+                  ? normalizeSlug(createDraft.slug)
+                  : normalizeSlug(createDraft.title),
                 seoTitle: createDraft.seoTitle.trim() || null,
                 seoDescription: createDraft.seoDescription.trim() || null,
                 seoImage: createDraft.seoImage.trim() || null,
@@ -1634,36 +1666,51 @@ Continue?`,
                 required
               />
             </label>
-            <label>
-              Web address (slug)
-              <input
-                placeholder="about-us"
-                value={createDraft.slug}
-                readOnly={!canEditSlug}
-                onChange={(e) =>
-                  setCreateDrafts((curr) => ({
-                    ...curr,
-                    [selectedType.id]: { ...createDraft, slug: e.target.value },
-                  }))
-                }
-                required
-              />
-            </label>
-            <small>
-              If you change a slug after publishing, remember to configure a redirect from the old URL.
-            </small>
-            {selectedType.fields.map((field) => (
-              <label key={field.key}>
-                {getFieldLabel(field)}
-                {field.description ? <small>{field.description}</small> : null}
-                {field.helpText ? <small>{field.helpText}</small> : null}
-                {(!canEditRelations &&
-                (field.type === "relation" ||
-                  field.type === "media" ||
-                  field.type === "contentItem" ||
-                  field.type === "page")) ? (
-                  <small>Relation fields are managed by admins.</small>
-                ) : (
+            {canEditSlug ? (
+              <>
+                <label>
+                  Web address (slug)
+                  <input
+                    placeholder="about-us"
+                    value={createDraft.slug}
+                    onChange={(e) =>
+                      setCreateDrafts((curr) => ({
+                        ...curr,
+                        [selectedType.id]: {
+                          ...createDraft,
+                          slug: e.target.value,
+                        },
+                      }))
+                    }
+                    required
+                  />
+                </label>
+                <small>
+                  If you change a slug after publishing, remember to configure a
+                  redirect from the old URL.
+                </small>
+              </>
+            ) : (
+              <p>
+                Web addresses are managed by admins when entries are created.
+              </p>
+            )}
+            {selectedType.fields
+              .filter(
+                (field) =>
+                  canEditRelations ||
+                  (field.type !== "relation" &&
+                    field.type !== "media" &&
+                    field.type !== "contentItem" &&
+                    field.type !== "page"),
+              )
+              .map((field) => (
+                <label key={field.key}>
+                  {getFieldLabel(field)}
+                  {field.description ? (
+                    <small>{field.description}</small>
+                  ) : null}
+                  {field.helpText ? <small>{field.helpText}</small> : null}
                   <ContentFieldInput
                     field={field}
                     value={createDraft.values[field.key] ?? ""}
@@ -1682,23 +1729,50 @@ Continue?`,
                     options={getReferenceOptions(field)}
                     canUseMediaLibrary={canUseMediaLibrary}
                   />
-                )}
-                {canEditRelations && (field.type === "relation" ||
-                  field.type === "media" ||
-                  field.type === "contentItem" ||
-                  field.type === "page") &&
-                getReferenceOptions(field).length === 0 ? (
-                  <small>
-                    No selectable {relationTargetTypeLabel(field)} records are
-                    available yet.
-                  </small>
-                ) : null}
-              </label>
-            ))}
+                  {canEditRelations &&
+                  (field.type === "relation" ||
+                    field.type === "media" ||
+                    field.type === "contentItem" ||
+                    field.type === "page") &&
+                  getReferenceOptions(field).length === 0 ? (
+                    <small>
+                      No selectable {relationTargetTypeLabel(field)} records are
+                      available yet.
+                    </small>
+                  ) : null}
+                </label>
+              ))}
             <button type="submit">Create entry</button>
           </form>
         </>
       )}
+
+      {pendingSlugConfirmation ? (
+        <div
+          role="dialog"
+          aria-modal="true"
+          className="page-editor__confirm-modal"
+        >
+          <p>
+            <strong>Changing the slug will change the page URL.</strong>
+          </p>
+          <p>Old URL: {pendingSlugConfirmation.oldUrl}</p>
+          <p>New URL: {pendingSlugConfirmation.newUrl}</p>
+          <p>This may break existing links and SEO.</p>
+          <p>Continue?</p>
+          <div>
+            <button
+              type="button"
+              onClick={() => resolveSlugConfirmation(false)}
+            >
+              Cancel
+            </button>
+            <button type="button" onClick={() => resolveSlugConfirmation(true)}>
+              Continue
+            </button>
+          </div>
+        </div>
+      ) : null}
     </section>
   );
 }

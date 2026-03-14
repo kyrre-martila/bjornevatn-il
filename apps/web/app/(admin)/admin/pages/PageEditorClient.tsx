@@ -121,7 +121,8 @@ const BLOCK_SCHEMAS: Record<AdminPageBlockType, BlockEditorSchema> = {
         label: "Image",
         widget: "image",
         required: true,
-        description: "Use media library to avoid copy/paste errors and keep metadata in sync.",
+        description:
+          "Use media library to avoid copy/paste errors and keep metadata in sync.",
       },
       {
         key: "alt",
@@ -301,6 +302,13 @@ export function PageEditorClient({
   const [media, setMedia] = React.useState<AdminMedia[]>([]);
   const [nextBlockType, setNextBlockType] =
     React.useState<AdminPageBlockType>("hero");
+  const [pendingSlugConfirmation, setPendingSlugConfirmation] = React.useState<{
+    oldUrl: string;
+    newUrl: string;
+  } | null>(null);
+  const slugConfirmationResolver = React.useRef<
+    ((confirmed: boolean) => void) | null
+  >(null);
 
   React.useEffect(() => {
     let active = true;
@@ -404,12 +412,32 @@ export function PageEditorClient({
   function getVisibleFields(type: AdminPageBlockType): BlockFieldSchema[] {
     const schema = getSchemaForBlock(type);
     return schema.fields.filter((field) => {
+      if (!canManageStructure && field.widget === "relation") {
+        return false;
+      }
+
       if (canEditRawJson) {
         return true;
       }
 
       return field.editorHint !== "advanced";
     });
+  }
+
+  function requestSlugChangeConfirmation(
+    oldUrl: string,
+    newUrl: string,
+  ): Promise<boolean> {
+    return new Promise((resolve) => {
+      slugConfirmationResolver.current = resolve;
+      setPendingSlugConfirmation({ oldUrl, newUrl });
+    });
+  }
+
+  function resolveSlugConfirmation(confirmed: boolean) {
+    slugConfirmationResolver.current?.(confirmed);
+    slugConfirmationResolver.current = null;
+    setPendingSlugConfirmation(null);
   }
 
   function getSectionSummary(block: EditableBlock): string {
@@ -498,7 +526,11 @@ export function PageEditorClient({
     setStatus(null);
 
     const trimmedTitle = title.trim();
-    const normalizedSlug = normalizeSlug(slug);
+    const normalizedSlug = canEditSlug
+      ? normalizeSlug(slug)
+      : initialPage
+        ? normalizeSlug(initialPage.slug)
+        : normalizeSlug(title);
 
     if (!trimmedTitle) {
       setError("Title is required.");
@@ -528,9 +560,7 @@ export function PageEditorClient({
     if (slugChanged && canEditSlug) {
       const oldUrl = `/page/${originalSlug}`;
       const newUrl = `/page/${normalizedSlug}`;
-      const confirmed = window.confirm(
-        `Changing the slug will change the page URL.\n\nOld URL: ${oldUrl}\nNew URL: ${newUrl}\n\nThis may break existing links and SEO.\n\nContinue?`,
-      );
+      const confirmed = await requestSlugChangeConfirmation(oldUrl, newUrl);
 
       if (!confirmed) {
         setStatus("Slug change cancelled.");
@@ -738,27 +768,29 @@ export function PageEditorClient({
           />
         </label>
 
-        <label>
-          Page URL slug
-          <input
-            value={slug}
-            onChange={(e) => setSlug(normalizeSlug(e.target.value))}
-            required
-            readOnly={!canEditSlug}
-          />
-          <small className="page-editor__field-help">
-            URL preview: /page/{normalizeSlug(slug) || "your-page"}
-          </small>
-          {canEditSlug ? (
+        {canEditSlug ? (
+          <label>
+            Page URL slug
+            <input
+              value={slug}
+              onChange={(e) => setSlug(normalizeSlug(e.target.value))}
+              required
+            />
+            <small className="page-editor__field-help">
+              URL preview: /page/{normalizeSlug(slug) || "your-page"}
+            </small>
             <small className="page-editor__field-help">
               Changing a published slug may require a redirect from the old URL.
             </small>
-          ) : (
-            <small className="page-editor__field-help">
-              Only admins and superadmins can change page URLs.
-            </small>
-          )}
-        </label>
+          </label>
+        ) : (
+          <p className="page-editor__field-help">
+            Page URL is managed by admins. Current URL: /page/
+            {initialPage
+              ? normalizeSlug(initialPage.slug)
+              : normalizeSlug(title) || "your-page"}
+          </p>
+        )}
 
         <label className="page-editor__checkbox">
           <input
@@ -1061,7 +1093,9 @@ export function PageEditorClient({
                         </option>
                       ))}
                     </select>
-                    <small className="page-editor__field-help">Choose media with descriptive alt text already filled in.</small>
+                    <small className="page-editor__field-help">
+                      Choose media with descriptive alt text already filled in.
+                    </small>
                   </label>
                 )}
               </div>
@@ -1087,6 +1121,33 @@ export function PageEditorClient({
           )}
         </div>
       </form>
+
+      {pendingSlugConfirmation ? (
+        <div
+          role="dialog"
+          aria-modal="true"
+          className="page-editor__confirm-modal"
+        >
+          <p>
+            <strong>Changing the slug will change the page URL.</strong>
+          </p>
+          <p>Old URL: {pendingSlugConfirmation.oldUrl}</p>
+          <p>New URL: {pendingSlugConfirmation.newUrl}</p>
+          <p>This may break existing links and SEO.</p>
+          <p>Continue?</p>
+          <div>
+            <button
+              type="button"
+              onClick={() => resolveSlugConfirmation(false)}
+            >
+              Cancel
+            </button>
+            <button type="button" onClick={() => resolveSlugConfirmation(true)}>
+              Continue
+            </button>
+          </div>
+        </div>
+      ) : null}
     </section>
   );
 }
