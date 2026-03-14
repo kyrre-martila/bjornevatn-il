@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { HtmlRichTextEditor } from "../components/HtmlRichTextEditor";
 import { useRouter } from "next/navigation";
 import * as React from "react";
 import type {
@@ -969,10 +970,21 @@ export function PageEditorClient({
                               {field.description}
                             </small>
                           ) : null}
-                          {field.widget === "textarea" ||
-                          field.widget === "rich_text" ? (
+                          {field.widget === "rich_text" ? (
+                            <HtmlRichTextEditor
+                              value={normalizedValue}
+                              onChange={(nextValue) =>
+                                updateBlockDataField(
+                                  activeBlockIndex,
+                                  field.key,
+                                  nextValue,
+                                )
+                              }
+                              placeholder={field.placeholder}
+                            />
+                          ) : field.widget === "textarea" ? (
                             <textarea
-                              rows={field.widget === "rich_text" ? 6 : 3}
+                              rows={3}
                               value={normalizedValue}
                               onChange={(e) =>
                                 updateBlockDataField(
