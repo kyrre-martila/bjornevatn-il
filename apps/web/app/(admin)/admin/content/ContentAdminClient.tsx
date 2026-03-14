@@ -63,6 +63,8 @@ type AdminMediaOption = {
   url: string;
 };
 
+type MDEditorComponent = typeof import("@uiw/react-md-editor").default;
+
 const FIELD_TYPE_LABELS: Record<AdminContentFieldDefinition["type"], string> = {
   text: "Short text",
   textarea: "Paragraph",
@@ -537,6 +539,10 @@ function ContentFieldInput({
   canUseMediaLibrary: boolean;
 }) {
   const [search, setSearch] = React.useState("");
+  const [RichTextEditor, setRichTextEditor] =
+    React.useState<MDEditorComponent | null>(null);
+  const [didFailLoadingEditor, setDidFailLoadingEditor] =
+    React.useState(false);
   const referenceValues = getReferenceValues(value);
   const isReferenceField =
     field.type === "relation" ||
@@ -548,13 +554,86 @@ function ContentFieldInput({
     [options, search],
   );
 
-  if (field.type === "textarea" || field.type === "rich_text") {
+  React.useEffect(() => {
+    if (field.type !== "rich_text") {
+      return;
+    }
+
+    let isActive = true;
+
+    void import("@uiw/react-md-editor")
+      .then((module) => {
+        if (isActive) {
+          setRichTextEditor(() => module.default);
+          setDidFailLoadingEditor(false);
+        }
+      })
+      .catch(() => {
+        if (isActive) {
+          setDidFailLoadingEditor(true);
+        }
+      });
+
+    return () => {
+      isActive = false;
+    };
+  }, [field.type]);
+
+  if (field.type === "rich_text") {
+    const markdownValue = Array.isArray(value) ? value.join("\n\n") : value;
+
+    if (didFailLoadingEditor || !RichTextEditor) {
+      return (
+        <textarea
+          value={markdownValue}
+          onChange={(e) => onChange(e.target.value)}
+          required={field.required}
+          rows={6}
+          placeholder={field.placeholder}
+        />
+      );
+    }
+
+    return (
+      <div data-color-mode="light">
+        <input
+          value={markdownValue}
+          onChange={() => {
+            // Controlled by rich-text editor state updates.
+          }}
+          readOnly
+          required={field.required}
+          tabIndex={-1}
+          aria-hidden="true"
+          style={{
+            position: "absolute",
+            opacity: 0,
+            pointerEvents: "none",
+            width: 1,
+            height: 1,
+          }}
+        />
+        <RichTextEditor
+          value={markdownValue}
+          onChange={(nextValue) => onChange(nextValue ?? "")}
+          preview="edit"
+          visibleDragbar={false}
+          textareaProps={{
+            placeholder: field.placeholder,
+          }}
+          height={260}
+        />
+      </div>
+    );
+  }
+
+  if (field.type === "textarea") {
     return (
       <textarea
         value={Array.isArray(value) ? value.join(", ") : value}
         onChange={(e) => onChange(e.target.value)}
         required={field.required}
-        rows={field.type === "rich_text" ? 6 : 3}
+        rows={3}
         placeholder={field.placeholder}
       />
     );
