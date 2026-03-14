@@ -193,6 +193,12 @@ class UpdatePageDto {
   templateKey?: string;
 }
 
+type PageBlockPayload = {
+  type: (typeof PAGE_BLOCK_TYPES)[number];
+  data: Record<string, unknown>;
+  order: number;
+};
+
 const CONTENT_FIELD_TYPES = [
   "text",
   "textarea",
@@ -740,7 +746,7 @@ export class ContentController {
 
   @Post("pages")
   async createPage(@Req() req: Request, @Body() body: CreatePageDto) {
-    const role = await requireMinimumRole(req, this.auth, "editor");
+    const role = await requireMinimumRole(req, this.auth, "admin");
     if (body.templateKey !== undefined && role !== "super_admin") {
       throw new ForbiddenException(
         "Access denied: only super_admin can modify page templates.",
@@ -762,18 +768,24 @@ export class ContentController {
     @Body() body: UpdatePageDto,
   ) {
     const role = await requireMinimumRole(req, this.auth, "editor");
+    const existingPage = await this.pages.findById(id);
+    if (!existingPage) {
+      throw new BadRequestException("Page not found.");
+    }
+
     if (body.templateKey !== undefined && role !== "super_admin") {
       throw new ForbiddenException(
         "Access denied: only super_admin can modify page templates.",
       );
     }
+
+    if (role === "editor") {
+      this.ensureEditorCanManagePageUpdate(existingPage, body);
+    }
+
     if (body.blocks) {
-      const page = await this.pages.findById(id);
-      if (!page) {
-        throw new BadRequestException("Page not found.");
-      }
       await this.validatePageBlocksMediaAlt(
-        body.title ?? page.title,
+        body.title ?? existingPage.title,
         body.blocks,
       );
     }
@@ -787,9 +799,72 @@ export class ContentController {
 
   @Delete("pages/:id")
   async deletePage(@Req() req: Request, @Param("id") id: string) {
-    await requireMinimumRole(req, this.auth, "editor");
+    await requireMinimumRole(req, this.auth, "admin");
     await this.pages.delete(id);
     return { ok: true };
+  }
+
+  private ensureEditorCanManagePageUpdate(
+    page: Awaited<ReturnType<PagesRepository["findById"]>>,
+    body: UpdatePageDto,
+  ) {
+    if (!page) {
+      throw new BadRequestException("Page not found.");
+    }
+
+    if (body.slug !== undefined && body.slug !== page.slug) {
+      throw new ForbiddenException(
+        "Access denied: editors cannot change page slug or route structure.",
+      );
+    }
+
+    if (body.templateKey !== undefined) {
+      throw new ForbiddenException(
+        "Access denied: editors cannot modify page templates.",
+      );
+    }
+
+    if (!body.blocks) {
+      return;
+    }
+
+    this.ensurePageBlockStructureUnchanged(page.blocks, body.blocks);
+  }
+
+  private ensurePageBlockStructureUnchanged(
+    existingBlocks: PageBlockPayload[],
+    incomingBlocks: PageBlockPayload[],
+  ) {
+    if (existingBlocks.length !== incomingBlocks.length) {
+      throw new ForbiddenException(
+        "Access denied: editors cannot add or remove page sections.",
+      );
+    }
+
+    const sortedExisting = existingBlocks
+      .slice()
+      .sort((a, b) => a.order - b.order);
+    const sortedIncoming = incomingBlocks
+      .slice()
+      .sort((a, b) => a.order - b.order);
+
+    for (const [index, currentBlock] of sortedIncoming.entries()) {
+      const existingBlock = sortedExisting[index];
+      if (!existingBlock) {
+        throw new ForbiddenException(
+          "Access denied: editors cannot alter page section structure.",
+        );
+      }
+
+      if (
+        currentBlock.type !== existingBlock.type ||
+        currentBlock.order !== existingBlock.order
+      ) {
+        throw new ForbiddenException(
+          "Access denied: editors cannot reorder or change page section types.",
+        );
+      }
+    }
   }
 
   @Get("types")

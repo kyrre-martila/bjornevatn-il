@@ -20,7 +20,7 @@ export async function GET(_: Request, { params }: { params: { id: string } }) {
 }
 
 export async function PATCH(request: Request, { params }: { params: { id: string } }) {
-  const denied = await requireMinimumAdminRole();
+  const denied = await requireMinimumAdminRole("admin");
   if (denied) return denied;
 
   const body = await request.text();
@@ -39,7 +39,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
 }
 
 export async function DELETE(_: Request, { params }: { params: { id: string } }) {
-  const denied = await requireMinimumAdminRole();
+  const denied = await requireMinimumAdminRole("admin");
   if (denied) return denied;
 
   const res = await fetch(`${getApiBase()}/admin/content/pages/${params.id}`, {

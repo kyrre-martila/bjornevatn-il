@@ -1,7 +1,11 @@
 import Link from "next/link";
 import { listAdminPages } from "../../../../lib/admin/pages";
+import { getMe } from "../../../../lib/me";
+import { hasMinimumRole } from "../../../../lib/rbac";
 
 export default async function AdminPagesListPage() {
+  const me = await getMe();
+  const canManagePages = hasMinimumRole(me?.user?.role, "admin");
   const pages = await listAdminPages();
   const publishedCount = pages.filter((page) => page.published).length;
 
@@ -18,15 +22,23 @@ export default async function AdminPagesListPage() {
             {pages.length - publishedCount} drafts
           </p>
         </div>
-        <Link href="/admin/pages/new" className="admin-pages__create">
-          + New page
-        </Link>
+        {canManagePages ? (
+          <Link href="/admin/pages/new" className="admin-pages__create">
+            + New page
+          </Link>
+        ) : null}
       </div>
 
       <p className="admin-pages__help">
         Manage routes and block-based content. Select a page to edit details and
         reorder blocks.
       </p>
+      {!canManagePages ? (
+        <p className="admin-pages__help">
+          Your role can review page content but cannot modify page structure,
+          route slugs, or section layout.
+        </p>
+      ) : null}
 
       <div className="admin-pages__list" role="list" aria-label="Page list">
         {pages.length === 0 ? (
@@ -58,12 +70,14 @@ export default async function AdminPagesListPage() {
                 >
                   View
                 </Link>
-                <Link
-                  href={`/admin/pages/${page.id}`}
-                  className="admin-pages__edit-link"
-                >
-                  Edit page
-                </Link>
+                {canManagePages ? (
+                  <Link
+                    href={`/admin/pages/${page.id}`}
+                    className="admin-pages__edit-link"
+                  >
+                    Edit page
+                  </Link>
+                ) : null}
               </div>
             </article>
           ))

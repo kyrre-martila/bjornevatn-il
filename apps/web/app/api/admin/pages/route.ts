@@ -30,7 +30,7 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const denied = await requireMinimumAdminRole();
+  const denied = await requireMinimumAdminRole("admin");
   if (denied) return denied;
 
   const body = await request.text();
