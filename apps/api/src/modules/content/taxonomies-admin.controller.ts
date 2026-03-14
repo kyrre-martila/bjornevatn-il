@@ -312,7 +312,7 @@ export class TaxonomiesAdminController {
     @Param("id") id: string,
     @Body() body: AssignTermsDto,
   ) {
-    await requireMinimumRole(req, this.auth, "editor");
+    await requireMinimumRole(req, this.auth, "admin");
     const item = await this.contentItems.findById(id);
     if (!item) {
       throw new BadRequestException("Content item not found.");
@@ -327,7 +327,7 @@ export class TaxonomiesAdminController {
     @Param("id") id: string,
     @Param("termId") termId: string,
   ) {
-    await requireMinimumRole(req, this.auth, "editor");
+    await requireMinimumRole(req, this.auth, "admin");
     await this.contentItemTerms.remove(id, termId);
     return { ok: true };
   }

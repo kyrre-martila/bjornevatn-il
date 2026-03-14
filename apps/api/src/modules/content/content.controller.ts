@@ -1573,7 +1573,6 @@ export class ContentController {
     const relationFields = fields.filter(
       (field) =>
         field.type === "relation" ||
-        field.type === "media" ||
         field.type === "contentItem" ||
         field.type === "page",
     );
@@ -1636,7 +1635,7 @@ export class ContentController {
 
   @Delete("items/:id")
   async deleteContentItem(@Req() req: Request, @Param("id") id: string) {
-    await requireMinimumRole(req, this.auth, "editor");
+    await requireMinimumRole(req, this.auth, "admin");
     await this.contentItems.delete(id);
     return { ok: true };
   }
