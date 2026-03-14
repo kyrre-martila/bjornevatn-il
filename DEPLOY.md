@@ -73,8 +73,34 @@ docker compose -f infra/docker-compose.prod.yml --env-file .env.prod up -d
 
 ### Health endpoints
 
-- API liveness/health: `GET /health`
+- API liveness: `GET /health/live`
+- API readiness: `GET /health/ready`
+- API compatibility health (same as readiness): `GET /health`
 - Web health: `GET /api/health`
+
+### Probe semantics
+
+- **Liveness probe** answers: "should this process be restarted?"
+  - Use `GET /health/live`.
+  - This endpoint only verifies the API process is up and able to serve requests.
+  - It intentionally does **not** check database connectivity.
+- **Readiness probe** answers: "can this instance receive production traffic right now?"
+  - Use `GET /health/ready` (or `GET /health` for backward compatibility).
+  - This endpoint verifies database connectivity with a simple `SELECT 1` query.
+  - If the database is unavailable, the endpoint returns HTTP `503` so orchestrators/load balancers stop routing traffic to that instance.
+
+Example Docker health check (readiness-style):
+
+```yaml
+services:
+  api:
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3001/health/ready').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 20s
+```
 
 ### Readiness assumptions
 
@@ -87,7 +113,7 @@ docker compose -f infra/docker-compose.prod.yml --env-file .env.prod up -d
 
 1. Start database.
 2. Apply migrations (`pnpm db:migrate`).
-3. Start API and wait for `/health` success.
+3. Start API and wait for `/health/ready` success.
 4. Start web and verify `/api/health` plus one authenticated admin request.
 5. Shift traffic.
 
@@ -146,7 +172,7 @@ Upload scanning uses a pluggable hook (`MediaUploadScanner`). The default is no-
 - [ ] `NEXT_PUBLIC_SITE_URL`, `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_API_BASE_PATH` explicitly set.
 - [ ] `API_CORS_ORIGINS` explicitly set to deployed origins.
 - [ ] Database migrations applied and verified.
-- [ ] `/health` and `/api/health` checks green.
+- [ ] `/health/live`, `/health/ready`, and `/api/health` checks green.
 - [ ] Auth flow tested end-to-end (login, `/me`, logout).
 - [ ] Backups and log retention configured.
 
