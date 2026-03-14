@@ -27,7 +27,7 @@ type ContentItemDraft = {
   canonicalUrl: string;
   noIndex: boolean;
   published: boolean;
-  values: Record<string, string>;
+  values: Record<string, string | string[]>;
 };
 
 type ContentTypeDraft = {
@@ -43,6 +43,10 @@ type ReferenceOption = {
   id: string;
   label: string;
   hint?: string;
+  typeLabel: string;
+  previewUrl?: string;
+  filename?: string;
+  altText?: string | null;
 };
 
 type AdminPageOption = {
@@ -95,19 +99,18 @@ function parseReferenceValues(value: string): string[] {
     .filter(Boolean);
 }
 
-function updateReferenceValue(
-  currentValue: string,
-  selectedId: string,
-  checked: boolean,
-): string {
-  const current = new Set(parseReferenceValues(currentValue));
-  if (checked) {
-    current.add(selectedId);
-  } else {
-    current.delete(selectedId);
+function getReferenceValues(value: string | string[]): string[] {
+  if (Array.isArray(value)) {
+    return value.filter(
+      (entry) => typeof entry === "string" && entry.trim().length > 0,
+    );
   }
 
-  return Array.from(current).join(", ");
+  if (typeof value !== "string") {
+    return [];
+  }
+
+  return parseReferenceValues(value);
 }
 
 function relationTargetTypeLabel(field: AdminContentFieldDefinition): string {
@@ -132,14 +135,14 @@ function isMultipleReferenceField(field: AdminContentFieldDefinition): boolean {
 function stringifyFieldValue(
   value: unknown,
   field: AdminContentFieldDefinition,
-) {
+): string | string[] {
   if (value === undefined || value === null) return "";
   if (field.type === "boolean") return value ? "true" : "false";
   if (field.type === "date" && typeof value === "string") {
     return value.slice(0, 10);
   }
   if (isMultipleReferenceField(field) && Array.isArray(value)) {
-    return value.filter((entry) => typeof entry === "string").join(", ");
+    return value.filter((entry): entry is string => typeof entry === "string");
   }
   return String(value);
 }
@@ -147,8 +150,8 @@ function stringifyFieldValue(
 function buildValues(
   fields: AdminContentFieldDefinition[],
   data: Record<string, unknown>,
-): Record<string, string> {
-  return fields.reduce<Record<string, string>>((acc, field) => {
+): Record<string, string | string[]> {
+  return fields.reduce<Record<string, string | string[]>>((acc, field) => {
     acc[field.key] = stringifyFieldValue(data[field.key], field);
     return acc;
   }, {});
@@ -156,13 +159,17 @@ function buildValues(
 
 function buildDataFromFields(
   fields: AdminContentFieldDefinition[],
-  values: Record<string, string>,
+  values: Record<string, string | string[]>,
 ): Record<string, unknown> {
   const data: Record<string, unknown> = {};
 
   fields.forEach((field) => {
     const value = values[field.key] ?? "";
-    if (!value && field.type !== "boolean") {
+    const hasValue = Array.isArray(value)
+      ? value.length > 0
+      : value.trim().length > 0;
+
+    if (!hasValue && field.type !== "boolean") {
       return;
     }
 
@@ -172,7 +179,18 @@ function buildDataFromFields(
     }
 
     if (isMultipleReferenceField(field)) {
-      data[field.key] = parseReferenceValues(value);
+      data[field.key] = getReferenceValues(value);
+      return;
+    }
+
+    if (
+      (field.type === "relation" ||
+        field.type === "media" ||
+        field.type === "contentItem" ||
+        field.type === "page") &&
+      Array.isArray(value)
+    ) {
+      data[field.key] = value[0] ?? "";
       return;
     }
 
@@ -209,7 +227,7 @@ function validateContentItemInput(
 }
 
 function emptyDraft(contentType: AdminContentType): ContentItemDraft {
-  const values = contentType.fields.reduce<Record<string, string>>(
+  const values = contentType.fields.reduce<Record<string, string | string[]>>(
     (acc, field) => {
       acc[field.key] = field.type === "boolean" ? "false" : "";
       return acc;
@@ -328,7 +346,7 @@ function FieldDefinitionEditor({
         field.type === "contentItem" ||
         field.type === "page") && (
         <label>
-          Allow multiple selections (separate each with a comma)
+          Allow multiple selections
           <input
             type="checkbox"
             checked={Boolean(field.relation?.multiple)}
@@ -358,6 +376,27 @@ function FieldDefinitionEditor({
   );
 }
 
+function matchesReferenceSearch(
+  option: ReferenceOption,
+  query: string,
+): boolean {
+  const normalized = query.trim().toLowerCase();
+  if (!normalized) {
+    return true;
+  }
+
+  return [
+    option.label,
+    option.hint ?? "",
+    option.typeLabel,
+    option.filename ?? "",
+    option.altText ?? "",
+  ]
+    .join(" ")
+    .toLowerCase()
+    .includes(normalized);
+}
+
 function ContentFieldInput({
   field,
   value,
@@ -366,22 +405,27 @@ function ContentFieldInput({
   canUseMediaLibrary,
 }: {
   field: AdminContentFieldDefinition;
-  value: string;
-  onChange: (nextValue: string) => void;
+  value: string | string[];
+  onChange: (nextValue: string | string[]) => void;
   options: ReferenceOption[];
   canUseMediaLibrary: boolean;
 }) {
-  const referenceValues = parseReferenceValues(value);
+  const [search, setSearch] = React.useState("");
+  const referenceValues = getReferenceValues(value);
   const isReferenceField =
     field.type === "relation" ||
     field.type === "media" ||
     field.type === "contentItem" ||
     field.type === "page";
+  const filteredOptions = React.useMemo(
+    () => options.filter((option) => matchesReferenceSearch(option, search)),
+    [options, search],
+  );
 
   if (field.type === "textarea" || field.type === "rich_text") {
     return (
       <textarea
-        value={value}
+        value={Array.isArray(value) ? value.join(", ") : value}
         onChange={(e) => onChange(e.target.value)}
         required={field.required}
         rows={field.type === "rich_text" ? 6 : 3}
@@ -391,9 +435,12 @@ function ContentFieldInput({
   }
 
   if (field.type === "boolean") {
+    const normalizedValue = Array.isArray(value)
+      ? (value[0] ?? "false")
+      : value;
     return (
       <select
-        value={value || "false"}
+        value={normalizedValue || "false"}
         onChange={(e) => onChange(e.target.value)}
       >
         <option value="false">No</option>
@@ -407,58 +454,124 @@ function ContentFieldInput({
       return (
         <input
           type="text"
-          value={value}
+          value={Array.isArray(value) ? (value[0] ?? "") : value}
           onChange={(e) => onChange(e.target.value)}
           required={field.required}
-          placeholder={field.placeholder || "Media ID"}
+          placeholder={field.placeholder || "Select from media library"}
+          disabled
         />
       );
     }
 
     if (field.relation?.multiple) {
+      const selectedIds = new Set(referenceValues);
       return (
-        <div>
-          {options.map((option) => {
-            const checked = referenceValues.includes(option.id);
-            return (
-              <label key={option.id}>
-                <input
-                  type="checkbox"
-                  checked={checked}
-                  onChange={(e) =>
-                    onChange(
-                      updateReferenceValue(value, option.id, e.target.checked),
-                    )
-                  }
-                />
-                <span>{option.label}</span>
-                {option.hint ? <small>{option.hint}</small> : null}
-              </label>
-            );
-          })}
+        <div className="content-reference-picker">
+          <input
+            type="search"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder={`Search ${relationTargetTypeLabel(field)} options`}
+          />
+          <small>
+            Selected {referenceValues.length}{" "}
+            {referenceValues.length === 1 ? "item" : "items"}.
+          </small>
+          <div className="content-reference-picker__options">
+            {filteredOptions.map((option) => {
+              const checked = selectedIds.has(option.id);
+              return (
+                <label
+                  key={option.id}
+                  className="content-reference-picker__option"
+                >
+                  <input
+                    type="checkbox"
+                    checked={checked}
+                    onChange={(e) => {
+                      const next = e.target.checked
+                        ? [...referenceValues, option.id]
+                        : referenceValues.filter(
+                            (entry) => entry !== option.id,
+                          );
+                      onChange(next);
+                    }}
+                  />
+                  <span>
+                    <strong>{option.label}</strong>{" "}
+                    <em>({option.typeLabel})</em>
+                    {option.hint ? <small>{option.hint}</small> : null}
+                    {option.typeLabel === "Media" ? (
+                      <small>
+                        {option.filename ?? "Unknown file"} ·{" "}
+                        {option.altText?.trim()
+                          ? "Alt text set"
+                          : "Missing alt text"}
+                      </small>
+                    ) : null}
+                  </span>
+                </label>
+              );
+            })}
+            {filteredOptions.length === 0 ? (
+              <small>No matches found.</small>
+            ) : null}
+          </div>
         </div>
       );
     }
 
+    const selectedOption = options.find(
+      (option) => option.id === (referenceValues[0] ?? ""),
+    );
+
     return (
-      <select
-        value={referenceValues[0] ?? ""}
-        onChange={(e) => onChange(e.target.value)}
-      >
-        <option value="">Select {relationTargetTypeLabel(field)}</option>
-        {options.map((option) => (
-          <option key={option.id} value={option.id}>
-            {option.label}
-          </option>
-        ))}
-      </select>
+      <div className="content-reference-picker">
+        <input
+          type="search"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder={`Search ${relationTargetTypeLabel(field)} options`}
+        />
+        <select
+          value={referenceValues[0] ?? ""}
+          onChange={(e) => onChange(e.target.value)}
+        >
+          <option value="">Select {relationTargetTypeLabel(field)}</option>
+          {filteredOptions.map((option) => (
+            <option key={option.id} value={option.id}>
+              {option.label} ({option.typeLabel})
+            </option>
+          ))}
+        </select>
+        {selectedOption ? (
+          <>
+            <small>
+              Selected: <strong>{selectedOption.label}</strong> (
+              {selectedOption.typeLabel})
+              {selectedOption.hint ? ` · ${selectedOption.hint}` : ""}
+              {selectedOption.typeLabel === "Media"
+                ? ` · ${selectedOption.filename ?? "Unknown file"} · ${selectedOption.altText?.trim() ? "Alt text set" : "Missing alt text"}`
+                : ""}
+            </small>
+            {selectedOption.typeLabel === "Media" &&
+            selectedOption.previewUrl ? (
+              <img
+                src={selectedOption.previewUrl}
+                alt={selectedOption.altText?.trim() || "Selected media preview"}
+                className="content-reference-picker__preview"
+              />
+            ) : null}
+          </>
+        ) : null}
+      </div>
     );
   }
 
   return (
     <input
       type={fieldTypeInputType(field.type)}
-      value={value}
+      value={Array.isArray(value) ? value.join(", ") : value}
       onChange={(e) => onChange(e.target.value)}
       required={field.required}
       placeholder={field.placeholder}
@@ -506,7 +619,7 @@ function ContentItemEditor({
   );
   const [noIndex, setNoIndex] = React.useState(item.noIndex);
   const [published, setPublished] = React.useState(item.published);
-  const [values, setValues] = React.useState<Record<string, string>>(
+  const [values, setValues] = React.useState<Record<string, string | string[]>>(
     buildValues(contentType.fields, item.data),
   );
 
@@ -649,7 +762,9 @@ export function ContentAdminClient({
   );
   const [selectedTypeId, setSelectedTypeId] = React.useState(() => {
     const preferredType = initialSelectedTypeSlug
-      ? initialContentTypes.find((type) => type.slug === initialSelectedTypeSlug)
+      ? initialContentTypes.find(
+          (type) => type.slug === initialSelectedTypeSlug,
+        )
       : null;
     return preferredType?.id ?? initialContentTypes[0]?.id ?? "";
   });
@@ -730,6 +845,7 @@ export function ContentAdminClient({
         id: page.id,
         label: page.title,
         hint: `/${page.slug}`,
+        typeLabel: "Page",
       }));
     }
 
@@ -738,6 +854,10 @@ export function ContentAdminClient({
         id: item.id,
         label: item.alt?.trim() || item.url,
         hint: item.url,
+        typeLabel: "Media",
+        previewUrl: item.url,
+        filename: item.url.split("/").pop() ?? item.url,
+        altText: item.alt ?? null,
       }));
     }
 
@@ -752,6 +872,7 @@ export function ContentAdminClient({
       id: item.id,
       label: item.title,
       hint: item.slug,
+      typeLabel: targetType.name,
     }));
   }
 
@@ -855,7 +976,10 @@ export function ContentAdminClient({
     setError(null);
     setStatus(null);
 
-    const validationError = validateContentItemInput(selectedType.fields, payload.data);
+    const validationError = validateContentItemInput(
+      selectedType.fields,
+      payload.data,
+    );
     if (validationError) {
       setError(validationError);
       return;
