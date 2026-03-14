@@ -12,7 +12,7 @@ export async function GET(request: Request) {
     : "/admin/content/items";
 
   const query = new URLSearchParams();
-  for (const key of ["mode", "limit", "offset"]) {
+  for (const key of ["mode", "limit", "offset", "cursor"]) {
     const value = searchParams.get(key);
     if (value) query.set(key, value);
   }

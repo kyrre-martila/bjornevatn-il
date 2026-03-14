@@ -10,8 +10,10 @@ export async function GET(request: Request) {
   const upstreamParams = new URLSearchParams();
   const limit = searchParams.get("limit");
   const offset = searchParams.get("offset");
+  const cursor = searchParams.get("cursor");
   if (limit) upstreamParams.set("limit", limit);
   if (offset) upstreamParams.set("offset", offset);
+  if (cursor) upstreamParams.set("cursor", cursor);
   const query = upstreamParams.size > 0 ? `?${upstreamParams.toString()}` : "";
 
   const res = await fetch(`${getApiBase()}/admin/content/pages${query}`, {

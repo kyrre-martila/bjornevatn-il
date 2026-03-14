@@ -40,7 +40,7 @@ const PAGE_BLOCK_TYPES: PageBlockType[] = [
 ];
 
 const DEFAULT_PAGINATION_LIMIT = 50;
-const MAX_PAGINATION_LIMIT = 200;
+const MAX_PAGINATION_LIMIT = 100;
 
 function normalizePaginationLimit(limit?: number): number {
   if (typeof limit !== "number" || Number.isNaN(limit)) {

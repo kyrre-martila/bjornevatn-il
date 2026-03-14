@@ -12,7 +12,13 @@ export default async function AdminMediaPage() {
   }
 
   const pageSize = 50;
-  const media = await listAdminMedia({ limit: pageSize, offset: 0 });
+  const media = await listAdminMedia({ limit: pageSize + 1, offset: 0 });
 
-  return <MediaManagerClient initialMedia={media} pageSize={pageSize} />;
+  return (
+    <MediaManagerClient
+      initialMedia={media.slice(0, pageSize)}
+      pageSize={pageSize}
+      initialHasNext={media.length > pageSize}
+    />
+  );
 }

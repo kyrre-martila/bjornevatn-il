@@ -6,54 +6,46 @@ import type { AdminMedia } from "../../../../lib/admin/media";
 export function MediaManagerClient({
   initialMedia,
   pageSize,
+  initialHasNext,
 }: {
   initialMedia: AdminMedia[];
   pageSize: number;
+  initialHasNext: boolean;
 }) {
   const [media, setMedia] = React.useState(initialMedia);
-  const [loadingMore, setLoadingMore] = React.useState(false);
-  const [hasMore, setHasMore] = React.useState(initialMedia.length >= pageSize);
+  const [offset, setOffset] = React.useState(0);
+  const [loadingPage, setLoadingPage] = React.useState(false);
+  const [hasNext, setHasNext] = React.useState(initialHasNext);
   const [uploading, setUploading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
-  async function refresh() {
-    const res = await fetch(`/api/admin/media?offset=0&limit=${pageSize}`, { cache: "no-store" });
-    if (!res.ok) {
-      throw new Error("Failed to refresh media");
-    }
-
-    const next = (await res.json()) as AdminMedia[];
-    setMedia(next);
-    setHasMore(next.length >= pageSize);
-  }
-
-  async function loadMore() {
-    setLoadingMore(true);
+  async function loadPage(nextOffset: number) {
+    setLoadingPage(true);
     setError(null);
 
     try {
       const res = await fetch(
-        `/api/admin/media?offset=${media.length}&limit=${pageSize}`,
+        `/api/admin/media?offset=${nextOffset}&limit=${pageSize + 1}`,
         { cache: "no-store" },
       );
 
       if (!res.ok) {
-        throw new Error("Failed to load more media");
+        throw new Error("Failed to load media page");
       }
 
-      const nextBatch = (await res.json()) as AdminMedia[];
-      if (nextBatch.length === 0) {
-        setHasMore(false);
-        return;
-      }
-
-      setMedia((current) => [...current, ...nextBatch]);
-      setHasMore(nextBatch.length >= pageSize);
+      const batch = (await res.json()) as AdminMedia[];
+      setMedia(batch.slice(0, pageSize));
+      setHasNext(batch.length > pageSize);
+      setOffset(nextOffset);
     } catch {
-      setError("Unable to load more media.");
+      setError("Unable to load media.");
     } finally {
-      setLoadingMore(false);
+      setLoadingPage(false);
     }
+  }
+
+  async function refresh() {
+    await loadPage(0);
   }
 
   async function onUpload(event: React.FormEvent<HTMLFormElement>) {
@@ -117,7 +109,7 @@ export function MediaManagerClient({
       return;
     }
 
-    setMedia((current) => current.filter((item) => item.id !== id));
+    await loadPage(offset);
   }
 
   async function onUpdateAlt(id: string, alt: string) {
@@ -162,6 +154,10 @@ export function MediaManagerClient({
 
       {error ? <p className="page-editor__error">{error}</p> : null}
 
+      <p>
+        Showing {offset + 1}-{offset + media.length}
+      </p>
+
       <div className="media-manager__grid">
         {media.map((item) => (
           <article key={item.id} className="media-manager__item">
@@ -194,18 +190,29 @@ export function MediaManagerClient({
                 }}
               />
             </label>
-            <button type="button" onClick={() => onDelete(item.id)}>
+            <button type="button" onClick={() => void onDelete(item.id)}>
               Delete
             </button>
           </article>
         ))}
       </div>
 
-      {hasMore ? (
-        <button type="button" onClick={() => void loadMore()} disabled={loadingMore}>
-          {loadingMore ? "Loading..." : "Load more"}
+      <div>
+        <button
+          type="button"
+          onClick={() => void loadPage(Math.max(0, offset - pageSize))}
+          disabled={loadingPage || offset === 0}
+        >
+          Previous page
         </button>
-      ) : null}
+        <button
+          type="button"
+          onClick={() => void loadPage(offset + pageSize)}
+          disabled={loadingPage || !hasNext}
+        >
+          Next page
+        </button>
+      </div>
     </section>
   );
 }

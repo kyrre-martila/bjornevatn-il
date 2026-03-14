@@ -17,6 +17,8 @@ const EDITOR_AREAS: Record<string, string> = {
   team: "team",
 };
 
+const PAGE_SIZE = 50;
+
 export default async function AdminContentPage({
   searchParams,
 }: {
@@ -30,18 +32,26 @@ export default async function AdminContentPage({
   const contentTypes = await listAdminContentTypes();
   const requestedArea = searchParams?.area?.toLowerCase() ?? "";
   const initialSelectedTypeSlug = EDITOR_AREAS[requestedArea] ?? undefined;
-  const groupedItems = await Promise.all(
-    contentTypes.map(async (type) => ({
-      contentTypeId: type.id,
-      items: await listAdminContentItems(type.id),
-    })),
-  );
+  const initialSelectedType = initialSelectedTypeSlug
+    ? contentTypes.find((type) => type.slug === initialSelectedTypeSlug)
+    : contentTypes[0];
+
+  const initialContentTypeId = initialSelectedType?.id ?? "";
+  const initialItemBatch = initialContentTypeId
+    ? await listAdminContentItems(initialContentTypeId, {
+        limit: PAGE_SIZE + 1,
+        offset: 0,
+      })
+    : [];
 
   return (
     <ContentAdminClient
       canManageContentTypes={canManageContentTypes}
       initialContentTypes={contentTypes}
-      initialGroupedItems={groupedItems}
+      initialItems={initialItemBatch.slice(0, PAGE_SIZE)}
+      initialContentTypeId={initialContentTypeId}
+      initialHasNextPage={initialItemBatch.length > PAGE_SIZE}
+      pageSize={PAGE_SIZE}
       canUseMediaLibrary={canUseMediaLibrary}
       canEditSlug={canEditSlug(role)}
       canEditRelations={canManageTaxonomies(role)}

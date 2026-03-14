@@ -10,10 +10,10 @@ import type {
 type Props = {
   canManageContentTypes: boolean;
   initialContentTypes: AdminContentType[];
-  initialGroupedItems: Array<{
-    contentTypeId: string;
-    items: AdminContentItem[];
-  }>;
+  initialItems: AdminContentItem[];
+  initialContentTypeId: string;
+  initialHasNextPage: boolean;
+  pageSize: number;
   canUseMediaLibrary: boolean;
   canEditSlug: boolean;
   canEditRelations: boolean;
@@ -541,8 +541,7 @@ function ContentFieldInput({
   const [search, setSearch] = React.useState("");
   const [RichTextEditor, setRichTextEditor] =
     React.useState<MDEditorComponent | null>(null);
-  const [didFailLoadingEditor, setDidFailLoadingEditor] =
-    React.useState(false);
+  const [didFailLoadingEditor, setDidFailLoadingEditor] = React.useState(false);
   const referenceValues = getReferenceValues(value);
   const isReferenceField =
     field.type === "relation" ||
@@ -1020,7 +1019,10 @@ function ContentItemEditor({
 export function ContentAdminClient({
   canManageContentTypes,
   initialContentTypes,
-  initialGroupedItems,
+  initialItems,
+  initialContentTypeId,
+  initialHasNextPage,
+  pageSize,
   canUseMediaLibrary,
   canEditSlug,
   canEditRelations,
@@ -1037,9 +1039,21 @@ export function ContentAdminClient({
   const [itemsByType, setItemsByType] = React.useState(
     () =>
       new Map(
-        initialGroupedItems.map((entry) => [entry.contentTypeId, entry.items]),
+        initialContentTypeId ? [[initialContentTypeId, initialItems]] : [],
       ),
   );
+  const [offsetByType, setOffsetByType] = React.useState(
+    () => new Map(initialContentTypeId ? [[initialContentTypeId, 0]] : []),
+  );
+  const [hasNextByType, setHasNextByType] = React.useState(
+    () =>
+      new Map(
+        initialContentTypeId
+          ? [[initialContentTypeId, initialHasNextPage]]
+          : [],
+      ),
+  );
+  const [loadingItems, setLoadingItems] = React.useState(false);
   const [selectedTypeId, setSelectedTypeId] = React.useState(() => {
     const preferredType = initialSelectedTypeSlug
       ? initialContentTypes.find(
@@ -1095,6 +1109,12 @@ export function ContentAdminClient({
   const selectedItems = selectedType
     ? (itemsByType.get(selectedType.id) ?? [])
     : [];
+  const selectedOffset = selectedType
+    ? (offsetByType.get(selectedType.id) ?? 0)
+    : 0;
+  const selectedHasNext = selectedType
+    ? (hasNextByType.get(selectedType.id) ?? false)
+    : false;
 
   React.useEffect(() => {
     let active = true;
@@ -1179,14 +1199,30 @@ export function ContentAdminClient({
     }));
   }
 
-  async function refreshItems(contentTypeId: string) {
+  async function loadItemsPage(contentTypeId: string, offset: number) {
+    setLoadingItems(true);
     const res = await fetch(
-      `/api/admin/content-items?contentTypeId=${encodeURIComponent(contentTypeId)}`,
+      `/api/admin/content-items?contentTypeId=${encodeURIComponent(contentTypeId)}&offset=${offset}&limit=${pageSize + 1}`,
       { cache: "no-store" },
     );
-    if (!res.ok) return;
-    const items = (await res.json()) as AdminContentItem[];
-    setItemsByType((curr) => new Map(curr).set(contentTypeId, items));
+    if (!res.ok) {
+      setLoadingItems(false);
+      return;
+    }
+    const batch = (await res.json()) as AdminContentItem[];
+    setItemsByType((curr) =>
+      new Map(curr).set(contentTypeId, batch.slice(0, pageSize)),
+    );
+    setOffsetByType((curr) => new Map(curr).set(contentTypeId, offset));
+    setHasNextByType((curr) =>
+      new Map(curr).set(contentTypeId, batch.length > pageSize),
+    );
+    setLoadingItems(false);
+  }
+
+  async function refreshItems(contentTypeId: string) {
+    const offset = offsetByType.get(contentTypeId) ?? 0;
+    await loadItemsPage(contentTypeId, offset);
   }
 
   async function saveContentType(draft: ContentTypeDraft) {
@@ -1285,6 +1321,16 @@ export function ContentAdminClient({
 
     setContentTypes((curr) => curr.filter((entry) => entry.id !== id));
     setItemsByType((curr) => {
+      const next = new Map(curr);
+      next.delete(id);
+      return next;
+    });
+    setOffsetByType((curr) => {
+      const next = new Map(curr);
+      next.delete(id);
+      return next;
+    });
+    setHasNextByType((curr) => {
       const next = new Map(curr);
       next.delete(id);
       return next;
@@ -1444,7 +1490,12 @@ export function ContentAdminClient({
           <button
             key={type.id}
             type="button"
-            onClick={() => setSelectedTypeId(type.id)}
+            onClick={() => {
+              setSelectedTypeId(type.id);
+              if (!itemsByType.has(type.id)) {
+                void loadItemsPage(type.id, 0);
+              }
+            }}
           >
             {type.name}
           </button>
@@ -1687,6 +1738,32 @@ export function ContentAdminClient({
         <>
           <h2>{selectedType.name} entries</h2>
           <p>{selectedType.description}</p>
+          <p>
+            Showing {selectedOffset + 1}-{selectedOffset + selectedItems.length}
+          </p>
+          <div>
+            <button
+              type="button"
+              onClick={() =>
+                void loadItemsPage(
+                  selectedType.id,
+                  Math.max(0, selectedOffset - pageSize),
+                )
+              }
+              disabled={loadingItems || selectedOffset === 0}
+            >
+              Previous page
+            </button>
+            <button
+              type="button"
+              onClick={() =>
+                void loadItemsPage(selectedType.id, selectedOffset + pageSize)
+              }
+              disabled={loadingItems || !selectedHasNext}
+            >
+              Next page
+            </button>
+          </div>
           {selectedItems.map((item) => (
             <ContentItemEditor
               key={item.id}

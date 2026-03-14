@@ -63,7 +63,7 @@ const ROUTE_SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const ROUTE_SLUG_VALIDATION_MESSAGE =
   "Slug must contain lowercase letters, numbers, and hyphens only.";
 const DEFAULT_LIST_LIMIT = 50;
-const MAX_LIST_LIMIT = 200;
+const MAX_LIST_LIMIT = 100;
 
 function normalizeSlug(value: string): string {
   return value.trim().toLowerCase();

@@ -47,11 +47,27 @@ function buildHeaders() {
   return headers;
 }
 
-export async function listAdminPages(): Promise<AdminPage[]> {
-  const response = await fetch(`${getApiBase()}/admin/content/pages`, {
-    headers: buildHeaders(),
-    cache: "no-store",
-  });
+export async function listAdminPages(pagination?: {
+  limit?: number;
+  offset?: number;
+}): Promise<AdminPage[]> {
+  const query = new URLSearchParams();
+  if (typeof pagination?.limit === "number") {
+    query.set("limit", String(pagination.limit));
+  }
+  if (typeof pagination?.offset === "number") {
+    query.set("offset", String(pagination.offset));
+  }
+
+  const queryString = query.size > 0 ? `?${query.toString()}` : "";
+
+  const response = await fetch(
+    `${getApiBase()}/admin/content/pages${queryString}`,
+    {
+      headers: buildHeaders(),
+      cache: "no-store",
+    },
+  );
 
   if (!response.ok) {
     return [];

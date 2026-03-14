@@ -3,12 +3,30 @@ import { listAdminPages } from "../../../../lib/admin/pages";
 import { getMe } from "../../../../lib/me";
 import { canEditSlug } from "../../../../lib/roles";
 
-export default async function AdminPagesListPage() {
+const PAGE_SIZE = 50;
+
+function parseOffset(offsetParam?: string): number {
+  const parsed = Number(offsetParam);
+  if (!Number.isFinite(parsed) || parsed < 0) {
+    return 0;
+  }
+
+  return Math.floor(parsed / PAGE_SIZE) * PAGE_SIZE;
+}
+
+export default async function AdminPagesListPage({
+  searchParams,
+}: {
+  searchParams?: { offset?: string };
+}) {
   const me = await getMe();
   const role = me?.user?.role;
   const canCreateDeletePages = canEditSlug(role);
   const canEditPages = Boolean(role);
-  const pages = await listAdminPages();
+  const offset = parseOffset(searchParams?.offset);
+  const pageBatch = await listAdminPages({ limit: PAGE_SIZE + 1, offset });
+  const hasNextPage = pageBatch.length > PAGE_SIZE;
+  const pages = pageBatch.slice(0, PAGE_SIZE);
   const publishedCount = pages.filter((page) => page.published).length;
 
   return (
@@ -20,8 +38,8 @@ export default async function AdminPagesListPage() {
             Pages
           </h1>
           <p className="admin-pages__summary">
-            {pages.length} total • {publishedCount} published •{" "}
-            {pages.length - publishedCount} drafts
+            Showing {offset + 1}-{offset + pages.length} • {publishedCount}{" "}
+            published • {Math.max(0, pages.length - publishedCount)} drafts
           </p>
         </div>
         {canCreateDeletePages ? (
@@ -85,6 +103,23 @@ export default async function AdminPagesListPage() {
           ))
         )}
       </div>
+
+      <nav aria-label="Page pagination">
+        <div>
+          {offset > 0 ? (
+            <Link
+              href={`/admin/pages?offset=${Math.max(0, offset - PAGE_SIZE)}`}
+            >
+              Previous page
+            </Link>
+          ) : null}
+          {hasNextPage ? (
+            <Link href={`/admin/pages?offset=${offset + PAGE_SIZE}`}>
+              Next page
+            </Link>
+          ) : null}
+        </div>
+      </nav>
     </section>
   );
 }
