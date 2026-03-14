@@ -14,7 +14,7 @@ export default async function AdminOverviewPage() {
       </h1>
       <p className="hero__subtitle">
         Editor mode is focused on practical content updates, while builder/system
-        mode is reserved for super admins managing schema and platform structure.
+        mode is reserved for super admins managing content setup and platform structure.
       </p>
     </section>
   );
