@@ -23,7 +23,6 @@ import type {
 import { AuthService } from "../auth/auth.service";
 import {
   requireMinimumRole,
-  requireSuperAdmin,
 } from "../../common/auth/admin-access";
 import type { Request } from "express";
 
@@ -151,7 +150,7 @@ export class TaxonomiesAdminController {
 
   @Post("taxonomies")
   async createTaxonomy(@Req() req: Request, @Body() body: CreateTaxonomyDto) {
-    await requireSuperAdmin(req, this.auth);
+    await requireMinimumRole(req, this.auth, "admin");
     return this.taxonomies.create(body);
   }
 
@@ -161,13 +160,13 @@ export class TaxonomiesAdminController {
     @Param("id") id: string,
     @Body() body: UpdateTaxonomyDto,
   ) {
-    await requireSuperAdmin(req, this.auth);
+    await requireMinimumRole(req, this.auth, "admin");
     return this.taxonomies.update(id, body);
   }
 
   @Delete("taxonomies/:id")
   async deleteTaxonomy(@Req() req: Request, @Param("id") id: string) {
-    await requireSuperAdmin(req, this.auth);
+    await requireMinimumRole(req, this.auth, "admin");
     await this.taxonomies.delete(id);
     return { ok: true };
   }
@@ -190,7 +189,7 @@ export class TaxonomiesAdminController {
 
   @Post("terms")
   async createTerm(@Req() req: Request, @Body() body: CreateTermDto) {
-    await requireSuperAdmin(req, this.auth);
+    await requireMinimumRole(req, this.auth, "admin");
     return this.terms.create({ ...body, parentId: body.parentId ?? null });
   }
 
@@ -200,13 +199,13 @@ export class TaxonomiesAdminController {
     @Param("id") id: string,
     @Body() body: UpdateTermDto,
   ) {
-    await requireSuperAdmin(req, this.auth);
+    await requireMinimumRole(req, this.auth, "admin");
     return this.terms.update(id, body);
   }
 
   @Delete("terms/:id")
   async deleteTerm(@Req() req: Request, @Param("id") id: string) {
-    await requireSuperAdmin(req, this.auth);
+    await requireMinimumRole(req, this.auth, "admin");
     await this.terms.delete(id);
     return { ok: true };
   }

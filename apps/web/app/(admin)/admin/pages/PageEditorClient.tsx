@@ -266,10 +266,12 @@ export function PageEditorClient({
   initialPage,
   canManageStructure,
   canEditRawJson,
+  canEditSlug,
 }: {
   initialPage: AdminPage | null;
   canManageStructure: boolean;
   canEditRawJson: boolean;
+  canEditSlug: boolean;
 }) {
   const router = useRouter();
   const [title, setTitle] = React.useState(initialPage?.title ?? "");
@@ -515,6 +517,27 @@ export function PageEditorClient({
       return;
     }
 
+    const originalSlug = initialPage ? normalizeSlug(initialPage.slug) : "";
+    const slugChanged = Boolean(initialPage && normalizedSlug !== originalSlug);
+
+    if (slugChanged && !canEditSlug) {
+      setError("Only admins and superadmins can change page URLs.");
+      return;
+    }
+
+    if (slugChanged && canEditSlug) {
+      const oldUrl = `/page/${originalSlug}`;
+      const newUrl = `/page/${normalizedSlug}`;
+      const confirmed = window.confirm(
+        `Changing the slug will change the page URL.\n\nOld URL: ${oldUrl}\nNew URL: ${newUrl}\n\nThis may break existing links and SEO.\n\nContinue?`,
+      );
+
+      if (!confirmed) {
+        setStatus("Slug change cancelled.");
+        return;
+      }
+    }
+
     const parsedBlocks: Array<{
       type: AdminPageBlockType;
       data: Record<string, unknown>;
@@ -721,13 +744,20 @@ export function PageEditorClient({
             value={slug}
             onChange={(e) => setSlug(normalizeSlug(e.target.value))}
             required
+            readOnly={!canEditSlug}
           />
           <small className="page-editor__field-help">
             URL preview: /page/{normalizeSlug(slug) || "your-page"}
           </small>
-          <small className="page-editor__field-help">
-            Changing a published slug may require a redirect from the old URL.
-          </small>
+          {canEditSlug ? (
+            <small className="page-editor__field-help">
+              Changing a published slug may require a redirect from the old URL.
+            </small>
+          ) : (
+            <small className="page-editor__field-help">
+              Only admins and superadmins can change page URLs.
+            </small>
+          )}
         </label>
 
         <label className="page-editor__checkbox">

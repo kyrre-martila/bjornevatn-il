@@ -1,5 +1,6 @@
 import { getMe } from "../../../../lib/me";
-import { hasMinimumRole, hasRole } from "../../../../lib/rbac";
+import { canAccessSchema, canEditRelations, canEditSlug } from "../../../../lib/feature-guards";
+import { hasMinimumRole } from "../../../../lib/rbac";
 import { ContentAdminClient } from "./ContentAdminClient";
 import {
   listAdminContentItems,
@@ -18,8 +19,9 @@ export default async function AdminContentPage({
   searchParams?: { area?: string };
 }) {
   const me = await getMe();
-  const canManageContentTypes = hasRole(me?.user?.role, "super_admin");
-  const canUseMediaLibrary = hasMinimumRole(me?.user?.role, "admin");
+  const role = me?.user?.role ?? null;
+  const canManageContentTypes = canAccessSchema(role);
+  const canUseMediaLibrary = hasMinimumRole(role, "editor");
 
   const contentTypes = await listAdminContentTypes();
   const requestedArea = searchParams?.area?.toLowerCase() ?? "";
@@ -37,6 +39,8 @@ export default async function AdminContentPage({
       initialContentTypes={contentTypes}
       initialGroupedItems={groupedItems}
       canUseMediaLibrary={canUseMediaLibrary}
+      canEditSlug={canEditSlug(role)}
+      canEditRelations={canEditRelations(role)}
       initialSelectedTypeSlug={initialSelectedTypeSlug}
     />
   );

@@ -20,7 +20,7 @@ export async function GET(_: Request, { params }: { params: { id: string } }) {
 }
 
 export async function PATCH(request: Request, { params }: { params: { id: string } }) {
-  const denied = await requireMinimumAdminRole("admin");
+  const denied = await requireMinimumAdminRole("editor");
   if (denied) return denied;
 
   const body = await request.text();

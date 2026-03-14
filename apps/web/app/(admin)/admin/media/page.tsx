@@ -7,7 +7,7 @@ import { listAdminMedia } from "../../../../lib/admin/media";
 
 export default async function AdminMediaPage() {
   const me = await getMe();
-  if (!me?.user || !hasMinimumRole(me.user.role, "admin")) {
+  if (!me?.user || !hasMinimumRole(me.user.role, "editor")) {
     redirect("/access-denied");
   }
 

@@ -1515,13 +1515,19 @@ export class ContentController {
     @Req() req: Request,
     @Body() body: CreateContentItemDto,
   ) {
-    await requireMinimumRole(req, this.auth, "editor");
+    const role = await requireMinimumRole(req, this.auth, "editor");
     const contentType = await this.contentTypes.findById(body.contentTypeId);
     if (!contentType) {
       throw new BadRequestException("Invalid content type.");
     }
 
     await this.validateContentItemData(contentType.fields, body.data);
+    this.ensureEditorCannotModifyRelationFields(
+      role,
+      contentType.fields,
+      body.data,
+      null,
+    );
     await this.validateContentItemParent(
       body.contentTypeId,
       body.parentId ?? null,
@@ -1540,10 +1546,19 @@ export class ContentController {
     @Param("id") id: string,
     @Body() body: UpdateContentItemDto,
   ) {
-    await requireMinimumRole(req, this.auth, "editor");
+    const role = await requireMinimumRole(req, this.auth, "editor");
     const existing = await this.contentItems.findById(id);
     if (!existing) {
       throw new BadRequestException("Content item not found.");
+    }
+
+    if (role === "editor" && body.slug !== undefined) {
+      const normalizedIncomingSlug = normalizeSlug(body.slug);
+      if (normalizedIncomingSlug !== existing.slug) {
+        throw new ForbiddenException(
+          "Access denied: editors cannot change content item slugs.",
+        );
+      }
     }
 
     const contentTypeId = body.contentTypeId ?? existing.contentTypeId;
@@ -1554,12 +1569,47 @@ export class ContentController {
 
     const data = body.data ?? existing.data;
     await this.validateContentItemData(contentType.fields, data);
+    this.ensureEditorCannotModifyRelationFields(
+      role,
+      contentType.fields,
+      data,
+      existing.data,
+    );
     await this.validateContentItemParent(
       contentTypeId,
       body.parentId === undefined ? existing.parentId : body.parentId,
       existing.id,
     );
     return this.contentItems.update(id, body);
+  }
+
+  private ensureEditorCannotModifyRelationFields(
+    role: "editor" | "admin" | "super_admin",
+    fields: Array<ContentFieldDefinition>,
+    incomingData: Record<string, unknown>,
+    existingData: Record<string, unknown> | null,
+  ) {
+    if (role !== "editor") {
+      return;
+    }
+
+    const relationFields = fields.filter(
+      (field) =>
+        field.type === "relation" ||
+        field.type === "media" ||
+        field.type === "contentItem" ||
+        field.type === "page",
+    );
+
+    for (const field of relationFields) {
+      const incoming = incomingData[field.key];
+      const current = existingData ? existingData[field.key] : undefined;
+      if (JSON.stringify(incoming ?? null) !== JSON.stringify(current ?? null)) {
+        throw new ForbiddenException(
+          "Access denied: editors cannot modify relation fields.",
+        );
+      }
+    }
   }
 
   private async validateContentItemParent(

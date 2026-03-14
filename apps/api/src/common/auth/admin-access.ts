@@ -21,6 +21,10 @@ function normalizeRole(role: string | undefined | null): UserRole | null {
   }
 
   const normalized = role.trim().toLowerCase();
+  if (normalized === "superadmin") {
+    return "super_admin";
+  }
+
   if (normalized === "editor" || normalized === "admin" || normalized === "super_admin") {
     return normalized;
   }

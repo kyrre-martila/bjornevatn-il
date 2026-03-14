@@ -15,6 +15,8 @@ type Props = {
     items: AdminContentItem[];
   }>;
   canUseMediaLibrary: boolean;
+  canEditSlug: boolean;
+  canEditRelations: boolean;
   initialSelectedTypeSlug?: string;
 };
 
@@ -710,6 +712,8 @@ function ContentItemEditor({
   onDelete,
   getReferenceOptions,
   canUseMediaLibrary,
+  canEditSlug,
+  canEditRelations,
 }: {
   item: AdminContentItem;
   contentType: AdminContentType;
@@ -796,10 +800,15 @@ function ContentItemEditor({
           onChange={(e) => setSlug(e.target.value)}
           placeholder="about-us"
           required
+          readOnly={!canEditSlug}
         />
-        <small>
-          Changing a published slug can break existing links unless a redirect is created.
-        </small>
+        {canEditSlug ? (
+          <small>
+            Changing a published slug can break existing links unless a redirect is created.
+          </small>
+        ) : (
+          <small>Only admins and superadmins can change entry URLs.</small>
+        )}
       </label>
       <label>
         Visible to visitors
@@ -870,19 +879,27 @@ function ContentItemEditor({
             {getFieldLabel(field)}
             {field.description ? <small>{field.description}</small> : null}
             {field.helpText ? <small>{field.helpText}</small> : null}
-            <ContentFieldInput
-              field={field}
-              value={values[field.key] ?? ""}
-              onChange={(nextValue) =>
-                setValues((curr) => ({
-                  ...curr,
-                  [field.key]: nextValue,
-                }))
-              }
-              options={getReferenceOptions(field)}
-              canUseMediaLibrary={canUseMediaLibrary}
-            />
-            {(field.type === "relation" ||
+            {(!canEditRelations &&
+            (field.type === "relation" ||
+              field.type === "media" ||
+              field.type === "contentItem" ||
+              field.type === "page")) ? (
+              <small>Relation fields are managed by admins.</small>
+            ) : (
+              <ContentFieldInput
+                field={field}
+                value={values[field.key] ?? ""}
+                onChange={(nextValue) =>
+                  setValues((curr) => ({
+                    ...curr,
+                    [field.key]: nextValue,
+                  }))
+                }
+                options={getReferenceOptions(field)}
+                canUseMediaLibrary={canUseMediaLibrary}
+              />
+            )}
+            {canEditRelations && (field.type === "relation" ||
               field.type === "media" ||
               field.type === "contentItem" ||
               field.type === "page") &&
@@ -913,6 +930,8 @@ export function ContentAdminClient({
   initialContentTypes,
   initialGroupedItems,
   canUseMediaLibrary,
+  canEditSlug,
+  canEditRelations,
   initialSelectedTypeSlug,
 }: Props) {
   const [contentTypes, setContentTypes] = React.useState(initialContentTypes);
@@ -1186,6 +1205,35 @@ export function ContentAdminClient({
         "Entry slug can use only lowercase letters, numbers, and single hyphens.",
       );
       return;
+    }
+
+    if (payload.id) {
+      const existing = selectedItems.find((entry) => entry.id === payload.id);
+      if (existing) {
+        const previousSlug = normalizeSlug(existing.slug);
+        const nextSlug = normalizeSlug(payload.slug);
+        if (previousSlug !== nextSlug) {
+          if (!canEditSlug) {
+            setError("Only admins and superadmins can change entry URLs.");
+            return;
+          }
+
+          const confirmed = window.confirm(
+            `Changing the slug will change the page URL.
+
+Old URL: /${selectedType.slug}/${previousSlug}
+New URL: /${selectedType.slug}/${nextSlug}
+
+This may break existing links and SEO.
+
+Continue?`,
+          );
+          if (!confirmed) {
+            setStatus("Slug change cancelled.");
+            return;
+          }
+        }
+      }
     }
 
     const validationError = validateContentItemInput(
@@ -1539,6 +1587,8 @@ export function ContentAdminClient({
               onDelete={deleteContentItem}
               getReferenceOptions={getReferenceOptions}
               canUseMediaLibrary={canUseMediaLibrary}
+              canEditSlug={canEditSlug}
+              canEditRelations={canEditRelations}
             />
           ))}
 
@@ -1589,6 +1639,7 @@ export function ContentAdminClient({
               <input
                 placeholder="about-us"
                 value={createDraft.slug}
+                readOnly={!canEditSlug}
                 onChange={(e) =>
                   setCreateDrafts((curr) => ({
                     ...curr,
@@ -1606,25 +1657,33 @@ export function ContentAdminClient({
                 {getFieldLabel(field)}
                 {field.description ? <small>{field.description}</small> : null}
                 {field.helpText ? <small>{field.helpText}</small> : null}
-                <ContentFieldInput
-                  field={field}
-                  value={createDraft.values[field.key] ?? ""}
-                  onChange={(nextValue) =>
-                    setCreateDrafts((curr) => ({
-                      ...curr,
-                      [selectedType.id]: {
-                        ...createDraft,
-                        values: {
-                          ...createDraft.values,
-                          [field.key]: nextValue,
+                {(!canEditRelations &&
+                (field.type === "relation" ||
+                  field.type === "media" ||
+                  field.type === "contentItem" ||
+                  field.type === "page")) ? (
+                  <small>Relation fields are managed by admins.</small>
+                ) : (
+                  <ContentFieldInput
+                    field={field}
+                    value={createDraft.values[field.key] ?? ""}
+                    onChange={(nextValue) =>
+                      setCreateDrafts((curr) => ({
+                        ...curr,
+                        [selectedType.id]: {
+                          ...createDraft,
+                          values: {
+                            ...createDraft.values,
+                            [field.key]: nextValue,
+                          },
                         },
-                      },
-                    }))
-                  }
-                  options={getReferenceOptions(field)}
-                  canUseMediaLibrary={canUseMediaLibrary}
-                />
-                {(field.type === "relation" ||
+                      }))
+                    }
+                    options={getReferenceOptions(field)}
+                    canUseMediaLibrary={canUseMediaLibrary}
+                  />
+                )}
+                {canEditRelations && (field.type === "relation" ||
                   field.type === "media" ||
                   field.type === "contentItem" ||
                   field.type === "page") &&

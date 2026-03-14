@@ -5,7 +5,8 @@ import { hasMinimumRole } from "../../../../lib/rbac";
 
 export default async function AdminPagesListPage() {
   const me = await getMe();
-  const canManagePages = hasMinimumRole(me?.user?.role, "admin");
+  const canCreateDeletePages = hasMinimumRole(me?.user?.role, "admin");
+  const canEditPages = hasMinimumRole(me?.user?.role, "editor");
   const pages = await listAdminPages();
   const publishedCount = pages.filter((page) => page.published).length;
 
@@ -22,7 +23,7 @@ export default async function AdminPagesListPage() {
             {pages.length - publishedCount} drafts
           </p>
         </div>
-        {canManagePages ? (
+        {canCreateDeletePages ? (
           <Link href="/admin/pages/new" className="admin-pages__create">
             + New page
           </Link>
@@ -33,7 +34,7 @@ export default async function AdminPagesListPage() {
         Manage routes and block-based content. Select a page to edit details and
         reorder blocks.
       </p>
-      {!canManagePages ? (
+      {!canCreateDeletePages ? (
         <p className="admin-pages__help">
           Your role can review page content but cannot modify page structure,
           route slugs, or section layout.
@@ -70,7 +71,7 @@ export default async function AdminPagesListPage() {
                 >
                   View
                 </Link>
-                {canManagePages ? (
+                {canEditPages ? (
                   <Link
                     href={`/admin/pages/${page.id}`}
                     className="admin-pages__edit-link"

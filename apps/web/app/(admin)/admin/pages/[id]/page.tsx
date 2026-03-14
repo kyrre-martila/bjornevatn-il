@@ -2,11 +2,12 @@ import { notFound, redirect } from "next/navigation";
 import { PageEditorClient } from "../PageEditorClient";
 import { getAdminPage } from "../../../../../lib/admin/pages";
 import { getMe } from "../../../../../lib/me";
-import { hasMinimumRole, hasRole } from "../../../../../lib/rbac";
+import { canAccessSchema, canEditSlug } from "../../../../../lib/feature-guards";
+import { hasMinimumRole } from "../../../../../lib/rbac";
 
 export default async function EditAdminPage({ params }: { params: { id: string } }) {
   const me = await getMe();
-  if (!hasMinimumRole(me?.user?.role, "admin")) {
+  if (!hasMinimumRole(me?.user?.role, "editor")) {
     redirect("/access-denied");
   }
 
@@ -20,7 +21,8 @@ export default async function EditAdminPage({ params }: { params: { id: string }
     <PageEditorClient
       initialPage={page}
       canManageStructure={hasMinimumRole(me?.user?.role, "admin")}
-      canEditRawJson={hasRole(me?.user?.role, "super_admin")}
+      canEditSlug={canEditSlug(me?.user?.role)}
+      canEditRawJson={canAccessSchema(me?.user?.role)}
     />
   );
 }

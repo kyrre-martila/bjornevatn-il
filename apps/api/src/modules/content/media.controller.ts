@@ -99,7 +99,7 @@ export class MediaController {
       | undefined,
     @Body() body: UploadMediaDto,
   ) {
-    await requireMinimumRole(req, this.auth, "admin");
+    await requireMinimumRole(req, this.auth, "editor");
 
     if (!file) {
       throw new BadRequestException("File is required");
@@ -120,7 +120,7 @@ export class MediaController {
 
   @Delete(":id")
   async deleteMedia(@Req() req: Request, @Param("id") id: string) {
-    await requireMinimumRole(req, this.auth, "admin");
+    await requireMinimumRole(req, this.auth, "editor");
     await this.mediaService.delete(id);
     return { ok: true };
   }
@@ -131,7 +131,7 @@ export class MediaController {
     @Param("id") id: string,
     @Body() body: UpdateMediaDto,
   ) {
-    await requireMinimumRole(req, this.auth, "admin");
+    await requireMinimumRole(req, this.auth, "editor");
     const nextAlt = body.alt === undefined ? undefined : body.alt.trim();
 
     if (nextAlt !== undefined && !nextAlt) {
