@@ -7,12 +7,12 @@ import type { Request } from "express";
 import { AuthService } from "../../modules/auth/auth.service";
 import { readAccessToken } from "./read-access-token";
 
-export type UserRole = "editor" | "admin" | "super_admin";
+export type UserRole = "editor" | "admin" | "superadmin";
 
 const ROLE_RANK: Record<UserRole, number> = {
   editor: 1,
   admin: 2,
-  super_admin: 3,
+  superadmin: 3,
 };
 
 function normalizeRole(role: string | undefined | null): UserRole | null {
@@ -21,11 +21,15 @@ function normalizeRole(role: string | undefined | null): UserRole | null {
   }
 
   const normalized = role.trim().toLowerCase();
-  if (normalized === "superadmin") {
-    return "super_admin";
+  if (normalized === "super_admin") {
+    return "superadmin";
   }
 
-  if (normalized === "editor" || normalized === "admin" || normalized === "super_admin") {
+  if (
+    normalized === "editor" ||
+    normalized === "admin" ||
+    normalized === "superadmin"
+  ) {
     return normalized;
   }
 
@@ -59,5 +63,5 @@ export async function requireSuperAdmin(
   req: Request,
   auth: AuthService,
 ): Promise<void> {
-  await requireMinimumRole(req, auth, "super_admin");
+  await requireMinimumRole(req, auth, "superadmin");
 }
