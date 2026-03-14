@@ -747,9 +747,9 @@ export class ContentController {
   @Post("pages")
   async createPage(@Req() req: Request, @Body() body: CreatePageDto) {
     const role = await requireMinimumRole(req, this.auth, "admin");
-    if (body.templateKey !== undefined && role !== "super_admin") {
+    if (body.templateKey !== undefined && role !== "superadmin") {
       throw new ForbiddenException(
-        "Access denied: only super_admin can modify page templates.",
+        "Access denied: only superadmin can modify page templates.",
       );
     }
     await this.ensurePageSlugDoesNotConflict(body.slug);
@@ -773,9 +773,9 @@ export class ContentController {
       throw new BadRequestException("Page not found.");
     }
 
-    if (body.templateKey !== undefined && role !== "super_admin") {
+    if (body.templateKey !== undefined && role !== "superadmin") {
       throw new ForbiddenException(
-        "Access denied: only super_admin can modify page templates.",
+        "Access denied: only superadmin can modify page templates.",
       );
     }
 
@@ -1584,7 +1584,7 @@ export class ContentController {
   }
 
   private ensureEditorCannotModifyRelationFields(
-    role: "editor" | "admin" | "super_admin",
+    role: "editor" | "admin" | "superadmin",
     fields: Array<ContentFieldDefinition>,
     incomingData: Record<string, unknown>,
     existingData: Record<string, unknown> | null,
@@ -1698,7 +1698,7 @@ export class ContentController {
   async listSettings(@Req() req: Request) {
     const role = await requireMinimumRole(req, this.auth, "admin");
     const settings = await this.settings.findMany();
-    if (role === "super_admin") {
+    if (role === "superadmin") {
       return settings;
     }
 
@@ -1738,16 +1738,16 @@ export class ContentController {
   }
 
   private ensureRoleCanManageSetting(
-    role: "editor" | "admin" | "super_admin",
+    role: "editor" | "admin" | "superadmin",
     key: string,
   ) {
-    if (role === "super_admin") {
+    if (role === "superadmin") {
       return;
     }
 
     if (!this.isAdminEditableSetting(key) || this.isProtectedSettingKey(key)) {
       throw new ForbiddenException(
-        "Access denied: only super_admin can manage this setting.",
+        "Access denied: only superadmin can manage this setting.",
       );
     }
   }
