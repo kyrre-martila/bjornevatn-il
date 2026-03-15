@@ -1,13 +1,22 @@
 import { redirect } from "next/navigation";
 
+import { getAdminStagingStatus } from "../../../../lib/admin/staging";
 import { getMe } from "../../../../lib/me";
-import { canAccessDeveloperTools } from "../../../../lib/roles";
+import {
+  canAccessDeveloperTools,
+  canTriggerStagingActions,
+  canViewStagingStatus,
+} from "../../../../lib/roles";
+import { StagingControlsClient } from "./StagingControlsClient";
 
 export default async function AdminStagingPage() {
   const me = await getMe();
-  if (!canAccessDeveloperTools(me?.user?.role)) {
+  const role = me?.user?.role;
+  if (!canAccessDeveloperTools(role)) {
     redirect("/access-denied");
   }
+
+  const status = canViewStagingStatus(role) ? await getAdminStagingStatus() : null;
 
   return (
     <section className="hero" aria-labelledby="staging-heading">
@@ -16,9 +25,14 @@ export default async function AdminStagingPage() {
         Staging access
       </h1>
       <p className="hero__subtitle">
-        Use this area to validate content changes before public launch. Editors
-        do not have access to staging controls.
+        Use this area to validate content changes before public launch. Admins
+        can inspect status and log into staging, while superadmins can run
+        destructive staging actions.
       </p>
+      <StagingControlsClient
+        canTriggerActions={canTriggerStagingActions(role)}
+        initialStatus={status}
+      />
     </section>
   );
 }

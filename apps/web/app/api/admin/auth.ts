@@ -15,6 +15,10 @@ function deniedResponse(status: number) {
   );
 }
 
+export function deniedAccess(message = "Access denied") {
+  return NextResponse.json({ error: message }, { status: 403 });
+}
+
 async function fetchCurrentRole(): Promise<{ role?: string; denied: NextResponse | null }> {
   const res = await fetch(`${getApiBase()}/me`, {
     headers: buildForwardHeaders(),
@@ -36,7 +40,7 @@ export async function requireMinimumAdminRole(
   if (denied) return denied;
 
   if (!hasMinimumRole(role, minimumRole)) {
-    return deniedResponse(403);
+    return deniedAccess();
   }
 
   return null;
@@ -47,7 +51,7 @@ export async function requireSuperAdmin(): Promise<NextResponse | null> {
   if (denied) return denied;
 
   if (!hasRole(role, "super_admin")) {
-    return deniedResponse(403);
+    return deniedAccess();
   }
 
   return null;
