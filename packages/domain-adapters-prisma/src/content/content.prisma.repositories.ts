@@ -128,6 +128,8 @@ function mapPage(page: {
   canonicalUrl: string | null;
   noIndex: boolean;
   published: boolean;
+  publishAt: Date | null;
+  unpublishAt: Date | null;
   templateKey: string | null;
   createdAt: Date;
   updatedAt: Date;
@@ -325,6 +327,8 @@ function mapContentItem(item: {
   noIndex: boolean;
   data: unknown;
   published: boolean;
+  publishAt: Date | null;
+  unpublishAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
 }): ContentItem {
@@ -572,6 +576,8 @@ export class PagesPrismaRepository implements PagesRepository {
         canonicalUrl: data.canonicalUrl,
         noIndex: data.noIndex,
         published: data.published,
+        publishAt: data.publishAt,
+        unpublishAt: data.unpublishAt,
         templateKey: data.templateKey,
         blocks: {
           create: mapInputBlocks(data.blocks),
@@ -753,6 +759,14 @@ export class PagesPrismaRepository implements PagesRepository {
             typeof snapshot.published === "boolean"
               ? snapshot.published
               : current.published,
+          publishAt:
+            snapshot.publishAt === null || typeof snapshot.publishAt === "string"
+              ? snapshot.publishAt
+              : current.publishAt,
+          unpublishAt:
+            snapshot.unpublishAt === null || typeof snapshot.unpublishAt === "string"
+              ? snapshot.unpublishAt
+              : current.unpublishAt,
           templateKey:
             snapshot.templateKey === null || typeof snapshot.templateKey === "string"
               ? snapshot.templateKey
@@ -1419,6 +1433,14 @@ export class ContentItemsPrismaRepository implements ContentItemsRepository {
             typeof snapshot.published === "boolean"
               ? snapshot.published
               : current.published,
+          publishAt:
+            snapshot.publishAt === null || typeof snapshot.publishAt === "string"
+              ? snapshot.publishAt
+              : current.publishAt,
+          unpublishAt:
+            snapshot.unpublishAt === null || typeof snapshot.unpublishAt === "string"
+              ? snapshot.unpublishAt
+              : current.unpublishAt,
         },
       });
 

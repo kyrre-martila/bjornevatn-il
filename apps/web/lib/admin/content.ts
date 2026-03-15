@@ -49,6 +49,8 @@ export type AdminContentItem = {
   canonicalUrl: string | null;
   noIndex: boolean;
   published: boolean;
+  publishAt: string | null;
+  unpublishAt: string | null;
 };
 
 function getApiBase() {

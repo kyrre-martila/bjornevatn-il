@@ -20,6 +20,8 @@ export type Page = {
   canonicalUrl: string | null;
   noIndex: boolean;
   published: boolean;
+  publishAt: Date | null;
+  unpublishAt: Date | null;
   templateKey: string | null;
   createdAt: Date;
   updatedAt: Date;
@@ -131,6 +133,8 @@ export type ContentItem = {
   data: Record<string, unknown>;
   resolvedReferences?: Record<string, ResolvedContentFieldReference>;
   published: boolean;
+  publishAt: Date | null;
+  unpublishAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
 };

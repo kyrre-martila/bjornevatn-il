@@ -3,6 +3,21 @@ import { listAdminPages } from "../../../../lib/admin/pages";
 import { getMe } from "../../../../lib/me";
 import { canEditSlug } from "../../../../lib/roles";
 
+
+
+function getPublicationStatus(page: {
+  published: boolean;
+  publishAt: string | null;
+  unpublishAt: string | null;
+}): "Draft" | "Published" | "Scheduled" | "Expired" {
+  if (!page.published) return "Draft";
+  const now = Date.now();
+  const publishAt = page.publishAt ? new Date(page.publishAt).getTime() : null;
+  const unpublishAt = page.unpublishAt ? new Date(page.unpublishAt).getTime() : null;
+  if (publishAt !== null && now < publishAt) return "Scheduled";
+  if (unpublishAt !== null && now >= unpublishAt) return "Expired";
+  return "Published";
+}
 const PAGE_SIZE = 50;
 
 function parseOffset(offsetParam?: string): number {
@@ -27,7 +42,10 @@ export default async function AdminPagesListPage({
   const pageBatch = await listAdminPages({ limit: PAGE_SIZE + 1, offset });
   const hasNextPage = pageBatch.length > PAGE_SIZE;
   const pages = pageBatch.slice(0, PAGE_SIZE);
-  const publishedCount = pages.filter((page) => page.published).length;
+  const publishedCount = pages.filter((page) => getPublicationStatus(page) === "Published").length;
+  const scheduledCount = pages.filter((page) => getPublicationStatus(page) === "Scheduled").length;
+  const draftCount = pages.filter((page) => getPublicationStatus(page) === "Draft").length;
+  const expiredCount = pages.filter((page) => getPublicationStatus(page) === "Expired").length;
 
   return (
     <section className="admin-pages" aria-labelledby="pages-heading">
@@ -38,8 +56,7 @@ export default async function AdminPagesListPage({
             Pages
           </h1>
           <p className="admin-pages__summary">
-            Showing {offset + 1}-{offset + pages.length} • {publishedCount}{" "}
-            published • {Math.max(0, pages.length - publishedCount)} drafts
+            Showing {offset + 1}-{offset + pages.length} • {publishedCount} published • {scheduledCount} scheduled • {expiredCount} expired • {draftCount} drafts
           </p>
         </div>
         {canCreateDeletePages ? (
@@ -75,10 +92,8 @@ export default async function AdminPagesListPage({
               <div className="admin-pages__item-main">
                 <h2>{page.title}</h2>
                 <p className="admin-pages__slug">/page/{page.slug}</p>
-                <p
-                  className={`admin-pages__state admin-pages__state--${page.published ? "published" : "draft"}`}
-                >
-                  {page.published ? "Published" : "Draft"}
+                <p className={`admin-pages__state admin-pages__state--${getPublicationStatus(page).toLowerCase()}`}>
+                  {getPublicationStatus(page)}
                 </p>
               </div>
               <div className="admin-pages__item-actions">

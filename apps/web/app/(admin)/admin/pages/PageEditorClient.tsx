@@ -214,6 +214,37 @@ function isValidSlug(value: string): boolean {
   return /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(value);
 }
 
+
+
+function toDateTimeLocalValue(value: string | null | undefined): string {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
+function toIsoDateTimeOrNull(value: string): string | null {
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  const date = new Date(trimmed);
+  if (Number.isNaN(date.getTime())) return null;
+  return date.toISOString();
+}
+
+function getPublicationStatus(page: {
+  published: boolean;
+  publishAt: string | null;
+  unpublishAt: string | null;
+}): "Draft" | "Published" | "Scheduled" | "Expired" {
+  if (!page.published) return "Draft";
+  const now = Date.now();
+  const publishAt = page.publishAt ? new Date(page.publishAt).getTime() : null;
+  const unpublishAt = page.unpublishAt ? new Date(page.unpublishAt).getTime() : null;
+  if (publishAt !== null && now < publishAt) return "Scheduled";
+  if (unpublishAt !== null && now >= unpublishAt) return "Expired";
+  return "Published";
+}
 function describeApiError(fallback: string, payload: unknown): string {
   if (typeof payload === "string" && payload.trim()) {
     return payload;
@@ -296,6 +327,12 @@ export function PageEditorClient({
   const [noIndex, setNoIndex] = React.useState(initialPage?.noIndex ?? false);
   const [published, setPublished] = React.useState(
     initialPage?.published ?? false,
+  );
+  const [publishAt, setPublishAt] = React.useState(
+    toDateTimeLocalValue(initialPage?.publishAt),
+  );
+  const [unpublishAt, setUnpublishAt] = React.useState(
+    toDateTimeLocalValue(initialPage?.unpublishAt),
   );
   const [blocks, setBlocks] = React.useState<EditableBlock[]>(
     toEditableBlocks(initialPage),
@@ -717,6 +754,24 @@ export function PageEditorClient({
       });
     }
 
+    const publishAtIso = toIsoDateTimeOrNull(publishAt);
+    const unpublishAtIso = toIsoDateTimeOrNull(unpublishAt);
+
+    if (publishAt.trim() && !publishAtIso) {
+      setError("Publish date/time must be valid.");
+      return;
+    }
+
+    if (unpublishAt.trim() && !unpublishAtIso) {
+      setError("Unpublish date/time must be valid.");
+      return;
+    }
+
+    if (publishAtIso && unpublishAtIso && new Date(unpublishAtIso) <= new Date(publishAtIso)) {
+      setError("Unpublish date/time must be after publish date/time.");
+      return;
+    }
+
     setIsSaving(true);
 
     try {
@@ -729,6 +784,8 @@ export function PageEditorClient({
         canonicalUrl: canonicalUrl.trim() || null,
         noIndex,
         published,
+        publishAt: publishAtIso,
+        unpublishAt: unpublishAtIso,
         blocks: parsedBlocks,
       };
 
@@ -881,6 +938,27 @@ export function PageEditorClient({
           />
           Visible to visitors
         </label>
+
+        <fieldset>
+          <legend>Publishing schedule</legend>
+          <p>Current status: <strong>{getPublicationStatus({ published, publishAt: toIsoDateTimeOrNull(publishAt), unpublishAt: toIsoDateTimeOrNull(unpublishAt) })}</strong></p>
+          <label>
+            Publish date/time
+            <input
+              type="datetime-local"
+              value={publishAt}
+              onChange={(e) => setPublishAt(e.target.value)}
+            />
+          </label>
+          <label>
+            Unpublish date/time (optional)
+            <input
+              type="datetime-local"
+              value={unpublishAt}
+              onChange={(e) => setUnpublishAt(e.target.value)}
+            />
+          </label>
+        </fieldset>
 
         <fieldset className="page-editor__seo">
           <legend>SEO and social sharing</legend>

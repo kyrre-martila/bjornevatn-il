@@ -25,6 +25,7 @@ import {
   IsNumber,
   IsString,
   IsUrl,
+  IsDateString,
   Matches,
   Min,
   ValidateNested,
@@ -133,6 +134,16 @@ class CreatePageDto {
 
   @ApiProperty({ required: false })
   @IsOptional()
+  @IsDateString()
+  publishAt?: string | null;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsDateString()
+  unpublishAt?: string | null;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
   @IsString()
   templateKey?: string;
 }
@@ -185,6 +196,16 @@ class UpdatePageDto {
   @IsOptional()
   @IsBoolean()
   published?: boolean;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsDateString()
+  publishAt?: string | null;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsDateString()
+  unpublishAt?: string | null;
 
   @ApiProperty({ required: false })
   @IsOptional()
@@ -429,6 +450,16 @@ class CreateContentItemDto {
   @ApiProperty()
   @IsBoolean()
   published!: boolean;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsDateString()
+  publishAt?: string | null;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsDateString()
+  unpublishAt?: string | null;
 }
 
 class UpdateContentItemDto {
@@ -492,6 +523,16 @@ class UpdateContentItemDto {
   @IsOptional()
   @IsBoolean()
   published?: boolean;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsDateString()
+  publishAt?: string | null;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsDateString()
+  unpublishAt?: string | null;
 }
 
 class AdminListQueryDto {
@@ -815,8 +856,9 @@ export class ContentController {
     }
     await this.ensurePageSlugDoesNotConflict(body.slug);
     await this.validatePageBlocksMediaAlt(body.title, body.blocks);
+    const normalizedBody = this.normalizePublishingWindow(body);
     return this.pages.create({
-      ...body,
+      ...normalizedBody,
       templateKey: body.templateKey ?? null,
       noIndex: body.noIndex ?? false,
     });
@@ -855,7 +897,8 @@ export class ContentController {
       await this.ensurePageSlugDoesNotConflict(body.slug, id);
     }
 
-    return this.pages.update(id, body);
+    const normalizedBody = this.normalizePublishingWindow(body, existingPage);
+    return this.pages.update(id, normalizedBody);
   }
 
   @Delete("pages/:id")
@@ -1578,8 +1621,9 @@ export class ContentController {
       body.contentTypeId,
       body.parentId ?? null,
     );
+    const normalizedBody = this.normalizePublishingWindow(body);
     return this.contentItems.create({
-      ...body,
+      ...normalizedBody,
       parentId: body.parentId ?? null,
       sortOrder: body.sortOrder ?? 0,
       noIndex: body.noIndex ?? false,
@@ -1626,7 +1670,50 @@ export class ContentController {
       body.parentId === undefined ? existing.parentId : body.parentId,
       existing.id,
     );
-    return this.contentItems.update(id, body);
+    const normalizedBody = this.normalizePublishingWindow(body, existing);
+    return this.contentItems.update(id, normalizedBody);
+  }
+
+
+  private parseScheduledDate(
+    value: string | null | undefined,
+    fieldName: "publishAt" | "unpublishAt",
+  ): Date | null | undefined {
+    if (value === undefined) {
+      return undefined;
+    }
+
+    if (value === null) {
+      return null;
+    }
+
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) {
+      throw new BadRequestException(`${fieldName} must be a valid date/time.`);
+    }
+
+    return parsed;
+  }
+
+  private normalizePublishingWindow<T extends { publishAt?: string | null; unpublishAt?: string | null }>(
+    body: T,
+    current?: { publishAt: Date | null; unpublishAt: Date | null },
+  ): T & { publishAt?: Date | null; unpublishAt?: Date | null } {
+    const publishAt = this.parseScheduledDate(body.publishAt, "publishAt");
+    const unpublishAt = this.parseScheduledDate(body.unpublishAt, "unpublishAt");
+
+    const effectivePublishAt = publishAt === undefined ? current?.publishAt : publishAt;
+    const effectiveUnpublishAt = unpublishAt === undefined ? current?.unpublishAt : unpublishAt;
+
+    if (effectivePublishAt && effectiveUnpublishAt && effectiveUnpublishAt <= effectivePublishAt) {
+      throw new BadRequestException("unpublishAt must be after publishAt.");
+    }
+
+    return {
+      ...body,
+      ...(publishAt === undefined ? {} : { publishAt }),
+      ...(unpublishAt === undefined ? {} : { unpublishAt }),
+    };
   }
 
   private async getCurrentUserId(req: Request): Promise<string | null> {

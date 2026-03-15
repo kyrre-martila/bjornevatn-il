@@ -30,6 +30,8 @@ type ContentItemDraft = {
   canonicalUrl: string;
   noIndex: boolean;
   published: boolean;
+  publishAt: string;
+  unpublishAt: string;
   values: Record<string, string | string[]>;
 };
 
@@ -181,8 +183,25 @@ function getPublicArchivePath(contentTypeSlug: string): string {
   return `/${contentTypeSlug}`;
 }
 
+
+
+function toDateTimeLocalValue(value: string | null | undefined): string {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
+function toIsoDateTimeOrNull(value: string): string | null {
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  const date = new Date(trimmed);
+  if (Number.isNaN(date.getTime())) return null;
+  return date.toISOString();
+}
 type VisibilityState = {
-  editorialStatus: "Draft" | "Published";
+  editorialStatus: "Draft" | "Published" | "Scheduled" | "Expired";
   publicVisibility:
     | "Publicly visible"
     | "Not visible to visitors"
@@ -194,6 +213,8 @@ type VisibilityState = {
 function getVisibilityState(
   published: boolean,
   contentTypeIsPublic: boolean,
+  publishAt?: string | null,
+  unpublishAt?: string | null,
 ): VisibilityState {
   if (!published) {
     return {
@@ -201,6 +222,30 @@ function getVisibilityState(
       publicVisibility: "Not visible to visitors",
       guidance:
         "Draft changes are private in admin. Publish when this entry is ready for visitors.",
+      canOpenPublicPreview: false,
+    };
+  }
+
+  const now = Date.now();
+  const publishAtTime = publishAt ? new Date(publishAt).getTime() : null;
+  const unpublishAtTime = unpublishAt ? new Date(unpublishAt).getTime() : null;
+
+  if (publishAtTime !== null && now < publishAtTime) {
+    return {
+      editorialStatus: "Scheduled",
+      publicVisibility: "Not visible to visitors",
+      guidance:
+        "This entry is scheduled for future publication. It will become visible at the publish date/time.",
+      canOpenPublicPreview: false,
+    };
+  }
+
+  if (unpublishAtTime !== null && now >= unpublishAtTime) {
+    return {
+      editorialStatus: "Expired",
+      publicVisibility: "Not visible to visitors",
+      guidance:
+        "This entry is past its unpublish date/time. Update the schedule to publish it again.",
       canOpenPublicPreview: false,
     };
   }
@@ -369,6 +414,8 @@ function emptyDraft(contentType: AdminContentType): ContentItemDraft {
     canonicalUrl: "",
     noIndex: false,
     published: false,
+    publishAt: "",
+    unpublishAt: "",
     values,
   };
 }
@@ -749,6 +796,8 @@ function ContentItemEditor({
     canonicalUrl: string | null;
     noIndex: boolean;
     published: boolean;
+    publishAt: string | null;
+    unpublishAt: string | null;
     data: Record<string, unknown>;
   }) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
@@ -772,6 +821,8 @@ function ContentItemEditor({
   );
   const [noIndex, setNoIndex] = React.useState(item.noIndex);
   const [published, setPublished] = React.useState(item.published);
+  const [publishAt, setPublishAt] = React.useState(toDateTimeLocalValue(item.publishAt));
+  const [unpublishAt, setUnpublishAt] = React.useState(toDateTimeLocalValue(item.unpublishAt));
   const [values, setValues] = React.useState<Record<string, string | string[]>>(
     buildValues(contentType.fields, item.data),
   );
@@ -803,10 +854,30 @@ function ContentItemEditor({
     setSeoImage(item.seoImage ?? "");
     setCanonicalUrl(item.canonicalUrl ?? "");
     setNoIndex(item.noIndex);
+    setPublishAt(toDateTimeLocalValue(item.publishAt));
+    setUnpublishAt(toDateTimeLocalValue(item.unpublishAt));
   }, [contentType.fields, item]);
 
   async function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
+
+    const publishAtIso = toIsoDateTimeOrNull(publishAt);
+    const unpublishAtIso = toIsoDateTimeOrNull(unpublishAt);
+
+    if (publishAt.trim() && !publishAtIso) {
+      window.alert("Publish date/time must be valid.");
+      return;
+    }
+
+    if (unpublishAt.trim() && !unpublishAtIso) {
+      window.alert("Unpublish date/time must be valid.");
+      return;
+    }
+
+    if (publishAtIso && unpublishAtIso && new Date(unpublishAtIso) <= new Date(publishAtIso)) {
+      window.alert("Unpublish date/time must be after publish date/time.");
+      return;
+    }
 
     await onSave({
       id: item.id,
@@ -818,11 +889,18 @@ function ContentItemEditor({
       canonicalUrl: canonicalUrl.trim() || null,
       noIndex,
       published,
+      publishAt: publishAtIso,
+      unpublishAt: unpublishAtIso,
       data: buildDataFromFields(contentType.fields, values),
     });
   }
 
-  const visibilityState = getVisibilityState(published, contentType.isPublic);
+  const visibilityState = getVisibilityState(
+    published,
+    contentType.isPublic,
+    toIsoDateTimeOrNull(publishAt),
+    toIsoDateTimeOrNull(unpublishAt),
+  );
   const publicItemPath = getPublicItemPath(
     contentType.slug,
     normalizeSlug(slug),
@@ -872,6 +950,22 @@ function ContentItemEditor({
           Turn this on only when the content is ready. Draft entries stay hidden
           from public pages.
         </small>
+      </label>
+      <label>
+        Publish date/time
+        <input
+          type="datetime-local"
+          value={publishAt}
+          onChange={(e) => setPublishAt(e.target.value)}
+        />
+      </label>
+      <label>
+        Unpublish date/time (optional)
+        <input
+          type="datetime-local"
+          value={unpublishAt}
+          onChange={(e) => setUnpublishAt(e.target.value)}
+        />
       </label>
       <fieldset>
         <legend>Publishing and preview</legend>
@@ -1339,6 +1433,8 @@ export function ContentAdminClient({
     canonicalUrl: string | null;
     noIndex: boolean;
     published: boolean;
+    publishAt: string | null;
+    unpublishAt: string | null;
     data: Record<string, unknown>;
   }) {
     if (!selectedType) return;
@@ -1810,6 +1906,8 @@ export function ContentAdminClient({
                 canonicalUrl: createDraft.canonicalUrl.trim() || null,
                 noIndex: createDraft.noIndex,
                 published: createDraft.published,
+                publishAt: toIsoDateTimeOrNull(createDraft.publishAt),
+                unpublishAt: toIsoDateTimeOrNull(createDraft.unpublishAt),
                 data: buildDataFromFields(
                   selectedType.fields,
                   createDraft.values,
@@ -1863,6 +1961,38 @@ export function ContentAdminClient({
                 Web addresses are managed by admins when entries are created.
               </p>
             )}
+            <label>
+              Publish date/time
+              <input
+                type="datetime-local"
+                value={createDraft.publishAt}
+                onChange={(e) =>
+                  setCreateDrafts((curr) => ({
+                    ...curr,
+                    [selectedType.id]: {
+                      ...createDraft,
+                      publishAt: e.target.value,
+                    },
+                  }))
+                }
+              />
+            </label>
+            <label>
+              Unpublish date/time (optional)
+              <input
+                type="datetime-local"
+                value={createDraft.unpublishAt}
+                onChange={(e) =>
+                  setCreateDrafts((curr) => ({
+                    ...curr,
+                    [selectedType.id]: {
+                      ...createDraft,
+                      unpublishAt: e.target.value,
+                    },
+                  }))
+                }
+              />
+            </label>
             {selectedType.fields
               .filter(
                 (field) =>

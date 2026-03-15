@@ -24,6 +24,8 @@ export type AdminPage = {
   canonicalUrl: string | null;
   noIndex: boolean;
   published: boolean;
+  publishAt: string | null;
+  unpublishAt: string | null;
   blocks: AdminPageBlock[];
 };
 

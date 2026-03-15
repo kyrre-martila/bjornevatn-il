@@ -90,6 +90,8 @@ model Page {
   canonicalUrl   String?
   noIndex        Boolean     @default(false)
   published      Boolean     @default(false)
+  publishAt      DateTime?
+  unpublishAt    DateTime?
   templateKey    String?
   createdAt      DateTime    @default(now())
   updatedAt      DateTime    @updatedAt
@@ -170,6 +172,8 @@ model ContentItem {
   noIndex        Boolean     @default(false)
   data           Json
   published      Boolean     @default(false)
+  publishAt      DateTime?
+  unpublishAt    DateTime?
   createdAt      DateTime    @default(now())
   updatedAt      DateTime    @updatedAt
   slugRedirects  ContentItemSlugRedirect[]

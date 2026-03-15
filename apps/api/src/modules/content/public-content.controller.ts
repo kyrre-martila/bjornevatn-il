@@ -270,7 +270,9 @@ export class PublicContentController {
       }
 
       pages.push(
-        ...pageBatch.map((page) => ({
+        ...pageBatch
+          .filter((page) => this.isCurrentlyPublished(page))
+          .map((page) => ({
           slug: page.slug,
           canonicalUrl: page.canonicalUrl,
           updatedAt: page.updatedAt,
@@ -298,7 +300,7 @@ export class PublicContentController {
         break;
       }
 
-      for (const item of contentBatch) {
+      for (const item of contentBatch.filter((entry) => this.isCurrentlyPublished(entry))) {
         const contentTypeSlug = publicContentTypeById.get(item.contentTypeId);
         if (!contentTypeSlug) {
           continue;
@@ -331,7 +333,7 @@ export class PublicContentController {
       ...this.buildPagination(query),
     });
 
-    return pages.map((page) => ({
+    return pages.filter((page) => this.isCurrentlyPublished(page)).map((page) => ({
       slug: page.slug,
       canonicalUrl: page.canonicalUrl,
       updatedAt: page.updatedAt,
@@ -350,7 +352,7 @@ export class PublicContentController {
       return { redirectTo: `/page/${result.destinationSlug}`, permanent: true };
     }
 
-    if (!result.entity.published) {
+    if (!this.isCurrentlyPublished(result.entity)) {
       return null;
     }
 
@@ -392,7 +394,9 @@ export class PublicContentController {
       published: true,
       ...this.buildPagination(query),
     });
-    return items.map((item) => this.mapPublicContentItemArchive(item));
+    return items
+      .filter((item) => this.isCurrentlyPublished(item))
+      .map((item) => this.mapPublicContentItemArchive(item));
   }
 
   @Get("items/type-slug/:contentTypeSlug/:slug")
@@ -422,7 +426,7 @@ export class PublicContentController {
       };
     }
 
-    if (!result.entity.published) {
+    if (!this.isCurrentlyPublished(result.entity)) {
       return null;
     }
 
@@ -601,7 +605,7 @@ export class PublicContentController {
     contentTypeSlug?: string,
   ): Promise<boolean> {
     const item = await this.contentItems.findById(contentItemId);
-    if (!item || !item.published) {
+    if (!item || !this.isCurrentlyPublished(item)) {
       return false;
     }
 
@@ -869,11 +873,33 @@ export class PublicContentController {
     nodes: ContentItemTreeNode[],
   ): ContentItemTreeNode[] {
     return nodes
-      .filter((node) => node.published)
+      .filter((node) => this.isCurrentlyPublished(node))
       .map((node) => ({
         ...node,
         children: this.filterPublishedContentItemTree(node.children),
       }));
+  }
+
+
+  private isCurrentlyPublished(entity: {
+    published: boolean;
+    publishAt: Date | null;
+    unpublishAt: Date | null;
+  }): boolean {
+    if (!entity.published) {
+      return false;
+    }
+
+    const now = Date.now();
+    if (entity.publishAt && now < entity.publishAt.getTime()) {
+      return false;
+    }
+
+    if (entity.unpublishAt && now >= entity.unpublishAt.getTime()) {
+      return false;
+    }
+
+    return true;
   }
 
   private asRecord(value: unknown): Record<string, unknown> {
