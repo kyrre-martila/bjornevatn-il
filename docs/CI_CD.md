@@ -1,58 +1,30 @@
 # CI/CD Workflows
 
-The project uses GitHub Actions to enforce consistent quality checks on every push and pull request. Three core workflows are required to pass before changes can merge into `main`:
+The repository enforces pull request quality gates with GitHub Actions workflows in `.github/workflows/`.
 
-## Workflows Overview
+## PR-Enforced Workflows
 
-- **Lint & Format (`.github/workflows/ci-lint.yml`)**
-  - Runs ESLint and Prettier checks across all JavaScript/TypeScript sources.
-  - Executes on every `push` and `pull_request` event.
-- **Build Verification (`.github/workflows/ci-build.yml`)**
-  - Installs dependencies and builds the API, web app, and shared domain packages.
-  - Publishes build artifacts (API dist, Next.js output, and domain package dist) for inspection or download.
-  - Executes on every `push` and `pull_request` event.
-- **Test All (`.github/workflows/ci-test-all.yml`)**
-  - Runs unit, contract, and end-to-end tests across the stack.
-  - Uploads coverage and Playwright reports for auditing.
-  - Executes on every `push` and `pull_request` event.
+- **Tools** (`.github/workflows/tools.yml`)
+  - Trigger: `pull_request`, `workflow_dispatch`, `workflow_call`.
+  - Runs setup + quality checks:
+    - OpenAPI contract drift check (`openapi-contract-sync`)
+    - Lint
+    - Typecheck
+    - Unit tests
+    - Prettier check
+- **CI - PR** (`.github/workflows/ci-pr.yml`)
+  - Trigger: `pull_request`, `workflow_dispatch`, `workflow_call`.
+  - Runs `Tools` as a gate and then executes web E2E tests.
+- **Build** (`.github/workflows/build.yml`)
+  - Trigger: `pull_request`, `workflow_dispatch`, `workflow_call`.
+  - Runs `Tools` as a gate and then builds web/API artifacts.
 
-## Caching Strategy
+## Branch Protection (recommended)
 
-Each workflow uses the GitHub Actions cache to speed up dependency installation:
+For `main`, require these checks before merge:
 
-- **pnpm dependencies**: Caches `~/.pnpm-store` and `node_modules` keyed by the hash of all `pnpm-lock.yaml` files.
-- Restoring caches significantly reduces CI execution time for incremental runs (targeting under three minutes).
+- `Tools`
+- `CI - PR`
+- `Build`
 
-## Build Artifacts
-
-The Build Verification workflow publishes a `dist-artifacts` archive containing:
-
-- `apps/api/dist`
-- `apps/web/.next`
-- `packages/domain/dist`
-
-Artifacts can be downloaded directly from the workflow run summary under the **Artifacts** section for validation or deployment.
-
-## Branch Protection
-
-To enforce repository policy:
-
-1. Protect the `main` branch via **Settings → Branches → main → Protect**.
-2. Require pull requests with at least one approving review.
-3. Require status checks to pass before merging and select `Lint & Format`, `Build Verification`, and `Test All`.
-4. Enforce up-to-date branches and squash merges. Signed commits are recommended.
-
-Detailed policy requirements are documented in `docs/REPO_RULES.md`.
-
-## Running CI Checks Locally
-
-Developers can rehearse GitHub Actions locally using the [`act`](https://github.com/nektos/act) CLI:
-
-1. Install `act` (e.g., `brew install act` or download from the releases page).
-2. From the repository root, run commands such as:
-   - `act pull_request -j lint`
-   - `act pull_request -j build`
-   - `act pull_request -j unit`
-3. Provide necessary secrets or service containers as needed for end-to-end tests.
-
-Running these commands before pushing changes ensures parity with the GitHub Actions environment.
+This ensures OpenAPI drift, lint/typecheck/unit/prettier, E2E, and build validation all run on pull requests.

@@ -1,15 +1,14 @@
-name: Build (manual)
+name: Build
 
 on:
+  pull_request:
+    paths:
+      - "apps/**"
+      - "packages/**"
+      - "pnpm-lock.yaml"
+      - ".github/workflows/build.yml"
+      - ".github/workflows/tools.yml"
   workflow_call:
-  # Uncomment later if you want it to build automatically:
-  # push:
-  #   branches: [ main ]
-  #   paths:
-  #     - "apps/**"
-  #     - "packages/**"
-  #     - "pnpm-lock.yaml"
-  #     - ".github/workflows/build.yml"
   workflow_dispatch:
 
 concurrency:

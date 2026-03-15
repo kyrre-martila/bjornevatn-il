@@ -1,21 +1,13 @@
 name: Tools
 
 on:
+  pull_request:
+    paths:
+      - "apps/**"
+      - "packages/**"
+      - "pnpm-lock.yaml"
+      - ".github/workflows/tools.yml"
   workflow_call:
-  # Uncomment later if you want it to run automatically:
-  # pull_request:
-  #   paths:
-  #     - "apps/**"
-  #     - "packages/**"
-  #     - "pnpm-lock.yaml"
-  #     - ".github/workflows/tools.yml"
-  # push:
-  #   branches: [ main ]
-  #   paths:
-  #     - "apps/**"
-  #     - "packages/**"
-  #     - "pnpm-lock.yaml"
-  #     - ".github/workflows/tools.yml"
   workflow_dispatch:
 
 concurrency:

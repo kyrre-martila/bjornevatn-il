@@ -1,14 +1,13 @@
 name: CI - PR
 
 on:
-  # Re-enable later by uncommenting:
-  # pull_request:
-  #   types: [opened, synchronize, reopened, ready_for_review]
-  #   paths:
-  #     - "apps/**"
-  #     - "packages/**"
-  #     - "pnpm-lock.yaml"
-  #     - ".github/workflows/**"
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths:
+      - "apps/**"
+      - "packages/**"
+      - "pnpm-lock.yaml"
+      - ".github/workflows/**"
   workflow_dispatch:
   workflow_call:
 

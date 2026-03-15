@@ -16,8 +16,10 @@
 
 ## CI Usage
 
-- GitHub Actions workflow **Test All** runs unit + contract + e2e.
-- Trigger manual re-run via **Actions → Test All → Run workflow**.
+- GitHub Actions workflow **Tools** runs OpenAPI drift, lint, typecheck, unit, and formatting checks.
+- GitHub Actions workflow **CI - PR** runs web E2E and gates on **Tools**.
+- GitHub Actions workflow **Build** runs application builds and gates on **Tools**.
+- Trigger manual re-run via **Actions → <workflow name> → Run workflow**.
 
 ## Coverage Targets
 
