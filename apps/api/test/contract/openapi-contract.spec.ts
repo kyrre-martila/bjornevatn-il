@@ -15,10 +15,28 @@ import { DomainErrorInterceptor } from "../../src/common/interceptors/domain-err
 import { AppModule } from "../../src/modules/app.module";
 import { AuthController } from "../../src/modules/auth/auth.controller";
 import { AuthService } from "../../src/modules/auth/auth.service";
+import { AuditService } from "../../src/modules/audit/audit.service";
 import { UsersController } from "../../src/modules/users/users.controller";
 import { PrismaService } from "../../src/prisma/prisma.service";
 
 jest.mock("@prisma/client", () => ({ PrismaClient: class {} }));
+jest.mock("@org/domain-adapters-prisma", () => ({
+  UsersPrismaRepository: class {},
+  PagesPrismaRepository: class {},
+  PageBlocksPrismaRepository: class {},
+  ContentTypesPrismaRepository: class {},
+  ContentItemsPrismaRepository: class {},
+  TaxonomiesPrismaRepository: class {},
+  TermsPrismaRepository: class {},
+  ContentItemTermsPrismaRepository: class {},
+  NavigationItemsPrismaRepository: class {},
+  SiteSettingsPrismaRepository: class {},
+  MediaPrismaRepository: class {},
+}));
+jest.mock("bcrypt", () => ({
+  hash: jest.fn(),
+  compare: jest.fn(),
+}));
 
 const specPath = resolve(
   __dirname,
@@ -56,32 +74,45 @@ const authServiceStub: Partial<AuthService> = {
       id: testUser.id,
       email: testUser.email,
       name: testUser.name ?? null,
+      role: testUser.role,
     },
+    accessToken: "access-token",
   }),
   register: async () => ({
     user: {
       id: testUser.id,
       email: testUser.email,
       name: testUser.name ?? null,
+      role: testUser.role,
     },
+    accessToken: "access-token",
   }),
   decodeToken: () => ({ sub: testUser.id, email: testUser.email }),
+  authenticate: async () => ({ payload: { sub: testUser.id } }),
+};
+
+const auditServiceStub: Partial<AuditService> = {
+  log: async () => undefined,
 };
 
 describe("OpenAPI contract", () => {
   let app: INestApplication;
   const originalNodeEnv = process.env.NODE_ENV;
   const originalRegistrationEnabled = process.env.REGISTRATION_ENABLED;
+  const originalJwtSecret = process.env.JWT_SECRET;
 
   beforeAll(async () => {
     process.env.NODE_ENV = "test";
     process.env.REGISTRATION_ENABLED = "true";
+    process.env.JWT_SECRET = "contract-test-jwt-secret-min-32-characters";
 
     const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
       .overrideProvider("UsersRepository")
       .useValue(usersRepositoryStub)
       .overrideProvider(AuthService)
       .useValue(authServiceStub)
+      .overrideProvider(AuditService)
+      .useValue(auditServiceStub)
       .overrideProvider(PrismaService)
       .useValue({
         $connect: async () => undefined,
@@ -118,6 +149,7 @@ describe("OpenAPI contract", () => {
   afterAll(async () => {
     process.env.NODE_ENV = originalNodeEnv;
     process.env.REGISTRATION_ENABLED = originalRegistrationEnabled;
+    process.env.JWT_SECRET = originalJwtSecret;
     if (app) {
       await app.close();
     }

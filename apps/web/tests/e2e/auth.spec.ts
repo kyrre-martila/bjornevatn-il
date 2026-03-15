@@ -40,8 +40,27 @@ test.describe("Authentication and CSRF protection", () => {
         body: JSON.stringify({ ok: true, redirect: "/dashboard" }),
         headers: {
           "content-type": "application/json",
+          "access-control-allow-origin": "http://127.0.0.1:3000",
+          "access-control-allow-credentials": "true",
           location: "/dashboard",
           "access-control-expose-headers": "location",
+        },
+      });
+    });
+
+    await context.route(`${loginEndpoint}`, async (route) => {
+      if (route.request().method() !== "OPTIONS") {
+        await route.fallback();
+        return;
+      }
+
+      await route.fulfill({
+        status: 204,
+        headers: {
+          "access-control-allow-origin": "http://127.0.0.1:3000",
+          "access-control-allow-credentials": "true",
+          "access-control-allow-methods": "POST, OPTIONS",
+          "access-control-allow-headers": "content-type, x-csrf-token",
         },
       });
     });

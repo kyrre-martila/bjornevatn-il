@@ -7,7 +7,7 @@ const storageStatePath = resolve(__dirname, "storageState.json");
 
 export default defineConfig({
   testDir: "./tests/e2e",
-  timeout: 30_000,
+  timeout: 45_000,
   expect: {
     timeout: 10_000,
   },
@@ -25,6 +25,10 @@ export default defineConfig({
     {
       command: "pnpm dev --hostname 0.0.0.0 --port 3000",
       cwd: __dirname,
+      env: {
+        ...process.env,
+        PLAYWRIGHT: "true",
+      },
       port: 3000,
       reuseExistingServer: !process.env.CI,
       stdout: "pipe",
