@@ -2,12 +2,26 @@ import { NextResponse, type NextRequest } from "next/server";
 
 const api = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
 const apiOrigin = new URL(api).origin;
+
+function parseOriginAllowlist(value: string | undefined): string[] {
+  return (value ?? "")
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+const mediaAllowlistOrigins = parseOriginAllowlist(
+  process.env.NEXT_PUBLIC_CSP_MEDIA_ORIGINS,
+);
+
+const imgSrcOrigins = ["'self'", "data:", apiOrigin, ...mediaAllowlistOrigins];
+
 const csp = [
   "default-src 'self'",
   "base-uri 'self'",
   "object-src 'none'",
   "frame-ancestors 'none'",
-  "img-src 'self' data:",
+  `img-src ${imgSrcOrigins.join(" ")}`,
   "script-src 'self'",
   "style-src 'self'",
   `connect-src 'self' ${apiOrigin}`,

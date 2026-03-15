@@ -6,6 +6,14 @@ import {
 } from "@nestjs/common";
 import { PrismaService } from "../../prisma/prisma.service";
 
+type ReadinessPayload = {
+  status: "ok" | "error";
+  check: "ready";
+  dependencies: {
+    database: "up" | "down";
+  };
+};
+
 @Controller("health")
 export class HealthController {
   constructor(private readonly prisma: PrismaService) {}
@@ -28,18 +36,26 @@ export class HealthController {
   @HttpCode(200)
   async ready() {
     try {
-      await this.prisma.$connect();
       await this.prisma.$queryRaw`SELECT 1`;
 
       return {
         status: "ok",
         check: "ready",
-      };
-    } catch {
+        dependencies: {
+          database: "up",
+        },
+      } satisfies ReadinessPayload;
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : "database check failed";
+
       throw new ServiceUnavailableException({
         status: "error",
         check: "ready",
-      });
+        dependencies: {
+          database: "down",
+        },
+        reason,
+      } satisfies ReadinessPayload & { reason: string });
     }
   }
 }

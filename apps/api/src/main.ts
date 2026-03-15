@@ -219,6 +219,10 @@ async function bootstrap() {
       maxAge: "30d",
       etag: true,
       immutable: true,
+      setHeaders: (res) => {
+        res.setHeader("Cache-Control", "public, max-age=2592000, immutable");
+        res.setHeader("Surrogate-Control", "public, max-age=2592000, stale-while-revalidate=60");
+      },
     }),
   );
 

@@ -77,7 +77,8 @@ docker compose -f infra/docker-compose.prod.yml --env-file .env.prod up -d
 - API liveness: `GET /health/live`
 - API readiness: `GET /health/ready`
 - API compatibility health (same as readiness): `GET /health`
-- Web health: `GET /api/health`
+- Web liveness: `GET /api/health`
+- Web readiness (API reachability): `GET /api/health?ready=1` (or `GET /api/health?mode=ready`)
 
 ### Probe semantics
 
@@ -121,7 +122,7 @@ services:
 1. Start database.
 2. Apply migrations (`pnpm db:migrate`).
 3. Start API and wait for `/health/ready` success.
-4. Start web and verify `/api/health` plus one authenticated admin request.
+4. Start web and verify `/api/health` (liveness) and `/api/health?ready=1` (API reachability) plus one authenticated admin request.
 5. Shift traffic.
 
 ## 6) Reverse proxy expectations
@@ -148,6 +149,23 @@ The provided production compose setup uses Traefik as this proxy layer.
 
 This prevents test/dev token shortcuts from silently leaking into staging.
 
+
+## Production environment matrix
+
+| Variable | API | Web | Required in staging/production | Notes |
+| --- | --- | --- | --- | --- |
+| `NODE_ENV` | ✅ | ✅ | ✅ | Set to `production` for deployed services. |
+| `DEPLOY_ENV` | ✅ | ✅ | ✅ | Use `staging` or `production` to enable hardened behavior. |
+| `DATABASE_URL` | ✅ | - | ✅ | API readiness depends on DB connectivity and `SELECT 1` check. |
+| `JWT_SECRET` | ✅ | - | ✅ | 32+ chars, high entropy. |
+| `COOKIE_SECRET` | ✅ | - | ✅ | 32+ chars, high entropy. |
+| `API_CORS_ORIGINS` | ✅ | - | ✅ | Must include deployed web/admin origins. |
+| `NEXT_PUBLIC_SITE_URL` | - | ✅ | ✅ | Web build/start fails fast in hardened envs if missing/invalid. |
+| `NEXT_PUBLIC_API_URL` | - | ✅ | ✅ | Used by server/client fetch and web readiness checks. |
+| `NEXT_PUBLIC_API_BASE_PATH` | - | ✅ | Recommended | Defaults to `/api/v1`; keep explicit in prod. |
+| `NEXT_PUBLIC_CSP_MEDIA_ORIGINS` | - | ✅ | Optional | Comma-separated external media/CDN origins added to `img-src`. |
+| `MEDIA_STORAGE_PROVIDER` | ✅ | - | Optional | Only `local` implemented by default blueprint. |
+
 ## 8) Database requirements
 
 - PostgreSQL 16-compatible
@@ -173,7 +191,14 @@ This prevents test/dev token shortcuts from silently leaking into staging.
 
 Upload scanning uses a pluggable hook (`MediaUploadScanner`). The default is no-op; production environments with malware or compliance requirements should provide a concrete scanner implementation before go-live.
 
-Uploaded media is currently served by the API at `/uploads` with cache headers enabled. For production environments, media should eventually be served via a CDN or reverse proxy cache to keep repeated asset requests off the Node.js process.
+Uploaded media is served by the API at `/uploads` with strong cache semantics: `Cache-Control: public, max-age=2592000, immutable` and ETag validation (`If-None-Match`/`304`).
+
+CDN/reverse-proxy expectations:
+
+- Keep ETag and `Cache-Control` headers intact when proxying `/uploads`.
+- Prefer cache key = full path (uploaded filenames are UUID-based and content-address changes use new keys).
+- Allow stale-while-revalidate behavior at the edge where supported.
+- Ensure `/uploads` is backed by durable storage (bind mount/PVC/network disk) and included in backup/restore procedures.
 
 ## Scheduling behavior in production
 
@@ -203,3 +228,16 @@ Uploaded media is currently served by the API at `/uploads` with cache headers e
 - [ ] CSRF token/header flow verified from UI for mutating admin operations.
 - [ ] Rollback plan rehearsed with latest database snapshot.
 - [ ] Stakeholder sign-off after smoke tests.
+
+
+## CSP and external media guidance
+
+The web middleware sets a strict CSP and keeps `img-src` limited by default to:
+
+- `'self'`
+- `data:`
+- `NEXT_PUBLIC_API_URL` origin
+
+If editors or templates embed images from a CDN/object-storage domain, set `NEXT_PUBLIC_CSP_MEDIA_ORIGINS` with a comma-separated origin allowlist (for example `https://cdn.example.com,https://images.example.net`).
+
+Avoid wildcard image origins in production; prefer explicit host allowlists and review them during launch checklists.

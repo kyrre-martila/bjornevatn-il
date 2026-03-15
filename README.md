@@ -40,12 +40,22 @@ This repository is a blueprint, not a finished product. The architecture and def
 | Deployment            | **implemented**           | Docker + CI/CD-oriented deployment scaffolding and production checks are included.                                                                 |
 | Staging               | **partially implemented** | Environment-aware hardening exists; teams still need to provision and operate their own staging environment/process.                               |
 
+
+### Operational probes and runtime reality
+
+- API liveness: `GET /health/live`
+- API readiness: `GET /health/ready` (or `GET /health`)
+- Web liveness: `GET /api/health`
+- Web readiness (staging/prod recommended): `GET /api/health?ready=1`
+
+Readiness is dependency-aware: API readiness verifies DB query execution and returns `503` on failure; web readiness verifies API reachability and also returns `503` when the API is unavailable.
+
 ### Before first client launch
 
 - [ ] Keep public registration disabled unless explicitly required (`REGISTRATION_ENABLED=false` and matching web toggle).
 - [ ] Configure and validate the mailer for password-reset and operational emails.
 - [ ] Verify database and upload-storage backups (and restore procedure).
-- [ ] Verify `/health` and readiness checks in the target environment.
+- [ ] Verify `/health/live`, `/health/ready`, `/api/health`, and `/api/health?ready=1` in the target environment.
 - [ ] Test end-to-end auth flows (login, logout, forgot password, reset password).
 - [ ] Test redirect handling for changed/legacy slugs.
 - [ ] Test the real publish workflow your editors will use (draft/revision/publish expectations).
@@ -145,3 +155,19 @@ Auth behavior in this blueprint today:
 ## License
 
 Licensed under the [MIT License](LICENSE). © 2025 Kyrre Arne Martila.
+
+
+## Production environment matrix (quick reference)
+
+| Variable | API | Web | Required in staging/production |
+| --- | --- | --- | --- |
+| `NODE_ENV`, `DEPLOY_ENV` | ✅ | ✅ | ✅ |
+| `DATABASE_URL` | ✅ | - | ✅ |
+| `JWT_SECRET`, `COOKIE_SECRET` | ✅ | - | ✅ |
+| `API_CORS_ORIGINS` | ✅ | - | ✅ |
+| `NEXT_PUBLIC_SITE_URL`, `NEXT_PUBLIC_API_URL` | - | ✅ | ✅ |
+| `NEXT_PUBLIC_API_BASE_PATH` | - | ✅ | Recommended |
+| `NEXT_PUBLIC_CSP_MEDIA_ORIGINS` | - | ✅ | Optional (if external media is used) |
+| `MEDIA_STORAGE_PROVIDER` | ✅ | - | Optional (`local` only by default blueprint) |
+
+Run 3 / 3.5 operational notes: treat scheduling and media as explicit handoff items. Scheduled publish/unpublish is request-time evaluated (not cron-driven), and local media storage is operationally viable only when `uploads/` persistence + backups + CDN/proxy behavior are validated before launch.
