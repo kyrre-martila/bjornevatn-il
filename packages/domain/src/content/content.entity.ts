@@ -10,6 +10,13 @@ export type SlugLookupResult<T> =
   | { kind: "current"; entity: T }
   | { kind: "redirect"; destinationSlug: string };
 
+export type WorkflowStatus =
+  | "draft"
+  | "in_review"
+  | "approved"
+  | "published"
+  | "archived";
+
 export type Page = {
   id: string;
   slug: string;
@@ -20,6 +27,7 @@ export type Page = {
   canonicalUrl: string | null;
   noIndex: boolean;
   published: boolean;
+  workflowStatus: WorkflowStatus;
   publishAt: Date | null;
   unpublishAt: Date | null;
   templateKey: string | null;
@@ -133,6 +141,7 @@ export type ContentItem = {
   data: Record<string, unknown>;
   resolvedReferences?: Record<string, ResolvedContentFieldReference>;
   published: boolean;
+  workflowStatus: WorkflowStatus;
   publishAt: Date | null;
   unpublishAt: Date | null;
   createdAt: Date;

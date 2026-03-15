@@ -16,6 +16,36 @@ type AdminPageRevision = {
   createdById: string | null;
 };
 
+type WorkflowStatus =
+  | "draft"
+  | "in_review"
+  | "approved"
+  | "published"
+  | "archived";
+
+const WORKFLOW_ACTIONS: Array<{ key: WorkflowStatus; label: string }> = [
+  { key: "draft", label: "Save Draft" },
+  { key: "in_review", label: "Submit for Review" },
+  { key: "approved", label: "Approve" },
+  { key: "published", label: "Publish" },
+  { key: "archived", label: "Archive" },
+];
+
+function canUseWorkflowAction(
+  role: "editor" | "admin" | "superadmin",
+  action: WorkflowStatus,
+): boolean {
+  if (role === "superadmin") return true;
+  if (role === "admin") return true;
+  return action === "draft" || action === "in_review";
+}
+
+function workflowLabel(status: WorkflowStatus): string {
+  return (
+    WORKFLOW_ACTIONS.find((entry) => entry.key === status)?.label ?? status
+  );
+}
+
 type AdminMedia = {
   id: string;
   url: string;
@@ -214,8 +244,6 @@ function isValidSlug(value: string): boolean {
   return /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(value);
 }
 
-
-
 function toDateTimeLocalValue(value: string | null | undefined): string {
   if (!value) return "";
   const date = new Date(value);
@@ -240,7 +268,9 @@ function getPublicationStatus(page: {
   if (!page.published) return "Draft";
   const now = Date.now();
   const publishAt = page.publishAt ? new Date(page.publishAt).getTime() : null;
-  const unpublishAt = page.unpublishAt ? new Date(page.unpublishAt).getTime() : null;
+  const unpublishAt = page.unpublishAt
+    ? new Date(page.unpublishAt).getTime()
+    : null;
   if (publishAt !== null && now < publishAt) return "Scheduled";
   if (unpublishAt !== null && now >= unpublishAt) return "Expired";
   return "Published";
@@ -307,11 +337,13 @@ export function PageEditorClient({
   canManageStructure,
   canEditRawJson,
   canEditSlug,
+  userRole,
 }: {
   initialPage: AdminPage | null;
   canManageStructure: boolean;
   canEditRawJson: boolean;
   canEditSlug: boolean;
+  userRole: "editor" | "admin" | "superadmin";
 }) {
   const router = useRouter();
   const [title, setTitle] = React.useState(initialPage?.title ?? "");
@@ -325,6 +357,10 @@ export function PageEditorClient({
     initialPage?.canonicalUrl ?? "",
   );
   const [noIndex, setNoIndex] = React.useState(initialPage?.noIndex ?? false);
+  const [workflowStatus, setWorkflowStatus] = React.useState<WorkflowStatus>(
+    initialPage?.workflowStatus ??
+      (initialPage?.published ? "published" : "draft"),
+  );
   const [published, setPublished] = React.useState(
     initialPage?.published ?? false,
   );
@@ -365,7 +401,9 @@ export function PageEditorClient({
 
     let active = true;
     setIsLoadingRevisions(true);
-    void fetch(`/api/admin/pages/${initialPage.id}/revisions`, { cache: "no-store" })
+    void fetch(`/api/admin/pages/${initialPage.id}/revisions`, {
+      cache: "no-store",
+    })
       .then((res) =>
         res.ok
           ? (res.json() as Promise<AdminPageRevision[]>)
@@ -407,12 +445,16 @@ export function PageEditorClient({
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ revisionNote: "Restored from revision history" }),
+          body: JSON.stringify({
+            revisionNote: "Restored from revision history",
+          }),
         },
       );
       if (!res.ok) {
         const payload = (await res.json().catch(() => null)) as unknown;
-        throw new Error(describeApiError("Failed to restore revision.", payload));
+        throw new Error(
+          describeApiError("Failed to restore revision.", payload),
+        );
       }
 
       setStatus("Revision restored.");
@@ -638,8 +680,7 @@ export function PageEditorClient({
     }
   }
 
-  async function savePage(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  async function savePage(nextWorkflowStatus: WorkflowStatus) {
     setError(null);
     setStatus(null);
 
@@ -767,7 +808,11 @@ export function PageEditorClient({
       return;
     }
 
-    if (publishAtIso && unpublishAtIso && new Date(unpublishAtIso) <= new Date(publishAtIso)) {
+    if (
+      publishAtIso &&
+      unpublishAtIso &&
+      new Date(unpublishAtIso) <= new Date(publishAtIso)
+    ) {
       setError("Unpublish date/time must be after publish date/time.");
       return;
     }
@@ -783,7 +828,8 @@ export function PageEditorClient({
         seoImage: seoImage.trim() || null,
         canonicalUrl: canonicalUrl.trim() || null,
         noIndex,
-        published,
+        published: nextWorkflowStatus === "published",
+        workflowStatus: nextWorkflowStatus,
         publishAt: publishAtIso,
         unpublishAt: unpublishAtIso,
         blocks: parsedBlocks,
@@ -896,7 +942,13 @@ export function PageEditorClient({
         </p>
       </div>
 
-      <form className="page-editor__form" onSubmit={savePage}>
+      <form
+        className="page-editor__form"
+        onSubmit={(e) => {
+          e.preventDefault();
+          void savePage("draft");
+        }}
+      >
         <label>
           Page title
           <input
@@ -941,7 +993,15 @@ export function PageEditorClient({
 
         <fieldset>
           <legend>Publishing schedule</legend>
-          <p>Current status: <strong>{getPublicationStatus({ published, publishAt: toIsoDateTimeOrNull(publishAt), unpublishAt: toIsoDateTimeOrNull(unpublishAt) })}</strong></p>
+          <p>
+            Current status: <strong>{workflowLabel(workflowStatus)}</strong> (
+            {getPublicationStatus({
+              published: workflowStatus === "published",
+              publishAt: toIsoDateTimeOrNull(publishAt),
+              unpublishAt: toIsoDateTimeOrNull(unpublishAt),
+            })}
+            )
+          </p>
           <label>
             Publish date/time
             <input
@@ -1281,7 +1341,9 @@ export function PageEditorClient({
             <legend>Revision history</legend>
             {isLoadingRevisions ? <p>Loading revisions...</p> : null}
             {!isLoadingRevisions && revisions.length === 0 ? (
-              <p>No revisions yet. Revisions are created when a page is updated.</p>
+              <p>
+                No revisions yet. Revisions are created when a page is updated.
+              </p>
             ) : null}
             <ul>
               {revisions.map((revision) => (
@@ -1302,13 +1364,21 @@ export function PageEditorClient({
         ) : null}
 
         <div className="page-editor__actions">
-          <button type="submit" disabled={isSaving}>
-            {isSaving
-              ? "Saving..."
-              : initialPage
-                ? "Save changes"
-                : "Create page"}
-          </button>
+          {WORKFLOW_ACTIONS.map((action) => (
+            <button
+              key={action.key}
+              type="button"
+              disabled={isSaving || !canUseWorkflowAction(userRole, action.key)}
+              onClick={() => {
+                setWorkflowStatus(action.key);
+                void savePage(action.key);
+              }}
+            >
+              {isSaving && workflowStatus === action.key
+                ? "Saving..."
+                : action.label}
+            </button>
+          ))}
           {initialPage && (
             <button type="button" onClick={deletePage} disabled={isDeleting}>
               {isDeleting ? "Deleting..." : "Delete permanently"}

@@ -16,6 +16,13 @@ export default async function NewAdminPage() {
       canManageStructure={canEditSlug(me?.user?.role)}
       canEditSlug={canEditSlug(me?.user?.role)}
       canEditRawJson={canAccessSchema(me?.user?.role)}
+      userRole={
+        hasMinimumRole(me?.user?.role, "superadmin")
+          ? "superadmin"
+          : hasMinimumRole(me?.user?.role, "admin")
+            ? "admin"
+            : "editor"
+      }
     />
   );
 }

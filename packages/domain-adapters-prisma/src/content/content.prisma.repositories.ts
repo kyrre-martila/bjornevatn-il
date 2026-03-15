@@ -33,6 +33,23 @@ import type {
 } from "@org/domain";
 import { getPrisma } from "../prisma.client.js";
 
+const WORKFLOW_STATUSES = [
+  "draft",
+  "in_review",
+  "approved",
+  "published",
+  "archived",
+] as const;
+
+function normalizeWorkflowStatus(
+  value: unknown,
+): (typeof WORKFLOW_STATUSES)[number] {
+  return typeof value === "string" &&
+    WORKFLOW_STATUSES.includes(value as (typeof WORKFLOW_STATUSES)[number])
+    ? (value as (typeof WORKFLOW_STATUSES)[number])
+    : "draft";
+}
+
 const PAGE_BLOCK_TYPES: PageBlockType[] = [
   "hero",
   "rich_text",
@@ -128,6 +145,7 @@ function mapPage(page: {
   canonicalUrl: string | null;
   noIndex: boolean;
   published: boolean;
+  workflowStatus: string;
   publishAt: Date | null;
   unpublishAt: Date | null;
   templateKey: string | null;
@@ -145,6 +163,7 @@ function mapPage(page: {
 }): Page {
   return {
     ...page,
+    workflowStatus: normalizeWorkflowStatus(page.workflowStatus),
     blocks: page.blocks.map(mapPageBlock),
   };
 }
@@ -193,7 +212,6 @@ function mapContentItemRevision(revision: {
         : {},
   };
 }
-
 
 const CONTENT_FIELD_TYPES: ContentFieldType[] = [
   "text",
@@ -327,6 +345,7 @@ function mapContentItem(item: {
   noIndex: boolean;
   data: unknown;
   published: boolean;
+  workflowStatus: string;
   publishAt: Date | null;
   unpublishAt: Date | null;
   createdAt: Date;
@@ -334,6 +353,7 @@ function mapContentItem(item: {
 }): ContentItem {
   return {
     ...item,
+    workflowStatus: normalizeWorkflowStatus(item.workflowStatus),
     data:
       item.data && typeof item.data === "object" && !Array.isArray(item.data)
         ? (item.data as Record<string, unknown>)
@@ -576,6 +596,7 @@ export class PagesPrismaRepository implements PagesRepository {
         canonicalUrl: data.canonicalUrl,
         noIndex: data.noIndex,
         published: data.published,
+        workflowStatus: data.workflowStatus,
         publishAt: data.publishAt,
         unpublishAt: data.unpublishAt,
         templateKey: data.templateKey,
@@ -735,14 +756,17 @@ export class PagesPrismaRepository implements PagesRepository {
       const page = await tx.page.update({
         where: { id: pageId },
         data: {
-          slug: typeof snapshot.slug === "string" ? snapshot.slug : current.slug,
-          title: typeof snapshot.title === "string" ? snapshot.title : current.title,
+          slug:
+            typeof snapshot.slug === "string" ? snapshot.slug : current.slug,
+          title:
+            typeof snapshot.title === "string" ? snapshot.title : current.title,
           seoTitle:
             snapshot.seoTitle === null || typeof snapshot.seoTitle === "string"
               ? snapshot.seoTitle
               : current.seoTitle,
           seoDescription:
-            snapshot.seoDescription === null || typeof snapshot.seoDescription === "string"
+            snapshot.seoDescription === null ||
+            typeof snapshot.seoDescription === "string"
               ? snapshot.seoDescription
               : current.seoDescription,
           seoImage:
@@ -750,45 +774,67 @@ export class PagesPrismaRepository implements PagesRepository {
               ? snapshot.seoImage
               : current.seoImage,
           canonicalUrl:
-            snapshot.canonicalUrl === null || typeof snapshot.canonicalUrl === "string"
+            snapshot.canonicalUrl === null ||
+            typeof snapshot.canonicalUrl === "string"
               ? snapshot.canonicalUrl
               : current.canonicalUrl,
           noIndex:
-            typeof snapshot.noIndex === "boolean" ? snapshot.noIndex : current.noIndex,
+            typeof snapshot.noIndex === "boolean"
+              ? snapshot.noIndex
+              : current.noIndex,
           published:
             typeof snapshot.published === "boolean"
               ? snapshot.published
               : current.published,
+          workflowStatus:
+            snapshot.workflowStatus === undefined
+              ? current.workflowStatus
+              : normalizeWorkflowStatus(snapshot.workflowStatus),
           publishAt:
-            snapshot.publishAt === null || typeof snapshot.publishAt === "string"
+            snapshot.publishAt === null ||
+            typeof snapshot.publishAt === "string"
               ? snapshot.publishAt
               : current.publishAt,
           unpublishAt:
-            snapshot.unpublishAt === null || typeof snapshot.unpublishAt === "string"
+            snapshot.unpublishAt === null ||
+            typeof snapshot.unpublishAt === "string"
               ? snapshot.unpublishAt
               : current.unpublishAt,
           templateKey:
-            snapshot.templateKey === null || typeof snapshot.templateKey === "string"
+            snapshot.templateKey === null ||
+            typeof snapshot.templateKey === "string"
               ? snapshot.templateKey
               : current.templateKey,
           blocks: {
             create: blocksSnapshot
               .map((block, index) => {
-                if (!block || typeof block !== "object" || Array.isArray(block)) {
+                if (
+                  !block ||
+                  typeof block !== "object" ||
+                  Array.isArray(block)
+                ) {
                   return null;
                 }
                 const b = block as Record<string, unknown>;
                 return {
                   type: typeof b.type === "string" ? b.type : "rich_text",
                   data:
-                    b.data && typeof b.data === "object" && !Array.isArray(b.data)
+                    b.data &&
+                    typeof b.data === "object" &&
+                    !Array.isArray(b.data)
                       ? (b.data as InputJsonValue)
                       : ({} as InputJsonValue),
                   order: typeof b.order === "number" ? b.order : index,
                 };
               })
-              .filter((entry): entry is { type: string; data: InputJsonValue; order: number } =>
-                Boolean(entry),
+              .filter(
+                (
+                  entry,
+                ): entry is {
+                  type: string;
+                  data: InputJsonValue;
+                  order: number;
+                } => Boolean(entry),
               ),
           },
         },
@@ -1333,6 +1379,8 @@ export class ContentItemsPrismaRepository implements ContentItemsRepository {
         where: { id },
         data: {
           ...data,
+          workflowStatus:
+            data.workflowStatus === undefined ? undefined : data.workflowStatus,
           parentId: data.parentId === undefined ? undefined : data.parentId,
           sortOrder: data.sortOrder,
           data:
@@ -1368,7 +1416,9 @@ export class ContentItemsPrismaRepository implements ContentItemsRepository {
     revisionNote?: string | null,
   ): Promise<ContentItem> {
     return this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-      const current = await tx.contentItem.findUnique({ where: { id: contentItemId } });
+      const current = await tx.contentItem.findUnique({
+        where: { id: contentItemId },
+      });
       if (!current) {
         throw new DomainError("VALIDATION_ERROR", "Content item not found.");
       }
@@ -1377,7 +1427,10 @@ export class ContentItemsPrismaRepository implements ContentItemsRepository {
         where: { id: revisionId, contentItemId },
       });
       if (!revision) {
-        throw new DomainError("VALIDATION_ERROR", "Content item revision not found.");
+        throw new DomainError(
+          "VALIDATION_ERROR",
+          "Content item revision not found.",
+        );
       }
 
       await tx.contentItemRevision.create({
@@ -1405,14 +1458,17 @@ export class ContentItemsPrismaRepository implements ContentItemsRepository {
             typeof snapshot.sortOrder === "number"
               ? snapshot.sortOrder
               : current.sortOrder,
-          slug: typeof snapshot.slug === "string" ? snapshot.slug : current.slug,
-          title: typeof snapshot.title === "string" ? snapshot.title : current.title,
+          slug:
+            typeof snapshot.slug === "string" ? snapshot.slug : current.slug,
+          title:
+            typeof snapshot.title === "string" ? snapshot.title : current.title,
           seoTitle:
             snapshot.seoTitle === null || typeof snapshot.seoTitle === "string"
               ? snapshot.seoTitle
               : current.seoTitle,
           seoDescription:
-            snapshot.seoDescription === null || typeof snapshot.seoDescription === "string"
+            snapshot.seoDescription === null ||
+            typeof snapshot.seoDescription === "string"
               ? snapshot.seoDescription
               : current.seoDescription,
           seoImage:
@@ -1420,25 +1476,36 @@ export class ContentItemsPrismaRepository implements ContentItemsRepository {
               ? snapshot.seoImage
               : current.seoImage,
           canonicalUrl:
-            snapshot.canonicalUrl === null || typeof snapshot.canonicalUrl === "string"
+            snapshot.canonicalUrl === null ||
+            typeof snapshot.canonicalUrl === "string"
               ? snapshot.canonicalUrl
               : current.canonicalUrl,
           noIndex:
-            typeof snapshot.noIndex === "boolean" ? snapshot.noIndex : current.noIndex,
+            typeof snapshot.noIndex === "boolean"
+              ? snapshot.noIndex
+              : current.noIndex,
           data:
-            snapshot.data && typeof snapshot.data === "object" && !Array.isArray(snapshot.data)
+            snapshot.data &&
+            typeof snapshot.data === "object" &&
+            !Array.isArray(snapshot.data)
               ? (snapshot.data as InputJsonValue)
               : (current.data as unknown as InputJsonValue),
           published:
             typeof snapshot.published === "boolean"
               ? snapshot.published
               : current.published,
+          workflowStatus:
+            snapshot.workflowStatus === undefined
+              ? current.workflowStatus
+              : normalizeWorkflowStatus(snapshot.workflowStatus),
           publishAt:
-            snapshot.publishAt === null || typeof snapshot.publishAt === "string"
+            snapshot.publishAt === null ||
+            typeof snapshot.publishAt === "string"
               ? snapshot.publishAt
               : current.publishAt,
           unpublishAt:
-            snapshot.unpublishAt === null || typeof snapshot.unpublishAt === "string"
+            snapshot.unpublishAt === null ||
+            typeof snapshot.unpublishAt === "string"
               ? snapshot.unpublishAt
               : current.unpublishAt,
         },

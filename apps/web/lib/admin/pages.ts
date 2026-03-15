@@ -24,6 +24,7 @@ export type AdminPage = {
   canonicalUrl: string | null;
   noIndex: boolean;
   published: boolean;
+  workflowStatus: "draft" | "in_review" | "approved" | "published" | "archived";
   publishAt: string | null;
   unpublishAt: string | null;
   blocks: AdminPageBlock[];
