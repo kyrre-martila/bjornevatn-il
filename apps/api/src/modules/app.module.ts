@@ -10,6 +10,7 @@ import { LoggerModule } from "../common/logging/logger.module";
 import { MetricsModule } from "../common/metrics/metrics.module";
 import { AuditModule } from "./audit/audit.module";
 import { AuditAdminModule } from "./audit/audit-admin.module";
+import { StagingModule } from "./staging/staging.module";
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { AuditAdminModule } from "./audit/audit-admin.module";
     RedirectsModule,
     AuditModule,
     AuditAdminModule,
+    StagingModule,
   ],
 })
 export class AppModule {}
