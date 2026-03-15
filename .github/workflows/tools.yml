@@ -46,6 +46,35 @@ jobs:
       - name: Install deps
         run: pnpm install --frozen-lockfile
 
+  openapi-contract-sync:
+    name: OpenAPI contract drift check
+    needs: setup
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.5.2
+
+      - run: pnpm -v
+
+      - name: Install deps
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate OpenAPI
+        run: pnpm generate:openapi
+
+      - name: Verify OpenAPI is up to date
+        run: git diff --exit-code -- packages/contracts/openapi.v1.json
+
   lint:
     name: Lint (ESLint)
     needs: setup
