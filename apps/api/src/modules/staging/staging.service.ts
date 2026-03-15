@@ -1,17 +1,8 @@
-import {
-  ConflictException,
-  Injectable,
-  InternalServerErrorException,
-  Logger,
-} from "@nestjs/common";
-import { ConfigService } from "@nestjs/config";
-import { exec } from "node:child_process";
-import { promisify } from "node:util";
+import { ConflictException, Injectable } from "@nestjs/common";
 
 import { PrismaService } from "../../prisma/prisma.service";
 import { AuditService } from "../audit/audit.service";
-
-const execAsync = promisify(exec);
+import { StagingEnvironmentService } from "./staging-environment.service";
 
 type Actor = {
   userId: string;
@@ -37,12 +28,10 @@ type StagingStatusResponse = {
 
 @Injectable()
 export class StagingAdminService {
-  private readonly logger = new Logger(StagingAdminService.name);
-
   constructor(
     private readonly prisma: PrismaService,
-    private readonly config: ConfigService,
     private readonly audit: AuditService,
+    private readonly stagingEnvironmentService: StagingEnvironmentService,
   ) {}
 
   async getStatus(): Promise<StagingStatusResponse> {
@@ -96,14 +85,7 @@ export class StagingAdminService {
   async resetFromLive(actor: Actor): Promise<StagingStatusResponse> {
     await this.acquireLock("syncing", actor.userId);
     try {
-      await this.runConfiguredCommand(
-        "STAGING_RESET_DB_COMMAND",
-        "reset staging database from live",
-      );
-      await this.runConfiguredCommand(
-        "STAGING_SYNC_UPLOADS_FROM_LIVE_COMMAND",
-        "sync uploads from live to staging",
-      );
+      await this.stagingEnvironmentService.resetStagingFromLive();
 
       await this.prisma.siteEnvironmentStatus.upsert({
         where: { environment: "staging" },
@@ -143,15 +125,7 @@ export class StagingAdminService {
   async pushToLive(actor: Actor): Promise<StagingStatusResponse> {
     await this.acquireLock("pushing", actor.userId);
     try {
-      await this.runConfiguredCommand(
-        "STAGING_PUSH_DB_TO_LIVE_COMMAND",
-        "copy staging database to live",
-      );
-      await this.runConfiguredCommand(
-        "STAGING_SYNC_UPLOADS_TO_LIVE_COMMAND",
-        "sync uploads from staging to live",
-      );
-      await this.triggerRevalidationHook();
+      await this.stagingEnvironmentService.pushStagingToLive();
 
       await this.prisma.siteEnvironmentStatus.upsert({
         where: { environment: "staging" },
@@ -191,10 +165,7 @@ export class StagingAdminService {
   async deleteStaging(actor: Actor): Promise<StagingStatusResponse> {
     await this.acquireLock("deleting", actor.userId);
     try {
-      await this.runConfiguredCommand(
-        "STAGING_DELETE_COMMAND",
-        "delete staging environment",
-      );
+      await this.stagingEnvironmentService.deleteStagingEnvironment();
 
       await this.prisma.siteEnvironmentStatus.upsert({
         where: { environment: "staging" },
@@ -277,53 +248,6 @@ export class StagingAdminService {
         lastActorUserId: actorUserId,
       },
     });
-  }
-
-  private async runConfiguredCommand(
-    envKey: string,
-    operationName: string,
-  ): Promise<void> {
-    const command = this.config.get<string>(envKey)?.trim();
-    if (!command) {
-      throw new InternalServerErrorException(
-        `Staging operation misconfigured: ${envKey} is required to ${operationName}.`,
-      );
-    }
-
-    try {
-      await execAsync(command, {
-        shell: "/bin/bash",
-        env: process.env,
-      });
-    } catch (error) {
-      const details = error instanceof Error ? error.message : String(error);
-      this.logger.error(`Failed to ${operationName}: ${details}`);
-      throw new InternalServerErrorException(
-        `Failed to ${operationName}.`,
-      );
-    }
-  }
-
-  private async triggerRevalidationHook(): Promise<void> {
-    const hookUrl = this.config
-      .get<string>("STAGING_PUSH_REVALIDATE_HOOK_URL")
-      ?.trim();
-    if (!hookUrl) {
-      return;
-    }
-
-    try {
-      const response = await fetch(hookUrl, { method: "POST" });
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
-      }
-    } catch (error) {
-      const details = error instanceof Error ? error.message : String(error);
-      this.logger.warn(`Revalidation hook failed: ${details}`);
-      throw new InternalServerErrorException(
-        "Failed to trigger revalidation hook after push.",
-      );
-    }
   }
 
   private buildStatusMessage(

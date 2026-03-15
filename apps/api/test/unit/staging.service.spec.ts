@@ -12,8 +12,8 @@ describe("StagingAdminService", () => {
 
     const service = new StagingAdminService(
       prisma,
-      { get: jest.fn() } as any,
       { log: jest.fn() } as any,
+      { resetStagingFromLive: jest.fn() } as any,
     );
 
     await expect(service.getStatus()).resolves.toEqual({
@@ -39,8 +39,8 @@ describe("StagingAdminService", () => {
 
     const service = new StagingAdminService(
       prisma,
-      { get: jest.fn() } as any,
       { log: jest.fn() } as any,
+      { resetStagingFromLive: jest.fn() } as any,
     );
 
     await expect(
@@ -51,10 +51,7 @@ describe("StagingAdminService", () => {
   it("marks staging as stale and unlocks if reset fails mid-way", async () => {
     const prisma = {
       siteEnvironmentStatus: {
-        upsert: jest
-          .fn()
-          .mockResolvedValueOnce({})
-          .mockResolvedValueOnce({}),
+        upsert: jest.fn().mockResolvedValue({}),
         updateMany: jest.fn().mockResolvedValue({ count: 1 }),
         update: jest.fn().mockResolvedValue({}),
       },
@@ -62,8 +59,12 @@ describe("StagingAdminService", () => {
 
     const service = new StagingAdminService(
       prisma,
-      { get: jest.fn().mockReturnValue(undefined) } as any,
       { log: jest.fn() } as any,
+      {
+        resetStagingFromLive: jest
+          .fn()
+          .mockRejectedValue(new InternalServerErrorException("failed")),
+      } as any,
     );
 
     await expect(
