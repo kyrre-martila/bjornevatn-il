@@ -129,6 +129,36 @@ function isValidSlug(value: string): boolean {
   return /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(value);
 }
 
+type ImpactSummaryItem = {
+  label: string;
+  oldValue?: string;
+  newValue?: string;
+};
+
+function formatImpactValue(value: string | null | undefined): string {
+  if (value === null || value === undefined || value.trim() === "") {
+    return "(empty)";
+  }
+  return value;
+}
+
+function formatImpactSummaryMessage(items: ImpactSummaryItem[]): string {
+  if (items.length === 0) {
+    return "";
+  }
+
+  const lines = ["This change will:"];
+  for (const item of items) {
+    lines.push(`- ${item.label}`);
+    if (item.oldValue !== undefined || item.newValue !== undefined) {
+      lines.push(`  Old: ${item.oldValue ?? "(unknown)"}`);
+      lines.push(`  New: ${item.newValue ?? "(unknown)"}`);
+    }
+  }
+  lines.push("", "Continue?");
+  return lines.join("\n");
+}
+
 function describeApiError(fallback: string, payload: unknown): string {
   if (typeof payload === "string" && payload.trim()) {
     return payload;
@@ -1234,30 +1264,6 @@ export function ContentAdminClient({
   const [error, setError] = React.useState<string | null>(null);
   const [pages, setPages] = React.useState<AdminPageOption[]>([]);
   const [media, setMedia] = React.useState<AdminMediaOption[]>([]);
-  const [pendingSlugConfirmation, setPendingSlugConfirmation] = React.useState<{
-    oldUrl: string;
-    newUrl: string;
-  } | null>(null);
-  const slugConfirmationResolver = React.useRef<
-    ((confirmed: boolean) => void) | null
-  >(null);
-
-  function requestSlugChangeConfirmation(
-    oldUrl: string,
-    newUrl: string,
-  ): Promise<boolean> {
-    return new Promise((resolve) => {
-      slugConfirmationResolver.current = resolve;
-      setPendingSlugConfirmation({ oldUrl, newUrl });
-    });
-  }
-
-  function resolveSlugConfirmation(confirmed: boolean) {
-    slugConfirmationResolver.current?.(confirmed);
-    slugConfirmationResolver.current = null;
-    setPendingSlugConfirmation(null);
-  }
-
   const selectedType =
     contentTypes.find((type) => type.id === selectedTypeId) ?? null;
   const selectedItems = selectedType
@@ -1535,13 +1541,69 @@ export function ContentAdminClient({
             setError("Only admins and superadmins can change entry URLs.");
             return;
           }
+        }
 
-          const confirmed = await requestSlugChangeConfirmation(
-            `/${selectedType.slug}/${previousSlug}`,
-            `/${selectedType.slug}/${nextSlug}`,
+        const impactSummaryItems: ImpactSummaryItem[] = [];
+        if (previousSlug !== nextSlug) {
+          impactSummaryItems.push({
+            label: "change the public URL",
+            oldValue: `/${selectedType.slug}/${previousSlug}`,
+            newValue: `/${selectedType.slug}/${nextSlug}`,
+          });
+          impactSummaryItems.push({
+            label: "affect redirects or inbound links",
+          });
+        }
+
+        if ((existing.canonicalUrl ?? null) !== payload.canonicalUrl) {
+          impactSummaryItems.push({
+            label: "change canonical URL used by search engines",
+            oldValue: formatImpactValue(existing.canonicalUrl),
+            newValue: formatImpactValue(payload.canonicalUrl),
+          });
+        }
+
+        if (existing.noIndex !== payload.noIndex) {
+          impactSummaryItems.push({
+            label: "affect search engine indexing",
+            oldValue: existing.noIndex ? "noindex" : "index",
+            newValue: payload.noIndex ? "noindex" : "index",
+          });
+        }
+
+        if (existing.published !== payload.published) {
+          impactSummaryItems.push({
+            label: "change whether the page is publicly visible",
+            oldValue: existing.published ? "public" : "hidden",
+            newValue: payload.published ? "public" : "hidden",
+          });
+        }
+
+        if (
+          (existing.publishAt ?? null) !== payload.publishAt ||
+          (existing.unpublishAt ?? null) !== payload.unpublishAt
+        ) {
+          impactSummaryItems.push({
+            label: "change scheduled visibility",
+            oldValue: `publishAt=${formatImpactValue(existing.publishAt)}, unpublishAt=${formatImpactValue(existing.unpublishAt)}`,
+            newValue: `publishAt=${formatImpactValue(payload.publishAt)}, unpublishAt=${formatImpactValue(payload.unpublishAt)}`,
+          });
+        }
+
+        if (existing.workflowStatus !== payload.workflowStatus) {
+          impactSummaryItems.push({
+            label: "change workflow status",
+            oldValue: workflowStatusLabel(existing.workflowStatus),
+            newValue: workflowStatusLabel(payload.workflowStatus),
+          });
+        }
+
+        if (impactSummaryItems.length > 0) {
+          const confirmed = window.confirm(
+            formatImpactSummaryMessage(impactSummaryItems),
           );
           if (!confirmed) {
-            setStatus("Slug change cancelled.");
+            setStatus("Save cancelled.");
             return;
           }
         }
@@ -2141,33 +2203,6 @@ export function ContentAdminClient({
           </form>
         </>
       )}
-
-      {pendingSlugConfirmation ? (
-        <div
-          role="dialog"
-          aria-modal="true"
-          className="page-editor__confirm-modal"
-        >
-          <p>
-            <strong>Changing the slug will change the page URL.</strong>
-          </p>
-          <p>Old URL: {pendingSlugConfirmation.oldUrl}</p>
-          <p>New URL: {pendingSlugConfirmation.newUrl}</p>
-          <p>This may break existing links and SEO.</p>
-          <p>Continue?</p>
-          <div>
-            <button
-              type="button"
-              onClick={() => resolveSlugConfirmation(false)}
-            >
-              Cancel
-            </button>
-            <button type="button" onClick={() => resolveSlugConfirmation(true)}>
-              Continue
-            </button>
-          </div>
-        </div>
-      ) : null}
     </section>
   );
 }
