@@ -8,6 +8,34 @@ import type {
 } from "../../../../lib/admin/content";
 import { HtmlRichTextEditor } from "../components/HtmlRichTextEditor";
 
+type WorkflowStatus =
+  | "draft"
+  | "in_review"
+  | "approved"
+  | "published"
+  | "archived";
+
+const WORKFLOW_ACTIONS: Array<{ key: WorkflowStatus; label: string }> = [
+  { key: "draft", label: "Save Draft" },
+  { key: "in_review", label: "Submit for Review" },
+  { key: "approved", label: "Approve" },
+  { key: "published", label: "Publish" },
+  { key: "archived", label: "Archive" },
+];
+
+function canUseWorkflowAction(
+  role: "editor" | "admin" | "superadmin",
+  action: WorkflowStatus,
+): boolean {
+  if (role === "superadmin") return true;
+  if (role === "admin") return true;
+  return action === "draft" || action === "in_review";
+}
+
+function workflowStatusLabel(status: WorkflowStatus): string {
+  return status.replace("_", " ");
+}
+
 type Props = {
   canManageContentTypes: boolean;
   initialContentTypes: AdminContentType[];
@@ -19,6 +47,7 @@ type Props = {
   canEditSlug: boolean;
   canEditRelations: boolean;
   initialSelectedTypeSlug?: string;
+  userRole: "editor" | "admin" | "superadmin";
 };
 
 type ContentItemDraft = {
@@ -30,6 +59,7 @@ type ContentItemDraft = {
   canonicalUrl: string;
   noIndex: boolean;
   published: boolean;
+  workflowStatus: WorkflowStatus;
   publishAt: string;
   unpublishAt: string;
   values: Record<string, string | string[]>;
@@ -182,8 +212,6 @@ function getPublicItemPath(contentTypeSlug: string, itemSlug: string): string {
 function getPublicArchivePath(contentTypeSlug: string): string {
   return `/${contentTypeSlug}`;
 }
-
-
 
 function toDateTimeLocalValue(value: string | null | undefined): string {
   if (!value) return "";
@@ -414,6 +442,7 @@ function emptyDraft(contentType: AdminContentType): ContentItemDraft {
     canonicalUrl: "",
     noIndex: false,
     published: false,
+    workflowStatus: "draft",
     publishAt: "",
     unpublishAt: "",
     values,
@@ -783,6 +812,7 @@ function ContentItemEditor({
   canEditSlug,
   canEditRelations,
   onRestoreRevision,
+  userRole,
 }: {
   item: AdminContentItem;
   contentType: AdminContentType;
@@ -796,6 +826,7 @@ function ContentItemEditor({
     canonicalUrl: string | null;
     noIndex: boolean;
     published: boolean;
+    workflowStatus: WorkflowStatus;
     publishAt: string | null;
     unpublishAt: string | null;
     data: Record<string, unknown>;
@@ -808,6 +839,7 @@ function ContentItemEditor({
   canEditSlug: boolean;
   canEditRelations: boolean;
   onRestoreRevision: (revisionId: string) => Promise<void>;
+  userRole: "editor" | "admin" | "superadmin";
 }) {
   const [title, setTitle] = React.useState(item.title);
   const [slug, setSlug] = React.useState(item.slug);
@@ -820,17 +852,28 @@ function ContentItemEditor({
     item.canonicalUrl ?? "",
   );
   const [noIndex, setNoIndex] = React.useState(item.noIndex);
+  const [workflowStatus, setWorkflowStatus] = React.useState<WorkflowStatus>(
+    item.workflowStatus ?? (item.published ? "published" : "draft"),
+  );
   const [published, setPublished] = React.useState(item.published);
-  const [publishAt, setPublishAt] = React.useState(toDateTimeLocalValue(item.publishAt));
-  const [unpublishAt, setUnpublishAt] = React.useState(toDateTimeLocalValue(item.unpublishAt));
+  const [publishAt, setPublishAt] = React.useState(
+    toDateTimeLocalValue(item.publishAt),
+  );
+  const [unpublishAt, setUnpublishAt] = React.useState(
+    toDateTimeLocalValue(item.unpublishAt),
+  );
   const [values, setValues] = React.useState<Record<string, string | string[]>>(
     buildValues(contentType.fields, item.data),
   );
-  const [revisions, setRevisions] = React.useState<AdminContentItemRevision[]>([]);
+  const [revisions, setRevisions] = React.useState<AdminContentItemRevision[]>(
+    [],
+  );
 
   React.useEffect(() => {
     let active = true;
-    void fetch(`/api/admin/content-items/${item.id}/revisions`, { cache: "no-store" })
+    void fetch(`/api/admin/content-items/${item.id}/revisions`, {
+      cache: "no-store",
+    })
       .then((res) =>
         res.ok
           ? (res.json() as Promise<AdminContentItemRevision[]>)
@@ -854,13 +897,14 @@ function ContentItemEditor({
     setSeoImage(item.seoImage ?? "");
     setCanonicalUrl(item.canonicalUrl ?? "");
     setNoIndex(item.noIndex);
+    setWorkflowStatus(
+      item.workflowStatus ?? (item.published ? "published" : "draft"),
+    );
     setPublishAt(toDateTimeLocalValue(item.publishAt));
     setUnpublishAt(toDateTimeLocalValue(item.unpublishAt));
   }, [contentType.fields, item]);
 
-  async function submit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-
+  async function submit(nextWorkflowStatus: WorkflowStatus) {
     const publishAtIso = toIsoDateTimeOrNull(publishAt);
     const unpublishAtIso = toIsoDateTimeOrNull(unpublishAt);
 
@@ -874,7 +918,11 @@ function ContentItemEditor({
       return;
     }
 
-    if (publishAtIso && unpublishAtIso && new Date(unpublishAtIso) <= new Date(publishAtIso)) {
+    if (
+      publishAtIso &&
+      unpublishAtIso &&
+      new Date(unpublishAtIso) <= new Date(publishAtIso)
+    ) {
       window.alert("Unpublish date/time must be after publish date/time.");
       return;
     }
@@ -888,7 +936,8 @@ function ContentItemEditor({
       seoImage: seoImage.trim() || null,
       canonicalUrl: canonicalUrl.trim() || null,
       noIndex,
-      published,
+      published: nextWorkflowStatus === "published",
+      workflowStatus: nextWorkflowStatus,
       publishAt: publishAtIso,
       unpublishAt: unpublishAtIso,
       data: buildDataFromFields(contentType.fields, values),
@@ -908,7 +957,12 @@ function ContentItemEditor({
   const publicArchivePath = getPublicArchivePath(contentType.slug);
 
   return (
-    <form onSubmit={(e) => void submit(e)}>
+    <form
+      onSubmit={(e) => {
+        e.preventDefault();
+        void submit("draft");
+      }}
+    >
       <h4>{item.title}</h4>
       <label>
         Title
@@ -970,6 +1024,8 @@ function ContentItemEditor({
       <fieldset>
         <legend>Publishing and preview</legend>
         <p>
+          <strong>Workflow status:</strong>{" "}
+          {workflowStatusLabel(workflowStatus)} ·{" "}
           <strong>Editorial status:</strong> {visibilityState.editorialStatus}
         </p>
         <p>
@@ -1073,7 +1129,8 @@ function ContentItemEditor({
         <ul>
           {revisions.map((revision) => (
             <li key={revision.id}>
-              {new Date(revision.createdAt).toLocaleString()} {revision.revisionNote ?? "Snapshot"}
+              {new Date(revision.createdAt).toLocaleString()}{" "}
+              {revision.revisionNote ?? "Snapshot"}
               <button
                 type="button"
                 onClick={() => {
@@ -1092,7 +1149,19 @@ function ContentItemEditor({
           ))}
         </ul>
       </fieldset>
-      <button type="submit">Save</button>
+      {WORKFLOW_ACTIONS.map((action) => (
+        <button
+          key={action.key}
+          type="button"
+          disabled={!canUseWorkflowAction(userRole, action.key)}
+          onClick={() => {
+            setWorkflowStatus(action.key);
+            void submit(action.key);
+          }}
+        >
+          {action.label}
+        </button>
+      ))}
       <button type="button" onClick={() => void onDelete(item.id)}>
         Delete
       </button>
@@ -1111,6 +1180,7 @@ export function ContentAdminClient({
   canEditSlug,
   canEditRelations,
   initialSelectedTypeSlug,
+  userRole,
 }: Props) {
   const [contentTypes, setContentTypes] = React.useState(initialContentTypes);
   const [contentTypeDrafts, setContentTypeDrafts] = React.useState<
@@ -1433,6 +1503,7 @@ export function ContentAdminClient({
     canonicalUrl: string | null;
     noIndex: boolean;
     published: boolean;
+    workflowStatus: WorkflowStatus;
     publishAt: string | null;
     unpublishAt: string | null;
     data: Record<string, unknown>;
@@ -1861,6 +1932,7 @@ export function ContentAdminClient({
               canUseMediaLibrary={canUseMediaLibrary}
               canEditSlug={canEditSlug}
               canEditRelations={canEditRelations}
+              userRole={userRole}
               onRestoreRevision={async (revisionId) => {
                 const res = await fetch(
                   `/api/admin/content-items/${item.id}/revisions/${revisionId}/restore`,
@@ -1874,7 +1946,9 @@ export function ContentAdminClient({
                 );
 
                 if (!res.ok) {
-                  const payload = (await res.json().catch(() => null)) as unknown;
+                  const payload = (await res
+                    .json()
+                    .catch(() => null)) as unknown;
                   throw new Error(
                     describeApiError("Failed to restore revision.", payload),
                   );
@@ -1905,7 +1979,8 @@ export function ContentAdminClient({
                 seoImage: createDraft.seoImage.trim() || null,
                 canonicalUrl: createDraft.canonicalUrl.trim() || null,
                 noIndex: createDraft.noIndex,
-                published: createDraft.published,
+                published: createDraft.workflowStatus === "published",
+                workflowStatus: createDraft.workflowStatus,
                 publishAt: toIsoDateTimeOrNull(createDraft.publishAt),
                 unpublishAt: toIsoDateTimeOrNull(createDraft.unpublishAt),
                 data: buildDataFromFields(
@@ -2040,6 +2115,28 @@ export function ContentAdminClient({
                   ) : null}
                 </label>
               ))}
+            <div>
+              Current workflow:{" "}
+              <strong>{workflowStatusLabel(createDraft.workflowStatus)}</strong>
+            </div>
+            {WORKFLOW_ACTIONS.map((action) => (
+              <button
+                key={action.key}
+                type="button"
+                disabled={!canUseWorkflowAction(userRole, action.key)}
+                onClick={() =>
+                  setCreateDrafts((curr) => ({
+                    ...curr,
+                    [selectedType.id]: {
+                      ...createDraft,
+                      workflowStatus: action.key,
+                    },
+                  }))
+                }
+              >
+                {action.label}
+              </button>
+            ))}
             <button type="submit">Create entry</button>
           </form>
         </>

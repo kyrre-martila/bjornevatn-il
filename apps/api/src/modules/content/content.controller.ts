@@ -67,6 +67,16 @@ const ROUTE_SLUG_VALIDATION_MESSAGE =
 const DEFAULT_LIST_LIMIT = 50;
 const MAX_LIST_LIMIT = 100;
 
+const WORKFLOW_STATUSES = [
+  "draft",
+  "in_review",
+  "approved",
+  "published",
+  "archived",
+] as const;
+
+type WorkflowStatus = (typeof WORKFLOW_STATUSES)[number];
+
 function normalizeSlug(value: string): string {
   return value.trim().toLowerCase();
 }
@@ -132,6 +142,12 @@ class CreatePageDto {
   @IsBoolean()
   published!: boolean;
 
+  @ApiProperty({ required: false, enum: WORKFLOW_STATUSES })
+  @IsOptional()
+  @IsString()
+  @IsIn(WORKFLOW_STATUSES)
+  workflowStatus?: WorkflowStatus;
+
   @ApiProperty({ required: false })
   @IsOptional()
   @IsDateString()
@@ -196,6 +212,12 @@ class UpdatePageDto {
   @IsOptional()
   @IsBoolean()
   published?: boolean;
+
+  @ApiProperty({ required: false, enum: WORKFLOW_STATUSES })
+  @IsOptional()
+  @IsString()
+  @IsIn(WORKFLOW_STATUSES)
+  workflowStatus?: WorkflowStatus;
 
   @ApiProperty({ required: false })
   @IsOptional()
@@ -451,6 +473,12 @@ class CreateContentItemDto {
   @IsBoolean()
   published!: boolean;
 
+  @ApiProperty({ required: false, enum: WORKFLOW_STATUSES })
+  @IsOptional()
+  @IsString()
+  @IsIn(WORKFLOW_STATUSES)
+  workflowStatus?: WorkflowStatus;
+
   @ApiProperty({ required: false })
   @IsOptional()
   @IsDateString()
@@ -523,6 +551,12 @@ class UpdateContentItemDto {
   @IsOptional()
   @IsBoolean()
   published?: boolean;
+
+  @ApiProperty({ required: false, enum: WORKFLOW_STATUSES })
+  @IsOptional()
+  @IsString()
+  @IsIn(WORKFLOW_STATUSES)
+  workflowStatus?: WorkflowStatus;
 
   @ApiProperty({ required: false })
   @IsOptional()
@@ -828,7 +862,12 @@ export class ContentController {
   ) {
     await requireMinimumRole(req, this.auth, "admin");
     const userId = await this.getCurrentUserId(req);
-    return this.pages.restoreRevision(id, revisionId, userId, body.revisionNote);
+    return this.pages.restoreRevision(
+      id,
+      revisionId,
+      userId,
+      body.revisionNote,
+    );
   }
 
   @Get("pages/slug/:slug")
@@ -848,7 +887,7 @@ export class ContentController {
 
   @Post("pages")
   async createPage(@Req() req: Request, @Body() body: CreatePageDto) {
-    const role = await requireMinimumRole(req, this.auth, "admin");
+    const role = await requireMinimumRole(req, this.auth, "editor");
     if (body.templateKey !== undefined && role !== "superadmin") {
       throw new ForbiddenException(
         "Access denied: only superadmin can modify page templates.",
@@ -857,8 +896,16 @@ export class ContentController {
     await this.ensurePageSlugDoesNotConflict(body.slug);
     await this.validatePageBlocksMediaAlt(body.title, body.blocks);
     const normalizedBody = this.normalizePublishingWindow(body);
+    const workflowUpdate = this.resolveWorkflowUpdate(
+      role,
+      undefined,
+      undefined,
+      body.workflowStatus,
+      body.published,
+    );
     return this.pages.create({
       ...normalizedBody,
+      ...workflowUpdate,
       templateKey: body.templateKey ?? null,
       noIndex: body.noIndex ?? false,
     });
@@ -898,7 +945,14 @@ export class ContentController {
     }
 
     const normalizedBody = this.normalizePublishingWindow(body, existingPage);
-    return this.pages.update(id, normalizedBody);
+    const workflowUpdate = this.resolveWorkflowUpdate(
+      role,
+      existingPage.workflowStatus,
+      existingPage.published,
+      body.workflowStatus,
+      body.published,
+    );
+    return this.pages.update(id, { ...normalizedBody, ...workflowUpdate });
   }
 
   @Delete("pages/:id")
@@ -1622,8 +1676,16 @@ export class ContentController {
       body.parentId ?? null,
     );
     const normalizedBody = this.normalizePublishingWindow(body);
+    const workflowUpdate = this.resolveWorkflowUpdate(
+      role,
+      undefined,
+      undefined,
+      body.workflowStatus,
+      body.published,
+    );
     return this.contentItems.create({
       ...normalizedBody,
+      ...workflowUpdate,
       parentId: body.parentId ?? null,
       sortOrder: body.sortOrder ?? 0,
       noIndex: body.noIndex ?? false,
@@ -1671,9 +1733,18 @@ export class ContentController {
       existing.id,
     );
     const normalizedBody = this.normalizePublishingWindow(body, existing);
-    return this.contentItems.update(id, normalizedBody);
+    const workflowUpdate = this.resolveWorkflowUpdate(
+      role,
+      existing.workflowStatus,
+      existing.published,
+      body.workflowStatus,
+      body.published,
+    );
+    return this.contentItems.update(id, {
+      ...normalizedBody,
+      ...workflowUpdate,
+    });
   }
-
 
   private parseScheduledDate(
     value: string | null | undefined,
@@ -1695,17 +1766,28 @@ export class ContentController {
     return parsed;
   }
 
-  private normalizePublishingWindow<T extends { publishAt?: string | null; unpublishAt?: string | null }>(
+  private normalizePublishingWindow<
+    T extends { publishAt?: string | null; unpublishAt?: string | null },
+  >(
     body: T,
     current?: { publishAt: Date | null; unpublishAt: Date | null },
   ): T & { publishAt?: Date | null; unpublishAt?: Date | null } {
     const publishAt = this.parseScheduledDate(body.publishAt, "publishAt");
-    const unpublishAt = this.parseScheduledDate(body.unpublishAt, "unpublishAt");
+    const unpublishAt = this.parseScheduledDate(
+      body.unpublishAt,
+      "unpublishAt",
+    );
 
-    const effectivePublishAt = publishAt === undefined ? current?.publishAt : publishAt;
-    const effectiveUnpublishAt = unpublishAt === undefined ? current?.unpublishAt : unpublishAt;
+    const effectivePublishAt =
+      publishAt === undefined ? current?.publishAt : publishAt;
+    const effectiveUnpublishAt =
+      unpublishAt === undefined ? current?.unpublishAt : unpublishAt;
 
-    if (effectivePublishAt && effectiveUnpublishAt && effectiveUnpublishAt <= effectivePublishAt) {
+    if (
+      effectivePublishAt &&
+      effectiveUnpublishAt &&
+      effectiveUnpublishAt <= effectivePublishAt
+    ) {
       throw new BadRequestException("unpublishAt must be after publishAt.");
     }
 
@@ -1714,6 +1796,38 @@ export class ContentController {
       ...(publishAt === undefined ? {} : { publishAt }),
       ...(unpublishAt === undefined ? {} : { unpublishAt }),
     };
+  }
+
+  private resolveWorkflowUpdate(
+    role: "editor" | "admin" | "superadmin",
+    currentStatus: WorkflowStatus | undefined,
+    currentPublished: boolean | undefined,
+    requestedStatus: WorkflowStatus | undefined,
+    requestedPublished: boolean | undefined,
+  ): { workflowStatus: WorkflowStatus; published: boolean } {
+    const baseStatus =
+      currentStatus ?? (currentPublished ? "published" : "draft");
+    const nextStatus =
+      requestedStatus ??
+      (requestedPublished === undefined
+        ? baseStatus
+        : requestedPublished
+          ? "published"
+          : "draft");
+
+    if (
+      role === "editor" &&
+      nextStatus !== "draft" &&
+      nextStatus !== "in_review"
+    ) {
+      throw new ForbiddenException(
+        "Access denied: editors can only save draft or submit for review.",
+      );
+    }
+
+    const published = nextStatus === "published";
+
+    return { workflowStatus: nextStatus, published };
   }
 
   private async getCurrentUserId(req: Request): Promise<string | null> {

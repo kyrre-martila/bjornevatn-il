@@ -56,6 +56,13 @@ export default async function AdminContentPage({
       canEditSlug={canEditSlug(role)}
       canEditRelations={canManageTaxonomies(role)}
       initialSelectedTypeSlug={initialSelectedTypeSlug}
+      userRole={
+        hasMinimumRole(role, "superadmin")
+          ? "superadmin"
+          : hasMinimumRole(role, "admin")
+            ? "admin"
+            : "editor"
+      }
     />
   );
 }

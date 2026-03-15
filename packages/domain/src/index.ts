@@ -18,6 +18,7 @@ export type { UsersRepository } from "./users/users.repository";
 
 export type {
   SlugLookupResult,
+  WorkflowStatus,
   Page,
   PageBlock,
   PageBlockType,

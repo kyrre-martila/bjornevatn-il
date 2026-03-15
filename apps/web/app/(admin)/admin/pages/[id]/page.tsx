@@ -5,7 +5,11 @@ import { getMe } from "../../../../../lib/me";
 import { canAccessSchema, canEditSlug } from "../../../../../lib/roles";
 import { hasMinimumRole } from "../../../../../lib/rbac";
 
-export default async function EditAdminPage({ params }: { params: { id: string } }) {
+export default async function EditAdminPage({
+  params,
+}: {
+  params: { id: string };
+}) {
   const me = await getMe();
   if (!hasMinimumRole(me?.user?.role, "editor")) {
     redirect("/access-denied");
@@ -23,6 +27,13 @@ export default async function EditAdminPage({ params }: { params: { id: string }
       canManageStructure={canEditSlug(me?.user?.role)}
       canEditSlug={canEditSlug(me?.user?.role)}
       canEditRawJson={canAccessSchema(me?.user?.role)}
+      userRole={
+        hasMinimumRole(me?.user?.role, "superadmin")
+          ? "superadmin"
+          : hasMinimumRole(me?.user?.role, "admin")
+            ? "admin"
+            : "editor"
+      }
     />
   );
 }

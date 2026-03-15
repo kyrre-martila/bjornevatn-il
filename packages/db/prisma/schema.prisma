@@ -13,6 +13,14 @@ enum UserRole {
   editor
 }
 
+enum WorkflowStatus {
+  draft
+  in_review
+  approved
+  published
+  archived
+}
+
 model User {
   id            String   @id @default(cuid())
   email         String   @unique
@@ -90,6 +98,7 @@ model Page {
   canonicalUrl   String?
   noIndex        Boolean     @default(false)
   published      Boolean     @default(false)
+  workflowStatus WorkflowStatus @default(draft)
   publishAt      DateTime?
   unpublishAt    DateTime?
   templateKey    String?
@@ -172,6 +181,7 @@ model ContentItem {
   noIndex        Boolean     @default(false)
   data           Json
   published      Boolean     @default(false)
+  workflowStatus WorkflowStatus @default(draft)
   publishAt      DateTime?
   unpublishAt    DateTime?
   createdAt      DateTime    @default(now())
