@@ -99,7 +99,6 @@ Optional environment variables:
 - `SMOKE_API_BASE_PATH` (default: `/api/v1`)
 - `SMOKE_TIMEOUT_MS` (default: `10000`)
 
-
 ## Staging environment sync operations
 
 The API staging admin endpoints now rely on local PostgreSQL tooling (`pg_dump`, `psql`) and `rsync` through `apps/api/scripts/staging-env-sync.sh`.
@@ -120,3 +119,11 @@ Optional extra safety for push-to-live:
 - `STAGING_PUSH_CONFIRMATION_TOKEN` (if set, callers must provide this token in the API request body).
 
 The push-to-live API path also requires an explicit payload flag: `confirmPushToLive=true`.
+
+Audit log action names emitted by staging admin endpoints:
+
+- `staging_viewed`
+- `staging_reset_from_live`
+- `staging_push_to_live`
+- `staging_deleted`
+- `staging_action_failed`

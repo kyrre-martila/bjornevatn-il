@@ -29,8 +29,9 @@ export class StagingController {
   ) {}
 
   @Get("status")
-  async getStatus() {
-    return this.stagingService.getStatus();
+  async getStatus(@Req() req: Request) {
+    const actor = await this.resolveActor(req);
+    return this.stagingService.getStatus(actor ?? undefined);
   }
 
   @Post("reset-from-live")
@@ -64,6 +65,24 @@ export class StagingController {
       ?.trim();
     if (requiredToken && body.confirmationToken !== requiredToken) {
       throw new BadRequestException("Invalid push-to-live confirmation token.");
+    }
+  }
+
+  private async resolveActor(req: Request) {
+    const token = readAccessToken(req);
+    if (!token) {
+      return null;
+    }
+
+    try {
+      const user = await this.authService.validateUser(token);
+      return {
+        userId: user.id,
+        email: user.email,
+        name: user.name,
+      };
+    } catch {
+      return null;
     }
   }
 
