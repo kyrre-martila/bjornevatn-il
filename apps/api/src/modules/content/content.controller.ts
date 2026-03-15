@@ -949,6 +949,13 @@ export class ContentController {
         entityId: page.id,
       });
     }
+    this.logSchedulingAuditIfChanged({
+      userId,
+      entityType: "page",
+      entityId: page.id,
+      previous: undefined,
+      next: page,
+    });
     return page;
   }
 
@@ -1080,6 +1087,13 @@ export class ContentController {
         entityId: id,
       });
     }
+    this.logSchedulingAuditIfChanged({
+      userId,
+      entityType: "page",
+      entityId: id,
+      previous: existingPage,
+      next: updated,
+    });
     return updated;
   }
 
@@ -1911,6 +1925,13 @@ export class ContentController {
         entityId: item.id,
       });
     }
+    this.logSchedulingAuditIfChanged({
+      userId,
+      entityType: "content_item",
+      entityId: item.id,
+      previous: undefined,
+      next: item,
+    });
     return item;
   }
 
@@ -2053,7 +2074,54 @@ export class ContentController {
         entityId: id,
       });
     }
+    this.logSchedulingAuditIfChanged({
+      userId,
+      entityType: "content_item",
+      entityId: id,
+      previous: existing,
+      next: updated,
+    });
     return updated;
+  }
+
+  private logSchedulingAuditIfChanged(params: {
+    userId: string;
+    entityType: "page" | "content_item";
+    entityId: string;
+    previous:
+      | { publishAt: Date | null; unpublishAt: Date | null }
+      | undefined;
+    next: { publishAt: Date | null; unpublishAt: Date | null };
+  }) {
+    const previousPublishAt = params.previous?.publishAt?.toISOString() ?? null;
+    const previousUnpublishAt =
+      params.previous?.unpublishAt?.toISOString() ?? null;
+    const nextPublishAt = params.next.publishAt?.toISOString() ?? null;
+    const nextUnpublishAt = params.next.unpublishAt?.toISOString() ?? null;
+
+    if (
+      previousPublishAt === nextPublishAt &&
+      previousUnpublishAt === nextUnpublishAt
+    ) {
+      return;
+    }
+
+    this.audit.log({
+      userId: params.userId,
+      action: "schedule_update",
+      entityType: params.entityType,
+      entityId: params.entityId,
+      metadata: {
+        previous: {
+          publishAt: previousPublishAt,
+          unpublishAt: previousUnpublishAt,
+        },
+        next: {
+          publishAt: nextPublishAt,
+          unpublishAt: nextUnpublishAt,
+        },
+      },
+    });
   }
 
   private parseScheduledDate(

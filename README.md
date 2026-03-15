@@ -33,7 +33,7 @@ This repository is a blueprint, not a finished product. The architecture and def
 | Pages/content editing | **implemented**           | Admin APIs and web UI support editing pages, blocks, content types, and content items.                                                             |
 | Media storage         | **partially implemented** | Local filesystem provider is production-usable for single-server setups; cloud object storage providers are extension points.                      |
 | Revisions             | **implemented**           | Page/content revision history and restore flows are included in the content domain, with cursor pagination and a keep-latest-100 retention policy. |
-| Scheduled publishing  | **planned**               | Not shipped as an automated scheduling workflow in this blueprint.                                                                                 |
+| Scheduled publishing  | **planned**               | No background scheduler is enabled by default; `publishAt`/`unpublishAt` are enforced at request time by public page/content/sitemap endpoints. |
 | Approval workflow     | **planned**               | Multi-step editorial approval flows are intentionally left for project customization.                                                              |
 | Audit log             | **partially implemented** | Audit logging infrastructure exists, but full editorial-event coverage should be extended per project requirements.                                |
 | Redirects             | **implemented**           | Legacy slug redirects are supported in public content resolution.                                                                                  |
@@ -50,6 +50,7 @@ This repository is a blueprint, not a finished product. The architecture and def
 - [ ] Test redirect handling for changed/legacy slugs.
 - [ ] Test the real publish workflow your editors will use (draft/revision/publish expectations).
 - [ ] Confirm media storage mode (local persisted volume vs custom object storage provider).
+- [ ] Confirm editorial expectations for scheduling: transitions are request-time evaluated (not cron-driven) and may lag by cache TTL.
 - [ ] Confirm admin/editor role assignments and least-privilege access before handoff.
 
 ## One root-level workflow

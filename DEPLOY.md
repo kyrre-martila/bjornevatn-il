@@ -168,6 +168,17 @@ Upload scanning uses a pluggable hook (`MediaUploadScanner`). The default is no-
 
 Uploaded media is currently served by the API at `/uploads` with cache headers enabled. For production environments, media should eventually be served via a CDN or reverse proxy cache to keep repeated asset requests off the Node.js process.
 
+## Scheduling behavior in production
+
+- This blueprint does **not** include an automated scheduler/cron worker for publish/unpublish transitions.
+- `publishAt` and `unpublishAt` are enforced at request time by the public content API (pages, content items, sitemap).
+- Operational implication: state transitions happen when traffic requests affected resources; there is no background state mutation minute-by-minute.
+- Cache/revalidation implication: the web tier requests public content with `next: { revalidate: 60 }`, so visibility flips can lag by up to roughly one minute.
+- If stricter timing is required, add one or more of:
+  - an explicit scheduler worker,
+  - targeted cache invalidation/revalidation hooks,
+  - or lower TTLs for critical endpoints.
+
 ## Production readiness checklist
 
 - [ ] Secrets set with strong random values (`JWT_SECRET`, `COOKIE_SECRET`).
