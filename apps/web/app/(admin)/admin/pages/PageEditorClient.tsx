@@ -1045,6 +1045,8 @@ export function PageEditorClient({
   const activeBlockJson = activeBlock
     ? JSON.stringify(activeBlock.data, null, 2)
     : "";
+  const isSimpleMode = userRole === "editor";
+  const canAccessAdvancedSettings = !isSimpleMode;
 
   return (
     <section className="page-editor">
@@ -1056,6 +1058,9 @@ export function PageEditorClient({
         <p className="page-editor__help">
           Use guided fields to edit what visitors see. Advanced developer data
           is restricted to super admins as a fallback option.
+        </p>
+        <p className="page-editor__field-help">
+          Editing mode: <strong>{isSimpleMode ? "Simple mode" : "Advanced mode"}</strong>
         </p>
       </div>
 
@@ -1099,94 +1104,93 @@ export function PageEditorClient({
           </p>
         )}
 
-        <label className="page-editor__checkbox">
-          <input
-            type="checkbox"
-            checked={published}
-            onChange={(e) => setPublished(e.target.checked)}
-          />
-          Visible to visitors
-        </label>
+        {canAccessAdvancedSettings ? (
+          <details>
+            <summary>Advanced settings</summary>
+            <label className="page-editor__checkbox">
+              <input
+                type="checkbox"
+                checked={published}
+                onChange={(e) => setPublished(e.target.checked)}
+              />
+              Visible to visitors
+            </label>
 
-        <fieldset>
-          <legend>Publishing schedule</legend>
-          <p>
-            Current status: <strong>{workflowLabel(workflowStatus)}</strong> (
-            {getPublicationStatus({
-              published: workflowStatus === "published",
-              publishAt: toIsoDateTimeOrNull(publishAt),
-              unpublishAt: toIsoDateTimeOrNull(unpublishAt),
-            })}
-            )
-          </p>
-          <label>
-            Publish date/time
-            <input
-              type="datetime-local"
-              value={publishAt}
-              onChange={(e) => setPublishAt(e.target.value)}
-            />
-          </label>
-          <label>
-            Unpublish date/time (optional)
-            <input
-              type="datetime-local"
-              value={unpublishAt}
-              onChange={(e) => setUnpublishAt(e.target.value)}
-            />
-          </label>
-        </fieldset>
+            <fieldset>
+              <legend>Publishing schedule</legend>
+              <p>
+                Current status: <strong>{workflowLabel(workflowStatus)}</strong> (
+                {getPublicationStatus({
+                  published: workflowStatus === "published",
+                  publishAt: toIsoDateTimeOrNull(publishAt),
+                  unpublishAt: toIsoDateTimeOrNull(unpublishAt),
+                })}
+                )
+              </p>
+              <label>
+                Publish date/time
+                <input
+                  type="datetime-local"
+                  value={publishAt}
+                  onChange={(e) => setPublishAt(e.target.value)}
+                />
+              </label>
+              <label>
+                Unpublish date/time (optional)
+                <input
+                  type="datetime-local"
+                  value={unpublishAt}
+                  onChange={(e) => setUnpublishAt(e.target.value)}
+                />
+              </label>
+            </fieldset>
 
-        <fieldset className="page-editor__seo">
-          <legend>SEO and social sharing</legend>
-          <label>
-            SEO title
-            <input
-              value={seoTitle}
-              onChange={(e) => setSeoTitle(e.target.value)}
-              placeholder="Leave blank to use the page title"
-            />
-            <small className="page-editor__field-help">
-              Aim for about 50–60 characters.
-            </small>
-          </label>
-          <label>
-            SEO description
-            <textarea
-              rows={3}
-              value={seoDescription}
-              onChange={(e) => setSeoDescription(e.target.value)}
-              placeholder="Summarize this page in one compelling sentence"
-            />
-            <small className="page-editor__field-help">
-              Aim for about 140–160 characters.
-            </small>
-          </label>
-          <label>
-            SEO image URL
-            <input
-              value={seoImage}
-              onChange={(e) => setSeoImage(e.target.value)}
-              placeholder="https://..."
-            />
-          </label>
-          <label>
-            Canonical URL
-            <input
-              value={canonicalUrl}
-              onChange={(e) => setCanonicalUrl(e.target.value)}
-              placeholder="https://..."
-            />
-          </label>
-          <label className="page-editor__checkbox">
-            <input
-              type="checkbox"
-              checked={noIndex}
-              onChange={(e) => setNoIndex(e.target.checked)}
-            />
-            Hide from search engines (noindex)
-          </label>
-        </fieldset>
+            <fieldset className="page-editor__seo">
+              <legend>SEO and social sharing</legend>
+              <label>
+                SEO title
+                <input
+                  value={seoTitle}
+                  onChange={(e) => setSeoTitle(e.target.value)}
+                  placeholder="Leave blank to use the page title"
+                />
+              </label>
+              <label>
+                SEO description
+                <textarea
+                  rows={3}
+                  value={seoDescription}
+                  onChange={(e) => setSeoDescription(e.target.value)}
+                  placeholder="Summarize this page in one compelling sentence"
+                />
+              </label>
+              <label>
+                SEO image URL
+                <input
+                  value={seoImage}
+                  onChange={(e) => setSeoImage(e.target.value)}
+                  placeholder="https://..."
+                />
+              </label>
+              <label>
+                Canonical URL
+                <input
+                  value={canonicalUrl}
+                  onChange={(e) => setCanonicalUrl(e.target.value)}
+                  placeholder="https://..."
+                />
+              </label>
+              <label className="page-editor__checkbox">
+                <input
+                  type="checkbox"
+                  checked={noIndex}
+                  onChange={(e) => setNoIndex(e.target.checked)}
+                />
+                Hide from search engines (noindex)
+              </label>
+            </fieldset>
+          </details>
+        ) : null}
 
         <div className="page-editor__blocks">
           <div className="page-editor__blocks-header">
@@ -1481,21 +1485,29 @@ export function PageEditorClient({
         ) : null}
 
         <div className="page-editor__actions">
-          {WORKFLOW_ACTIONS.map((action) => (
-            <button
-              key={action.key}
-              type="button"
-              disabled={isSaving || !canUseWorkflowAction(userRole, action.key)}
-              onClick={() => {
-                setWorkflowStatus(action.key);
-                void savePage(action.key);
-              }}
-            >
-              {isSaving && workflowStatus === action.key
-                ? "Saving..."
-                : action.label}
+          {canAccessAdvancedSettings ? (
+            WORKFLOW_ACTIONS.map((action) => (
+              <button
+                key={action.key}
+                type="button"
+                disabled={
+                  isSaving || !canUseWorkflowAction(userRole, action.key)
+                }
+                onClick={() => {
+                  setWorkflowStatus(action.key);
+                  void savePage(action.key);
+                }}
+              >
+                {isSaving && workflowStatus === action.key
+                  ? "Saving..."
+                  : action.label}
+              </button>
+            ))
+          ) : (
+            <button type="submit" disabled={isSaving}>
+              {isSaving ? "Saving..." : "Save content"}
             </button>
-          ))}
+          )}
           {initialPage && (
             <button
               type="button"

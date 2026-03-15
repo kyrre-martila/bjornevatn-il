@@ -57,7 +57,7 @@ export default async function AdminContentPage({
       canEditRelations={canManageTaxonomies(role)}
       initialSelectedTypeSlug={initialSelectedTypeSlug}
       userRole={
-        hasMinimumRole(role, "superadmin")
+        hasMinimumRole(role, "super_admin")
           ? "superadmin"
           : hasMinimumRole(role, "admin")
             ? "admin"

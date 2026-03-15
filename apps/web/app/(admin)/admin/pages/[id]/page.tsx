@@ -28,7 +28,7 @@ export default async function EditAdminPage({
       canEditSlug={canEditSlug(me?.user?.role)}
       canEditRawJson={canAccessSchema(me?.user?.role)}
       userRole={
-        hasMinimumRole(me?.user?.role, "superadmin")
+        hasMinimumRole(me?.user?.role, "super_admin")
           ? "superadmin"
           : hasMinimumRole(me?.user?.role, "admin")
             ? "admin"

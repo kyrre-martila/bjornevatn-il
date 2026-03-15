@@ -873,6 +873,8 @@ function ContentItemEditor({
   onRestoreRevision: (revisionId: string) => Promise<void>;
   userRole: "editor" | "admin" | "superadmin";
 }) {
+  const isSimpleMode = userRole === "editor";
+  const canAccessAdvancedSettings = !isSimpleMode;
   const [title, setTitle] = React.useState(item.title);
   const [slug, setSlug] = React.useState(item.slug);
   const [seoTitle, setSeoTitle] = React.useState(item.seoTitle ?? "");
@@ -1025,90 +1027,91 @@ function ContentItemEditor({
           {normalizeSlug(item.slug)}
         </p>
       )}
-      <label>
-        Visible to visitors
-        <input
-          type="checkbox"
-          checked={published}
-          onChange={(e) => setPublished(e.target.checked)}
-        />
-        <small>
-          Turn this on only when the content is ready. Draft entries stay hidden
-          from public pages.
-        </small>
-      </label>
-      <label>
-        Publish date/time
-        <input
-          type="datetime-local"
-          value={publishAt}
-          onChange={(e) => setPublishAt(e.target.value)}
-        />
-      </label>
-      <label>
-        Unpublish date/time (optional)
-        <input
-          type="datetime-local"
-          value={unpublishAt}
-          onChange={(e) => setUnpublishAt(e.target.value)}
-        />
-      </label>
-      <fieldset>
-        <legend>Publishing and preview</legend>
-        <p>
-          <strong>Workflow status:</strong>{" "}
-          {workflowStatusLabel(workflowStatus)} ·{" "}
-          <strong>Editorial status:</strong> {visibilityState.editorialStatus}
-        </p>
-        <p>
-          <strong>Public visibility:</strong> {visibilityState.publicVisibility}
-        </p>
-        <small>{visibilityState.guidance}</small>
-        <div>
-          {visibilityState.canOpenPublicPreview ? (
-            <a href={publicItemPath} target="_blank" rel="noreferrer">
-              Open preview in new tab
-            </a>
-          ) : (
+      {canAccessAdvancedSettings ? (
+        <details>
+          <summary>Advanced settings</summary>
+          <label>
+            Visible to visitors
+            <input
+              type="checkbox"
+              checked={published}
+              onChange={(e) => setPublished(e.target.checked)}
+            />
             <small>
-              Public preview is unavailable until this entry is published in a
-              publicly visible content type.
+              Turn this on only when the content is ready. Draft entries stay hidden
+              from public pages.
             </small>
-          )}
-          {contentType.isPublic ? (
-            <>
-              {" "}
-              <a href={publicArchivePath} target="_blank" rel="noreferrer">
-                Open public archive
-              </a>
-            </>
-          ) : null}
-        </div>
-      </fieldset>
-      <fieldset className="page-editor__seo">
-        <legend>Search appearance (SEO)</legend>
-        <label>
-          Search title
-          <input
-            value={seoTitle}
-            onChange={(e) => setSeoTitle(e.target.value)}
-            placeholder="Leave blank to use the entry title"
-          />
-          <small>
-            Recommended: around 50–60 characters for search listings.
-          </small>
-        </label>
-        <label>
-          Search summary
-          <textarea
-            rows={3}
-            value={seoDescription}
-            onChange={(e) => setSeoDescription(e.target.value)}
-            placeholder="One clear sentence that explains this page"
-          />
-          <small>Recommended: around 140–160 characters.</small>
-        </label>
-      </fieldset>
+          </label>
+          <label>
+            Publish date/time
+            <input
+              type="datetime-local"
+              value={publishAt}
+              onChange={(e) => setPublishAt(e.target.value)}
+            />
+          </label>
+          <label>
+            Unpublish date/time (optional)
+            <input
+              type="datetime-local"
+              value={unpublishAt}
+              onChange={(e) => setUnpublishAt(e.target.value)}
+            />
+          </label>
+          <fieldset>
+            <legend>Publishing and preview</legend>
+            <p>
+              <strong>Workflow status:</strong>{" "}
+              {workflowStatusLabel(workflowStatus)} ·{" "}
+              <strong>Editorial status:</strong> {visibilityState.editorialStatus}
+            </p>
+            <p>
+              <strong>Public visibility:</strong> {visibilityState.publicVisibility}
+            </p>
+            <small>{visibilityState.guidance}</small>
+            <div>
+              {visibilityState.canOpenPublicPreview ? (
+                <a href={publicItemPath} target="_blank" rel="noreferrer">
+                  Open preview in new tab
+                </a>
+              ) : (
+                <small>
+                  Public preview is unavailable until this entry is published in a
+                  publicly visible content type.
+                </small>
+              )}
+              {contentType.isPublic ? (
+                <>
+                  {" "}
+                  <a href={publicArchivePath} target="_blank" rel="noreferrer">
+                    Open public archive
+                  </a>
+                </>
+              ) : null}
+            </div>
+          </fieldset>
+          <fieldset className="page-editor__seo">
+            <legend>Search appearance (SEO)</legend>
+            <label>
+              Search title
+              <input
+                value={seoTitle}
+                onChange={(e) => setSeoTitle(e.target.value)}
+                placeholder="Leave blank to use the entry title"
+              />
+            </label>
+            <label>
+              Search summary
+              <textarea
+                rows={3}
+                value={seoDescription}
+                onChange={(e) => setSeoDescription(e.target.value)}
+                placeholder="One clear sentence that explains this page"
+              />
+            </label>
+          </fieldset>
+        </details>
+      ) : null}
       {contentType.fields.length > 0 ? (
         contentType.fields
           .filter(
@@ -1181,19 +1184,23 @@ function ContentItemEditor({
           ))}
         </ul>
       </fieldset>
-      {WORKFLOW_ACTIONS.map((action) => (
-        <button
-          key={action.key}
-          type="button"
-          disabled={!canUseWorkflowAction(userRole, action.key)}
-          onClick={() => {
-            setWorkflowStatus(action.key);
-            void submit(action.key);
-          }}
-        >
-          {action.label}
-        </button>
-      ))}
+      {canAccessAdvancedSettings ? (
+        WORKFLOW_ACTIONS.map((action) => (
+          <button
+            key={action.key}
+            type="button"
+            disabled={!canUseWorkflowAction(userRole, action.key)}
+            onClick={() => {
+              setWorkflowStatus(action.key);
+              void submit(action.key);
+            }}
+          >
+            {action.label}
+          </button>
+        ))
+      ) : (
+        <button type="submit">Save content</button>
+      )}
       <button type="button" onClick={() => void onDuplicate(item.id)}>
         Duplicate item
       </button>
@@ -1217,6 +1224,8 @@ export function ContentAdminClient({
   initialSelectedTypeSlug,
   userRole,
 }: Props) {
+  const isSimpleMode = userRole === "editor";
+  const canAccessAdvancedSettings = !isSimpleMode;
   const [contentTypes, setContentTypes] = React.useState(initialContentTypes);
   const [contentTypeDrafts, setContentTypeDrafts] = React.useState<
     Record<string, ContentTypeDraft>
@@ -1734,6 +1743,9 @@ export function ContentAdminClient({
     <section className="admin-pages">
       <h1 className="hero__title">Content editor</h1>
       <p>
+        Editing mode: <strong>{isSimpleMode ? "Simple mode" : "Advanced mode"}</strong>
+      </p>
+      <p>
         Day-to-day editing happens below. Schema and field design tools are
         separated into a protected setup area.
       </p>
@@ -2136,38 +2148,43 @@ export function ContentAdminClient({
                 Web addresses are managed by admins when entries are created.
               </p>
             )}
-            <label>
-              Publish date/time
-              <input
-                type="datetime-local"
-                value={createDraft.publishAt}
-                onChange={(e) =>
-                  setCreateDrafts((curr) => ({
-                    ...curr,
-                    [selectedType.id]: {
-                      ...createDraft,
-                      publishAt: e.target.value,
-                    },
-                  }))
-                }
-              />
-            </label>
-            <label>
-              Unpublish date/time (optional)
-              <input
-                type="datetime-local"
-                value={createDraft.unpublishAt}
-                onChange={(e) =>
-                  setCreateDrafts((curr) => ({
-                    ...curr,
-                    [selectedType.id]: {
-                      ...createDraft,
-                      unpublishAt: e.target.value,
-                    },
-                  }))
-                }
-              />
-            </label>
+            {canAccessAdvancedSettings ? (
+              <details>
+                <summary>Advanced settings</summary>
+                <label>
+                  Publish date/time
+                  <input
+                    type="datetime-local"
+                    value={createDraft.publishAt}
+                    onChange={(e) =>
+                      setCreateDrafts((curr) => ({
+                        ...curr,
+                        [selectedType.id]: {
+                          ...createDraft,
+                          publishAt: e.target.value,
+                        },
+                      }))
+                    }
+                  />
+                </label>
+                <label>
+                  Unpublish date/time (optional)
+                  <input
+                    type="datetime-local"
+                    value={createDraft.unpublishAt}
+                    onChange={(e) =>
+                      setCreateDrafts((curr) => ({
+                        ...curr,
+                        [selectedType.id]: {
+                          ...createDraft,
+                          unpublishAt: e.target.value,
+                        },
+                      }))
+                    }
+                  />
+                </label>
+              </details>
+            ) : null}
             {selectedType.fields
               .filter(
                 (field) =>
@@ -2215,28 +2232,32 @@ export function ContentAdminClient({
                   ) : null}
                 </label>
               ))}
-            <div>
-              Current workflow:{" "}
-              <strong>{workflowStatusLabel(createDraft.workflowStatus)}</strong>
-            </div>
-            {WORKFLOW_ACTIONS.map((action) => (
-              <button
-                key={action.key}
-                type="button"
-                disabled={!canUseWorkflowAction(userRole, action.key)}
-                onClick={() =>
-                  setCreateDrafts((curr) => ({
-                    ...curr,
-                    [selectedType.id]: {
-                      ...createDraft,
-                      workflowStatus: action.key,
-                    },
-                  }))
-                }
-              >
-                {action.label}
-              </button>
-            ))}
+            {canAccessAdvancedSettings ? (
+              <>
+                <div>
+                  Current workflow:{" "}
+                  <strong>{workflowStatusLabel(createDraft.workflowStatus)}</strong>
+                </div>
+                {WORKFLOW_ACTIONS.map((action) => (
+                  <button
+                    key={action.key}
+                    type="button"
+                    disabled={!canUseWorkflowAction(userRole, action.key)}
+                    onClick={() =>
+                      setCreateDrafts((curr) => ({
+                        ...curr,
+                        [selectedType.id]: {
+                          ...createDraft,
+                          workflowStatus: action.key,
+                        },
+                      }))
+                    }
+                  >
+                    {action.label}
+                  </button>
+                ))}
+              </>
+            ) : null}
             <button type="submit">Create entry</button>
           </form>
         </>
