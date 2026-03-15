@@ -1325,10 +1325,10 @@ export class ContentController {
   @Delete("types/:id")
   async deleteContentType(@Req() req: Request, @Param("id") id: string) {
     await requireSuperAdmin(req, this.auth);
-    const items = await this.contentItems.findManyByContentTypeId(id);
-    if (items.length > 0) {
+    const contentItemCount = await this.contentItems.countByContentTypeId(id);
+    if (contentItemCount > 0) {
       throw new ConflictException(
-        "Cannot delete content type with existing content items.",
+        `Cannot delete content type with existing content items (${contentItemCount} found).`,
       );
     }
 

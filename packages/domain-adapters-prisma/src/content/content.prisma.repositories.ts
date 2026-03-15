@@ -1099,6 +1099,10 @@ export class ContentTypesPrismaRepository implements ContentTypesRepository {
 export class ContentItemsPrismaRepository implements ContentItemsRepository {
   private readonly prisma = getPrisma();
 
+  async countByContentTypeId(contentTypeId: string): Promise<number> {
+    return this.prisma.contentItem.count({ where: { contentTypeId } });
+  }
+
   async findMany(pagination?: PaginationParams): Promise<ContentItem[]> {
     const items = await this.prisma.contentItem.findMany({
       orderBy: [{ sortOrder: "asc" }, { createdAt: "desc" }],

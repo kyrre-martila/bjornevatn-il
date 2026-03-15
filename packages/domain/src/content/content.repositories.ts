@@ -90,6 +90,7 @@ export interface ContentTypesRepository {
 
 export interface ContentItemsRepository {
   findMany(pagination?: PaginationParams): Promise<ContentItem[]>;
+  countByContentTypeId(contentTypeId: string): Promise<number>;
   findManyByContentTypeId(
     contentTypeId: string,
     pagination?: PaginationParams,
