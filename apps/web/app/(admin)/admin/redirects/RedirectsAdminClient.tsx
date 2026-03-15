@@ -1,8 +1,12 @@
 "use client";
 
 import * as React from "react";
+import { useRouter } from "next/navigation";
 
-import type { AdminRedirect } from "../../../../lib/admin/redirects";
+import type {
+  AdminRedirect,
+  RedirectPagination,
+} from "../../../../lib/admin/redirects";
 import { DestructiveConfirmModal } from "../components/DestructiveConfirmModal";
 
 type RedirectFormState = {
@@ -19,10 +23,14 @@ const EMPTY_FORM: RedirectFormState = {
 
 export function RedirectsAdminClient({
   initialRedirects,
+  initialPagination,
 }: {
   initialRedirects: AdminRedirect[];
+  initialPagination: RedirectPagination;
 }) {
+  const router = useRouter();
   const [redirects, setRedirects] = React.useState(initialRedirects);
+  const [pagination, setPagination] = React.useState(initialPagination);
   const [form, setForm] = React.useState<RedirectFormState>(EMPTY_FORM);
   const [editingId, setEditingId] = React.useState<string | null>(null);
   const [error, setError] = React.useState<string | null>(null);
@@ -31,6 +39,11 @@ export function RedirectsAdminClient({
   const [pendingDelete, setPendingDelete] =
     React.useState<AdminRedirect | null>(null);
   const [isDeleting, setIsDeleting] = React.useState(false);
+
+  React.useEffect(() => {
+    setRedirects(initialRedirects);
+    setPagination(initialPagination);
+  }, [initialPagination, initialRedirects]);
 
   function resetForm() {
     setForm(EMPTY_FORM);
@@ -49,7 +62,11 @@ export function RedirectsAdminClient({
   }
 
   async function reloadRedirects() {
-    const res = await fetch("/api/admin/redirects", {
+    const query = new URLSearchParams();
+    query.set("limit", String(pagination.limit));
+    query.set("offset", String(pagination.offset));
+
+    const res = await fetch(`/api/admin/redirects?${query.toString()}`, {
       cache: "no-store",
     });
     const data = await res.json().catch(() => []);
@@ -59,6 +76,13 @@ export function RedirectsAdminClient({
     }
 
     setRedirects(data as AdminRedirect[]);
+  }
+
+  function goToPage(nextOffset: number) {
+    const query = new URLSearchParams();
+    query.set("limit", String(pagination.limit));
+    query.set("offset", String(Math.max(0, nextOffset)));
+    router.push(`/admin/redirects?${query.toString()}`);
   }
 
   function validateForm(): {
@@ -247,6 +271,33 @@ export function RedirectsAdminClient({
         </div>
       </form>
 
+      <div
+        className="page-editor__actions"
+        style={{ justifyContent: "space-between", marginBottom: 12 }}
+      >
+        <span>
+          Showing {sortedRedirects.length === 0 ? 0 : pagination.offset + 1}
+          {"-"}
+          {pagination.offset + sortedRedirects.length}
+        </span>
+        <div className="page-editor__actions">
+          <button
+            type="button"
+            onClick={() => goToPage(pagination.offset - pagination.limit)}
+            disabled={pagination.offset <= 0}
+          >
+            Previous
+          </button>
+          <button
+            type="button"
+            onClick={() => goToPage(pagination.offset + pagination.limit)}
+            disabled={sortedRedirects.length < pagination.limit}
+          >
+            Next
+          </button>
+        </div>
+      </div>
+
       <div className="admin-list" role="list" aria-label="Redirect list">
         {sortedRedirects.map((item) => (
           <article key={item.id} className="admin-list__item" role="listitem">
@@ -267,9 +318,7 @@ export function RedirectsAdminClient({
           </article>
         ))}
 
-        {sortedRedirects.length === 0 ? (
-          <p>No redirects configured yet.</p>
-        ) : null}
+        {sortedRedirects.length === 0 ? <p>No redirects configured yet.</p> : null}
       </div>
 
       <DestructiveConfirmModal

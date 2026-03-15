@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { listAdminAuditLogs } from "../../../../lib/admin/audit-logs";
@@ -9,6 +10,8 @@ type PageProps = {
     userId?: string;
     action?: string;
     entityType?: string;
+    limit?: string;
+    offset?: string;
   };
 };
 
@@ -22,9 +25,33 @@ export default async function AdminAuditPage({ searchParams }: PageProps) {
     userId: searchParams?.userId?.trim() || undefined,
     action: searchParams?.action?.trim() || undefined,
     entityType: searchParams?.entityType?.trim() || undefined,
+    limit: Number(searchParams?.limit),
+    offset: Number(searchParams?.offset),
   };
 
   const logs = await listAdminAuditLogs(filters);
+
+  const prevParams = new URLSearchParams();
+  const nextParams = new URLSearchParams();
+  if (filters.userId) {
+    prevParams.set("userId", filters.userId);
+    nextParams.set("userId", filters.userId);
+  }
+  if (filters.action) {
+    prevParams.set("action", filters.action);
+    nextParams.set("action", filters.action);
+  }
+  if (filters.entityType) {
+    prevParams.set("entityType", filters.entityType);
+    nextParams.set("entityType", filters.entityType);
+  }
+  prevParams.set("limit", String(logs.pagination.limit));
+  nextParams.set("limit", String(logs.pagination.limit));
+  prevParams.set(
+    "offset",
+    String(Math.max(0, logs.pagination.offset - logs.pagination.limit)),
+  );
+  nextParams.set("offset", String(logs.pagination.offset + logs.pagination.limit));
 
   return (
     <section className="admin-pages" aria-labelledby="audit-heading">
@@ -69,6 +96,8 @@ export default async function AdminAuditPage({ searchParams }: PageProps) {
             className="admin-input"
           />
         </label>
+        <input type="hidden" name="limit" value={String(logs.pagination.limit)} />
+        <input type="hidden" name="offset" value="0" />
         <button
           type="submit"
           className="btn btn--secondary"
@@ -77,6 +106,32 @@ export default async function AdminAuditPage({ searchParams }: PageProps) {
           Apply filters
         </button>
       </form>
+
+      <div className="page-editor__actions" style={{ justifyContent: "space-between" }}>
+        <span>
+          Showing {logs.items.length === 0 ? 0 : logs.pagination.offset + 1}-{logs.pagination.offset + logs.items.length}
+        </span>
+        <div className="page-editor__actions">
+          {logs.pagination.offset > 0 ? (
+            <Link className="btn btn--secondary" href={`/admin/audit?${prevParams.toString()}`}>
+              Previous
+            </Link>
+          ) : (
+            <span className="btn btn--secondary" aria-disabled="true">
+              Previous
+            </span>
+          )}
+          {logs.items.length >= logs.pagination.limit ? (
+            <Link className="btn btn--secondary" href={`/admin/audit?${nextParams.toString()}`}>
+              Next
+            </Link>
+          ) : (
+            <span className="btn btn--secondary" aria-disabled="true">
+              Next
+            </span>
+          )}
+        </div>
+      </div>
 
       <div style={{ overflowX: "auto" }}>
         <table className="admin-table">
@@ -91,7 +146,7 @@ export default async function AdminAuditPage({ searchParams }: PageProps) {
             </tr>
           </thead>
           <tbody>
-            {logs.map((log) => (
+            {logs.items.map((log) => (
               <tr key={log.id}>
                 <td>{new Date(log.createdAt).toLocaleString()}</td>
                 <td>{log.user?.email ?? log.userId ?? "system"}</td>
@@ -105,7 +160,7 @@ export default async function AdminAuditPage({ searchParams }: PageProps) {
                 </td>
               </tr>
             ))}
-            {logs.length === 0 ? (
+            {logs.items.length === 0 ? (
               <tr>
                 <td colSpan={6}>No audit entries found.</td>
               </tr>

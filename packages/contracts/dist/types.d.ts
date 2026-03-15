@@ -9,17 +9,202 @@ export interface paths {
     get: operations["UsersController_me"];
     patch: operations["UsersController_updateMe"];
   };
+  "/api/v1/admin/users/{id}/role": {
+    patch: operations["UsersAdminController_updateRole"];
+  };
+  "/api/v1/public/content/sitemap": {
+    get: operations["PublicContentController_getSitemapEntries"];
+  };
+  "/api/v1/public/content/pages": {
+    get: operations["PublicContentController_listPages"];
+  };
+  "/api/v1/public/content/pages/slug/{slug}": {
+    get: operations["PublicContentController_getPageBySlug"];
+  };
+  "/api/v1/public/content/types": {
+    get: operations["PublicContentController_listContentTypes"];
+  };
+  "/api/v1/public/content/types/{slug}": {
+    get: operations["PublicContentController_getContentTypeBySlug"];
+  };
+  "/api/v1/public/content/items/type-slug/{slug}": {
+    get: operations["PublicContentController_listContentItemsByTypeSlug"];
+  };
+  "/api/v1/public/content/items/type-slug/{contentTypeSlug}/{slug}": {
+    get: operations["PublicContentController_getContentItemBySlug"];
+  };
+  "/api/v1/public/content/items/{id}/taxonomies/{taxonomySlug}": {
+    get: operations["PublicContentController_listTaxonomyTermsForItem"];
+  };
+  "/api/v1/public/content/items/type-slug/{contentTypeSlug}/{id}/taxonomies/{taxonomySlug}": {
+    get: operations["PublicContentController_listTaxonomyTermsForItemByTypeSlug"];
+  };
+  "/api/v1/public/content/items/{id}/taxonomies": {
+    get: operations["PublicContentController_listTaxonomyRelationsForItem"];
+  };
+  "/api/v1/public/content/navigation-items": {
+    get: operations["PublicContentController_listNavigationItems"];
+  };
+  "/api/v1/public/content/settings": {
+    get: operations["PublicContentController_listSettings"];
+  };
+  "/api/v1/admin/content/pages": {
+    get: operations["ContentController_listPages"];
+    post: operations["ContentController_createPage"];
+  };
+  "/api/v1/admin/content/pages/{id}": {
+    get: operations["ContentController_getPage"];
+    delete: operations["ContentController_deletePage"];
+    patch: operations["ContentController_updatePage"];
+  };
+  "/api/v1/admin/content/pages/{id}/revisions": {
+    get: operations["ContentController_listPageRevisions"];
+  };
+  "/api/v1/admin/content/pages/{id}/revisions/{revisionId}": {
+    get: operations["ContentController_getPageRevision"];
+  };
+  "/api/v1/admin/content/pages/{id}/revisions/{revisionId}/restore": {
+    post: operations["ContentController_restorePageRevision"];
+  };
+  "/api/v1/admin/content/pages/slug/{slug}": {
+    get: operations["ContentController_getPageBySlug"];
+  };
+  "/api/v1/admin/content/pages/{id}/duplicate": {
+    post: operations["ContentController_duplicatePage"];
+  };
+  "/api/v1/admin/content/types": {
+    get: operations["ContentController_listContentTypes"];
+    post: operations["ContentController_createContentType"];
+  };
+  "/api/v1/admin/content/types/{id}": {
+    get: operations["ContentController_getContentType"];
+    delete: operations["ContentController_deleteContentType"];
+    patch: operations["ContentController_updateContentType"];
+  };
+  "/api/v1/admin/content/items": {
+    get: operations["ContentController_listContentItems"];
+    post: operations["ContentController_createContentItem"];
+  };
+  "/api/v1/admin/content/items/{id}": {
+    get: operations["ContentController_getContentItem"];
+    delete: operations["ContentController_deleteContentItem"];
+    patch: operations["ContentController_updateContentItem"];
+  };
+  "/api/v1/admin/content/items/{id}/revisions": {
+    get: operations["ContentController_listContentItemRevisions"];
+  };
+  "/api/v1/admin/content/items/{id}/revisions/{revisionId}": {
+    get: operations["ContentController_getContentItemRevision"];
+  };
+  "/api/v1/admin/content/items/{id}/revisions/{revisionId}/restore": {
+    post: operations["ContentController_restoreContentItemRevision"];
+  };
+  "/api/v1/admin/content/items/type/{contentTypeId}": {
+    get: operations["ContentController_listContentItemsByTypeId"];
+  };
+  "/api/v1/admin/content/items/type-slug/{slug}": {
+    get: operations["ContentController_listContentItemsByTypeSlug"];
+  };
+  "/api/v1/admin/content/items/type-slug/{contentTypeSlug}/{slug}": {
+    get: operations["ContentController_getContentItemBySlug"];
+  };
+  "/api/v1/admin/content/items/{id}/duplicate": {
+    post: operations["ContentController_duplicateContentItem"];
+  };
+  "/api/v1/admin/content/navigation-items": {
+    get: operations["ContentController_listNavigationItems"];
+    post: operations["ContentController_createNavigationItem"];
+  };
+  "/api/v1/admin/content/navigation-items/{id}": {
+    delete: operations["ContentController_deleteNavigationItem"];
+    patch: operations["ContentController_updateNavigationItem"];
+  };
+  "/api/v1/admin/content/settings": {
+    get: operations["ContentController_listSettings"];
+    post: operations["ContentController_upsertSetting"];
+  };
+  "/api/v1/admin/content/settings/{key}": {
+    get: operations["ContentController_getSetting"];
+    delete: operations["ContentController_deleteSetting"];
+  };
+  "/api/v1/admin/content/media": {
+    get: operations["ContentController_listMedia"];
+    post: operations["ContentController_createMedia"];
+  };
+  "/api/v1/admin/content/media/{id}": {
+    get: operations["ContentController_getMedia"];
+    delete: operations["ContentController_deleteMedia"];
+    patch: operations["ContentController_updateMedia"];
+  };
+  "/api/v1/admin/content/taxonomies": {
+    get: operations["TaxonomiesAdminController_listTaxonomies"];
+    post: operations["TaxonomiesAdminController_createTaxonomy"];
+  };
+  "/api/v1/admin/content/taxonomies/{id}": {
+    get: operations["TaxonomiesAdminController_getTaxonomy"];
+    delete: operations["TaxonomiesAdminController_deleteTaxonomy"];
+    patch: operations["TaxonomiesAdminController_updateTaxonomy"];
+  };
+  "/api/v1/admin/content/terms": {
+    get: operations["TaxonomiesAdminController_listTerms"];
+    post: operations["TaxonomiesAdminController_createTerm"];
+  };
+  "/api/v1/admin/content/terms/{id}": {
+    get: operations["TaxonomiesAdminController_getTerm"];
+    delete: operations["TaxonomiesAdminController_deleteTerm"];
+    patch: operations["TaxonomiesAdminController_updateTerm"];
+  };
+  "/api/v1/admin/content/items/{id}/terms": {
+    get: operations["TaxonomiesAdminController_listContentItemTerms"];
+    put: operations["TaxonomiesAdminController_assignContentItemTerms"];
+  };
+  "/api/v1/admin/content/items/{id}/terms/{termId}": {
+    delete: operations["TaxonomiesAdminController_removeContentItemTerm"];
+  };
+  "/api/v1/admin/media": {
+    get: operations["MediaController_listMedia"];
+  };
+  "/api/v1/admin/media/upload": {
+    post: operations["MediaController_uploadMedia"];
+  };
+  "/api/v1/admin/media/{id}": {
+    delete: operations["MediaController_deleteMedia"];
+    patch: operations["MediaController_updateMedia"];
+  };
   "/api/v1/auth/register": {
     post: operations["AuthController_register"];
   };
   "/api/v1/auth/login": {
     post: operations["AuthController_login"];
   };
+  "/api/v1/auth/forgot-password": {
+    post: operations["AuthController_forgotPassword"];
+  };
+  "/api/v1/auth/reset-password": {
+    post: operations["AuthController_resetPassword"];
+  };
   "/api/v1/auth/logout": {
     post: operations["AuthController_logout"];
   };
+  "/api/v1/health/live": {
+    get: operations["HealthController_live"];
+  };
   "/health": {
-    get: operations["HealthController_ping"];
+    get: operations["HealthController_health"];
+  };
+  "/api/v1/health/ready": {
+    get: operations["HealthController_ready"];
+  };
+  "/api/v1/admin/redirects": {
+    get: operations["RedirectsController_list"];
+    post: operations["RedirectsController_create"];
+  };
+  "/api/v1/admin/redirects/{id}": {
+    delete: operations["RedirectsController_remove"];
+    patch: operations["RedirectsController_update"];
+  };
+  "/api/v1/admin/audit-logs": {
+    get: operations["AuditController_list"];
   };
   "/api/v1/metrics": {
     get: operations["PrometheusController_index"];
@@ -37,7 +222,6 @@ export interface components {
       firstName: string | null;
       lastName: string | null;
       birthDate: string | null;
-      displayName: string | null;
       /** Format: date-time */
       createdAt: string;
       role: string;
@@ -51,6 +235,183 @@ export interface components {
       phone?: string;
       birthDate?: string;
     };
+    UpdateUserRoleDto: {
+      /** @enum {string} */
+      role: "editor" | "admin" | "super_admin";
+    };
+    RestoreRevisionDto: {
+      revisionNote?: string;
+    };
+    PageBlockInputDto: {
+      /** @enum {string} */
+      type: "hero" | "rich_text" | "cta" | "image" | "news_list";
+      data: Record<string, never>;
+      order: number;
+    };
+    CreatePageDto: {
+      slug: string;
+      title: string;
+      blocks: components["schemas"]["PageBlockInputDto"][];
+      seoTitle?: string;
+      seoDescription?: string;
+      seoImage?: string;
+      canonicalUrl?: string;
+      noIndex?: boolean;
+      published: boolean;
+      /** @enum {string} */
+      workflowStatus?: "draft" | "in_review" | "approved" | "published" | "archived";
+      publishAt?: Record<string, never>;
+      unpublishAt?: Record<string, never>;
+      templateKey?: string;
+    };
+    UpdatePageDto: {
+      slug?: string;
+      title?: string;
+      blocks?: components["schemas"]["PageBlockInputDto"][];
+      seoTitle?: string;
+      seoDescription?: string;
+      seoImage?: string;
+      canonicalUrl?: string;
+      noIndex?: boolean;
+      published?: boolean;
+      /** @enum {string} */
+      workflowStatus?: "draft" | "in_review" | "approved" | "published" | "archived";
+      publishAt?: Record<string, never>;
+      unpublishAt?: Record<string, never>;
+      templateKey?: string;
+      revisionNote?: string;
+    };
+    ContentFieldRelationDto: {
+      /** @enum {string} */
+      targetType: "contentType" | "page" | "media";
+      targetSlug?: string;
+      targetModel?: string;
+      multiple?: boolean;
+    };
+    ContentFieldDefinitionDto: {
+      key: string;
+      label?: string;
+      description?: string;
+      placeholder?: string;
+      helpText?: string;
+      /** @enum {string} */
+      type: "text" | "textarea" | "rich_text" | "image" | "relation" | "media" | "contentItem" | "page" | "date" | "boolean";
+      required: boolean;
+      relation?: components["schemas"]["ContentFieldRelationDto"];
+    };
+    CreateContentTypeDto: {
+      name: string;
+      slug: string;
+      description: string;
+      fields: components["schemas"]["ContentFieldDefinitionDto"][];
+      templateKey?: string;
+      /** @default true */
+      isPublic?: boolean;
+    };
+    UpdateContentTypeDto: {
+      name?: string;
+      slug?: string;
+      description?: string;
+      fields?: components["schemas"]["ContentFieldDefinitionDto"][];
+      templateKey?: string;
+      isPublic?: boolean;
+    };
+    CreateContentItemDto: {
+      contentTypeId: string;
+      slug: string;
+      title: string;
+      seoTitle?: string;
+      seoDescription?: string;
+      seoImage?: string;
+      canonicalUrl?: string;
+      noIndex?: boolean;
+      parentId?: Record<string, never>;
+      /** @default 0 */
+      sortOrder?: number;
+      data: Record<string, never>;
+      published: boolean;
+      /** @enum {string} */
+      workflowStatus?: "draft" | "in_review" | "approved" | "published" | "archived";
+      publishAt?: Record<string, never>;
+      unpublishAt?: Record<string, never>;
+    };
+    UpdateContentItemDto: {
+      contentTypeId?: string;
+      slug?: string;
+      title?: string;
+      seoTitle?: string;
+      seoDescription?: string;
+      seoImage?: string;
+      canonicalUrl?: string;
+      noIndex?: boolean;
+      parentId?: Record<string, never>;
+      /** @default 0 */
+      sortOrder?: number;
+      data?: Record<string, never>;
+      published?: boolean;
+      /** @enum {string} */
+      workflowStatus?: "draft" | "in_review" | "approved" | "published" | "archived";
+      publishAt?: Record<string, never>;
+      unpublishAt?: Record<string, never>;
+      revisionNote?: string;
+    };
+    CreateNavigationItemDto: {
+      label: string;
+      url: string;
+      order: number;
+      parentId?: string;
+    };
+    UpdateNavigationItemDto: {
+      label?: string;
+      url?: string;
+      order?: number;
+      parentId?: string;
+    };
+    UpsertSiteSettingDto: {
+      key: string;
+      value: string;
+    };
+    CreateMediaDto: {
+      url: string;
+      alt: string;
+      width?: number;
+      height?: number;
+      mimeType?: string;
+      sizeBytes?: number;
+      originalFilename?: string;
+      storageKey?: string;
+    };
+    UpdateMediaDto: {
+      alt?: string;
+    };
+    CreateTaxonomyDto: {
+      name: string;
+      slug: string;
+      description: string;
+    };
+    UpdateTaxonomyDto: {
+      name?: string;
+      slug?: string;
+      description?: string;
+    };
+    CreateTermDto: {
+      taxonomyId: string;
+      name: string;
+      slug: string;
+      description: string;
+      parentId?: string;
+    };
+    UpdateTermDto: {
+      taxonomyId?: string;
+      name?: string;
+      slug?: string;
+      description?: string;
+      parentId?: string;
+    };
+    AssignTermsDto: {
+      termIds: string[];
+    };
+    RegisterDto: Record<string, never>;
     PublicUserDto: {
       id: string;
       email: string;
@@ -59,21 +420,27 @@ export interface components {
     };
     AuthResponseDto: {
       user: components["schemas"]["PublicUserDto"];
-      accessToken: string;
     };
+    LoginDto: Record<string, never>;
+    ForgotPasswordDto: Record<string, never>;
+    SuccessResponseDto: {
+      success: boolean;
+    };
+    ResetPasswordDto: Record<string, never>;
     LogoutResponseDto: {
       success: boolean;
     };
-    RegisterDto: {
-      /** Format: email */
-      email: string;
-      password: string;
-      name?: string;
+    CreateRedirectDto: {
+      fromPath: string;
+      toPath: string;
+      /** @enum {number} */
+      statusCode: 301 | 302;
     };
-    LoginDto: {
-      /** Format: email */
-      email: string;
-      password: string;
+    UpdateRedirectDto: {
+      fromPath: string;
+      toPath: string;
+      /** @enum {number} */
+      statusCode: 301 | 302;
     };
   };
   responses: never;
@@ -112,6 +479,963 @@ export interface operations {
       };
     };
   };
+  UsersAdminController_updateRole: {
+    parameters: {
+      path: {
+        id: string;
+      };
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["UpdateUserRoleDto"];
+      };
+    };
+    responses: {
+      200: {
+        content: never;
+      };
+    };
+  };
+  PublicContentController_getSitemapEntries: {
+    responses: {
+      200: {
+        content: never;
+      };
+    };
+  };
+  PublicContentController_listPages: {
+    parameters: {
+      query?: {
+        offset?: number;
+        limit?: number;
+        cursor?: string;
+      };
+    };
+    responses: {
+      200: {
+        content: never;
+      };
+    };
+  };
+  PublicContentController_getPageBySlug: {
+    parameters: {
+      path: {
+        slug: string;
+      };
+    };
+    responses: {
+      200: {
+        content: never;
+      };
+    };
+  };
+  PublicContentController_listContentTypes: {
+    responses: {
+      200: {
+        content: never;
+      };
+    };
+  };
+  PublicContentController_getContentTypeBySlug: {
+    parameters: {
+      path: {
+        slug: string;
+      };
+    };
+    responses: {
+      200: {
+        content: never;
+      };
+    };
+  };
+  PublicContentController_listContentItemsByTypeSlug: {
+    parameters: {
+      query?: {
+        mode?: "flat" | "tree";
+        offset?: number;
+        limit?: number;
+        cursor?: string;
+      };
+      path: {
+        slug: string;
+      };
+    };
+    responses: {
+      200: {
+        content: never;
+      };
+    };
+  };
+  PublicContentController_getContentItemBySlug: {
+    parameters: {
+      path: {
+        contentTypeSlug: string;
+        slug: string;
+      };
+    };
+    responses: {
+      200: {
+        content: never;
+      };
+    };
+  };
+  PublicContentController_listTaxonomyTermsForItem: {
+    parameters: {
+      path: {
+        id: string;
+        taxonomySlug: string;
+      };
+    };
+    responses: {
+      200: {
+        content: never;
+      };
+    };
+  };
+  PublicContentController_listTaxonomyTermsForItemByTypeSlug: {
+    parameters: {
+      path: {
+        contentTypeSlug: string;
+        id: string;
+        taxonomySlug: string;
+      };
+    };
+    responses: {
+      200: {
+        content: never;
+      };
+    };
+  };
+  PublicContentController_listTaxonomyRelationsForItem: {
+    parameters: {
+      path: {
+        id: string;
+      };
+    };
+    responses: {
+      200: {
+        content: never;
+      };
+    };
+  };
+  PublicContentController_listNavigationItems: {
+    parameters: {
+      query?: {
+        offset?: number;
+        limit?: number;
+        cursor?: string;
+      };
+    };
+    responses: {
+      200: {
+        content: never;
+      };
+    };
+  };
+  PublicContentController_listSettings: {
+    parameters: {
+      query?: {
+        offset?: number;
+        limit?: number;
+        cursor?: string;
+      };
+    };
+    responses: {
+      200: {
+        content: never;
+      };
+    };
+  };
+  ContentController_listPages: {
+    parameters: {
+      query?: {
+        offset?: number;
+        limit?: number;
+        cursor?: string;
+      };
+    };
+    responses: {
+      200: {
+        content: never;
+      };
+    };
+  };
+  ContentController_createPage: {
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["CreatePageDto"];
+      };
+    };
+    responses: {
+      201: {
+        content: never;
+      };
+    };
+  };
+  ContentController_getPage: {
+    parameters: {
+      path: {
+        id: string;
+      };
+    };
+    responses: {
+      200: {
+        content: never;
+      };
+    };
+  };
+  ContentController_deletePage: {
+    parameters: {
+      path: {
+        id: string;
+      };
+    };
+    responses: {
+      200: {
+        content: never;
+      };
+    };
+  };
+  ContentController_updatePage: {
+    parameters: {
+      path: {
+        id: string;
+      };
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["UpdatePageDto"];
+      };
+    };
+    responses: {
+      200: {
+        content: never;
+      };
+    };
+  };
+  ContentController_listPageRevisions: {
+    parameters: {
+      query?: {
+        offset?: number;
+        limit?: number;
+        cursor?: string;
+      };
+      path: {
+        id: string;
+      };
+    };
+    responses: {
+      200: {
+        content: never;
+      };
+    };
+  };
+  ContentController_getPageRevision: {
+    parameters: {
+      path: {
+        id: string;
+        revisionId: string;
+      };
+    };
+    responses: {
+      200: {
+        content: never;
+      };
+    };
+  };
+  ContentController_restorePageRevision: {
+    parameters: {
+      path: {
+        id: string;
+        revisionId: string;
+      };
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["RestoreRevisionDto"];
+      };
+    };
+    responses: {
+      201: {
+        content: never;
+      };
+    };
+  };
+  ContentController_getPageBySlug: {
+    parameters: {
+      path: {
+        slug: string;
+      };
+    };
+    responses: {
+      200: {
+        content: never;
+      };
+    };
+  };
+  ContentController_duplicatePage: {
+    parameters: {
+      path: {
+        id: string;
+      };
+    };
+    responses: {
+      201: {
+        content: never;
+      };
+    };
+  };
+  ContentController_listContentTypes: {
+    parameters: {
+      query?: {
+        offset?: number;
+        limit?: number;
+        cursor?: string;
+      };
+    };
+    responses: {
+      200: {
+        content: never;
+      };
+    };
+  };
+  ContentController_createContentType: {
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["CreateContentTypeDto"];
+      };
+    };
+    responses: {
+      201: {
+        content: never;
+      };
+    };
+  };
+  ContentController_getContentType: {
+    parameters: {
+      path: {
+        id: string;
+      };
+    };
+    responses: {
+      200: {
+        content: never;
+      };
+    };
+  };
+  ContentController_deleteContentType: {
+    parameters: {
+      path: {
+        id: string;
+      };
+    };
+    responses: {
+      200: {
+        content: never;
+      };
+    };
+  };
+  ContentController_updateContentType: {
+    parameters: {
+      path: {
+        id: string;
+      };
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["UpdateContentTypeDto"];
+      };
+    };
+    responses: {
+      200: {
+        content: never;
+      };
+    };
+  };
+  ContentController_listContentItems: {
+    parameters: {
+      query?: {
+        mode?: "flat" | "tree";
+        offset?: number;
+        limit?: number;
+        cursor?: string;
+      };
+    };
+    responses: {
+      200: {
+        content: never;
+      };
+    };
+  };
+  ContentController_createContentItem: {
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["CreateContentItemDto"];
+      };
+    };
+    responses: {
+      201: {
+        content: never;
+      };
+    };
+  };
+  ContentController_getContentItem: {
+    parameters: {
+      path: {
+        id: string;
+      };
+    };
+    responses: {
+      200: {
+        content: never;
+      };
+    };
+  };
+  ContentController_deleteContentItem: {
+    parameters: {
+      path: {
+        id: string;
+      };
+    };
+    responses: {
+      200: {
+        content: never;
+      };
+    };
+  };
+  ContentController_updateContentItem: {
+    parameters: {
+      path: {
+        id: string;
+      };
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["UpdateContentItemDto"];
+      };
+    };
+    responses: {
+      200: {
+        content: never;
+      };
+    };
+  };
+  ContentController_listContentItemRevisions: {
+    parameters: {
+      query?: {
+        offset?: number;
+        limit?: number;
+        cursor?: string;
+      };
+      path: {
+        id: string;
+      };
+    };
+    responses: {
+      200: {
+        content: never;
+      };
+    };
+  };
+  ContentController_getContentItemRevision: {
+    parameters: {
+      path: {
+        id: string;
+        revisionId: string;
+      };
+    };
+    responses: {
+      200: {
+        content: never;
+      };
+    };
+  };
+  ContentController_restoreContentItemRevision: {
+    parameters: {
+      path: {
+        id: string;
+        revisionId: string;
+      };
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["RestoreRevisionDto"];
+      };
+    };
+    responses: {
+      201: {
+        content: never;
+      };
+    };
+  };
+  ContentController_listContentItemsByTypeId: {
+    parameters: {
+      query?: {
+        mode?: "flat" | "tree";
+        offset?: number;
+        limit?: number;
+        cursor?: string;
+      };
+      path: {
+        contentTypeId: string;
+      };
+    };
+    responses: {
+      200: {
+        content: never;
+      };
+    };
+  };
+  ContentController_listContentItemsByTypeSlug: {
+    parameters: {
+      query?: {
+        mode?: "flat" | "tree";
+        offset?: number;
+        limit?: number;
+        cursor?: string;
+      };
+      path: {
+        slug: string;
+      };
+    };
+    responses: {
+      200: {
+        content: never;
+      };
+    };
+  };
+  ContentController_getContentItemBySlug: {
+    parameters: {
+      path: {
+        contentTypeSlug: string;
+        slug: string;
+      };
+    };
+    responses: {
+      200: {
+        content: never;
+      };
+    };
+  };
+  ContentController_duplicateContentItem: {
+    parameters: {
+      path: {
+        id: string;
+      };
+    };
+    responses: {
+      201: {
+        content: never;
+      };
+    };
+  };
+  ContentController_listNavigationItems: {
+    parameters: {
+      query?: {
+        offset?: number;
+        limit?: number;
+        cursor?: string;
+      };
+    };
+    responses: {
+      200: {
+        content: never;
+      };
+    };
+  };
+  ContentController_createNavigationItem: {
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["CreateNavigationItemDto"];
+      };
+    };
+    responses: {
+      201: {
+        content: never;
+      };
+    };
+  };
+  ContentController_deleteNavigationItem: {
+    parameters: {
+      path: {
+        id: string;
+      };
+    };
+    responses: {
+      200: {
+        content: never;
+      };
+    };
+  };
+  ContentController_updateNavigationItem: {
+    parameters: {
+      path: {
+        id: string;
+      };
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["UpdateNavigationItemDto"];
+      };
+    };
+    responses: {
+      200: {
+        content: never;
+      };
+    };
+  };
+  ContentController_listSettings: {
+    parameters: {
+      query?: {
+        offset?: number;
+        limit?: number;
+        cursor?: string;
+      };
+    };
+    responses: {
+      200: {
+        content: never;
+      };
+    };
+  };
+  ContentController_upsertSetting: {
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["UpsertSiteSettingDto"];
+      };
+    };
+    responses: {
+      201: {
+        content: never;
+      };
+    };
+  };
+  ContentController_getSetting: {
+    parameters: {
+      path: {
+        key: string;
+      };
+    };
+    responses: {
+      200: {
+        content: never;
+      };
+    };
+  };
+  ContentController_deleteSetting: {
+    parameters: {
+      path: {
+        key: string;
+      };
+    };
+    responses: {
+      200: {
+        content: never;
+      };
+    };
+  };
+  ContentController_listMedia: {
+    parameters: {
+      query?: {
+        offset?: number;
+        limit?: number;
+        cursor?: string;
+      };
+    };
+    responses: {
+      200: {
+        content: never;
+      };
+    };
+  };
+  ContentController_createMedia: {
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["CreateMediaDto"];
+      };
+    };
+    responses: {
+      201: {
+        content: never;
+      };
+    };
+  };
+  ContentController_getMedia: {
+    parameters: {
+      path: {
+        id: string;
+      };
+    };
+    responses: {
+      200: {
+        content: never;
+      };
+    };
+  };
+  ContentController_deleteMedia: {
+    parameters: {
+      path: {
+        id: string;
+      };
+    };
+    responses: {
+      200: {
+        content: never;
+      };
+    };
+  };
+  ContentController_updateMedia: {
+    parameters: {
+      path: {
+        id: string;
+      };
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["UpdateMediaDto"];
+      };
+    };
+    responses: {
+      200: {
+        content: never;
+      };
+    };
+  };
+  TaxonomiesAdminController_listTaxonomies: {
+    parameters: {
+      query?: {
+        offset?: number;
+        limit?: number;
+        cursor?: string;
+      };
+    };
+    responses: {
+      200: {
+        content: never;
+      };
+    };
+  };
+  TaxonomiesAdminController_createTaxonomy: {
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["CreateTaxonomyDto"];
+      };
+    };
+    responses: {
+      201: {
+        content: never;
+      };
+    };
+  };
+  TaxonomiesAdminController_getTaxonomy: {
+    parameters: {
+      path: {
+        id: string;
+      };
+    };
+    responses: {
+      200: {
+        content: never;
+      };
+    };
+  };
+  TaxonomiesAdminController_deleteTaxonomy: {
+    parameters: {
+      path: {
+        id: string;
+      };
+    };
+    responses: {
+      200: {
+        content: never;
+      };
+    };
+  };
+  TaxonomiesAdminController_updateTaxonomy: {
+    parameters: {
+      path: {
+        id: string;
+      };
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["UpdateTaxonomyDto"];
+      };
+    };
+    responses: {
+      200: {
+        content: never;
+      };
+    };
+  };
+  TaxonomiesAdminController_listTerms: {
+    parameters: {
+      query?: {
+        taxonomyId?: string;
+        offset?: number;
+        limit?: number;
+        cursor?: string;
+      };
+    };
+    responses: {
+      200: {
+        content: never;
+      };
+    };
+  };
+  TaxonomiesAdminController_createTerm: {
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["CreateTermDto"];
+      };
+    };
+    responses: {
+      201: {
+        content: never;
+      };
+    };
+  };
+  TaxonomiesAdminController_getTerm: {
+    parameters: {
+      path: {
+        id: string;
+      };
+    };
+    responses: {
+      200: {
+        content: never;
+      };
+    };
+  };
+  TaxonomiesAdminController_deleteTerm: {
+    parameters: {
+      path: {
+        id: string;
+      };
+    };
+    responses: {
+      200: {
+        content: never;
+      };
+    };
+  };
+  TaxonomiesAdminController_updateTerm: {
+    parameters: {
+      path: {
+        id: string;
+      };
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["UpdateTermDto"];
+      };
+    };
+    responses: {
+      200: {
+        content: never;
+      };
+    };
+  };
+  TaxonomiesAdminController_listContentItemTerms: {
+    parameters: {
+      path: {
+        id: string;
+      };
+    };
+    responses: {
+      200: {
+        content: never;
+      };
+    };
+  };
+  TaxonomiesAdminController_assignContentItemTerms: {
+    parameters: {
+      path: {
+        id: string;
+      };
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["AssignTermsDto"];
+      };
+    };
+    responses: {
+      200: {
+        content: never;
+      };
+    };
+  };
+  TaxonomiesAdminController_removeContentItemTerm: {
+    parameters: {
+      path: {
+        id: string;
+        termId: string;
+      };
+    };
+    responses: {
+      200: {
+        content: never;
+      };
+    };
+  };
+  MediaController_listMedia: {
+    parameters: {
+      query?: {
+        offset?: number;
+        limit?: number;
+      };
+    };
+    responses: {
+      200: {
+        content: never;
+      };
+    };
+  };
+  MediaController_uploadMedia: {
+    requestBody: {
+      content: {
+        "multipart/form-data": {
+          /** Format: binary */
+          file: string;
+          alt: string;
+        };
+      };
+    };
+    responses: {
+      201: {
+        content: never;
+      };
+    };
+  };
+  MediaController_deleteMedia: {
+    parameters: {
+      path: {
+        id: string;
+      };
+    };
+    responses: {
+      200: {
+        content: never;
+      };
+    };
+  };
+  MediaController_updateMedia: {
+    parameters: {
+      path: {
+        id: string;
+      };
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["UpdateMediaDto"];
+      };
+    };
+    responses: {
+      200: {
+        content: never;
+      };
+    };
+  };
   AuthController_register: {
     requestBody: {
       content: {
@@ -140,6 +1464,34 @@ export interface operations {
       };
     };
   };
+  AuthController_forgotPassword: {
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["ForgotPasswordDto"];
+      };
+    };
+    responses: {
+      200: {
+        content: {
+          "application/json": components["schemas"]["SuccessResponseDto"];
+        };
+      };
+    };
+  };
+  AuthController_resetPassword: {
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["ResetPasswordDto"];
+      };
+    };
+    responses: {
+      200: {
+        content: {
+          "application/json": components["schemas"]["SuccessResponseDto"];
+        };
+      };
+    };
+  };
   AuthController_logout: {
     responses: {
       200: {
@@ -149,7 +1501,93 @@ export interface operations {
       };
     };
   };
-  HealthController_ping: {
+  HealthController_live: {
+    responses: {
+      200: {
+        content: never;
+      };
+    };
+  };
+  HealthController_health: {
+    responses: {
+      200: {
+        content: never;
+      };
+    };
+  };
+  HealthController_ready: {
+    responses: {
+      200: {
+        content: never;
+      };
+    };
+  };
+  RedirectsController_list: {
+    parameters: {
+      query?: {
+        offset?: number;
+        limit?: unknown;
+        cursor?: string;
+      };
+    };
+    responses: {
+      200: {
+        content: never;
+      };
+    };
+  };
+  RedirectsController_create: {
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["CreateRedirectDto"];
+      };
+    };
+    responses: {
+      201: {
+        content: never;
+      };
+    };
+  };
+  RedirectsController_remove: {
+    parameters: {
+      path: {
+        id: string;
+      };
+    };
+    responses: {
+      200: {
+        content: never;
+      };
+    };
+  };
+  RedirectsController_update: {
+    parameters: {
+      path: {
+        id: string;
+      };
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["UpdateRedirectDto"];
+      };
+    };
+    responses: {
+      200: {
+        content: never;
+      };
+    };
+  };
+  AuditController_list: {
+    parameters: {
+      query?: {
+        offset?: number;
+        userId?: string;
+        action?: string;
+        entityType?: string;
+        limit?: unknown;
+        cursor?: string;
+      };
+    };
     responses: {
       200: {
         content: never;

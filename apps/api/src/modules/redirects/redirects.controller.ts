@@ -7,10 +7,12 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   Req,
 } from "@nestjs/common";
-import { ApiProperty, ApiTags } from "@nestjs/swagger";
-import { IsIn, IsString } from "class-validator";
+import { ApiProperty, ApiQuery, ApiTags } from "@nestjs/swagger";
+import { Type } from "class-transformer";
+import { IsIn, IsInt, IsOptional, IsString, Max, Min } from "class-validator";
 import type { Request } from "express";
 
 import { requireMinimumRole } from "../../common/auth/admin-access";
@@ -18,6 +20,36 @@ import { readAccessToken } from "../../common/auth/read-access-token";
 import { PrismaService } from "../../prisma/prisma.service";
 import { AuditService } from "../audit/audit.service";
 import { AuthService } from "../auth/auth.service";
+
+const DEFAULT_LIST_LIMIT = 50;
+const MAX_LIST_LIMIT = 100;
+
+class ListRedirectsQueryDto {
+  @ApiProperty({ required: false, minimum: 0 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  offset?: number;
+
+  @ApiProperty({
+    required: false,
+    minimum: 1,
+    maximum: MAX_LIST_LIMIT,
+    default: DEFAULT_LIST_LIMIT,
+  })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(MAX_LIST_LIMIT)
+  limit?: number;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  cursor?: string;
+}
 
 class RedirectDto {
   @ApiProperty()
@@ -109,11 +141,32 @@ export class RedirectsController {
   ) {}
 
   @Get()
-  async list(@Req() req: Request): Promise<RedirectDto[]> {
+  @ApiQuery({ name: "offset", required: false, type: Number, minimum: 0 })
+  @ApiQuery({
+    name: "limit",
+    required: false,
+    type: Number,
+    minimum: 1,
+    maximum: MAX_LIST_LIMIT,
+    schema: { default: DEFAULT_LIST_LIMIT },
+  })
+  @ApiQuery({ name: "cursor", required: false, type: String })
+  async list(
+    @Req() req: Request,
+    @Query() query: ListRedirectsQueryDto,
+  ): Promise<RedirectDto[]> {
     await requireMinimumRole(req, this.auth, "admin");
+
+    const limit =
+      typeof query.limit === "number"
+        ? Math.min(MAX_LIST_LIMIT, Math.max(1, query.limit))
+        : DEFAULT_LIST_LIMIT;
 
     const redirects = await this.prisma.redirectRule.findMany({
       orderBy: { fromPath: "asc" },
+      skip: query.cursor ? 1 : query.offset,
+      cursor: query.cursor ? { id: query.cursor } : undefined,
+      take: limit,
     });
 
     return redirects.map(toDto);

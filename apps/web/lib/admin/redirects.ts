@@ -1,5 +1,8 @@
 import { cookies } from "next/headers";
 
+const DEFAULT_REDIRECTS_LIMIT = 50;
+const MAX_REDIRECTS_LIMIT = 100;
+
 export type AdminRedirect = {
   id: string;
   fromPath: string;
@@ -7,6 +10,11 @@ export type AdminRedirect = {
   statusCode: 301 | 302;
   createdAt: string;
   updatedAt: string;
+};
+
+export type RedirectPagination = {
+  offset: number;
+  limit: number;
 };
 
 function getApiBase() {
@@ -29,15 +37,46 @@ function buildHeaders() {
   return headers;
 }
 
-export async function listAdminRedirects(): Promise<AdminRedirect[]> {
-  const response = await fetch(`${getApiBase()}/admin/redirects`, {
-    headers: buildHeaders(),
-    cache: "no-store",
-  });
+function normalizePagination(pagination?: {
+  limit?: number;
+  offset?: number;
+}): RedirectPagination {
+  const limit =
+    typeof pagination?.limit === "number"
+      ? Math.min(MAX_REDIRECTS_LIMIT, Math.max(1, pagination.limit))
+      : DEFAULT_REDIRECTS_LIMIT;
+
+  const offset =
+    typeof pagination?.offset === "number" && pagination.offset >= 0
+      ? pagination.offset
+      : 0;
+
+  return { offset, limit };
+}
+
+export async function listAdminRedirects(pagination?: {
+  limit?: number;
+  offset?: number;
+}): Promise<{ items: AdminRedirect[]; pagination: RedirectPagination }> {
+  const safePagination = normalizePagination(pagination);
+  const query = new URLSearchParams();
+  query.set("limit", String(safePagination.limit));
+  query.set("offset", String(safePagination.offset));
+
+  const response = await fetch(
+    `${getApiBase()}/admin/redirects?${query.toString()}`,
+    {
+      headers: buildHeaders(),
+      cache: "no-store",
+    },
+  );
 
   if (!response.ok) {
-    return [];
+    return { items: [], pagination: safePagination };
   }
 
-  return (await response.json()) as AdminRedirect[];
+  return {
+    items: (await response.json()) as AdminRedirect[],
+    pagination: safePagination,
+  };
 }

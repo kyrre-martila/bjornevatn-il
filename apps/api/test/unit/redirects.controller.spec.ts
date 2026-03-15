@@ -62,6 +62,21 @@ describe("RedirectsController", () => {
     return { controller, prisma, audit };
   }
 
+
+  it("applies paginated list guardrails for redirects", async () => {
+    const { controller, prisma } = makeSut();
+
+    await controller.list(makeRequest(), { limit: 999, offset: 3 });
+
+    expect(prisma.redirectRule.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        orderBy: { fromPath: "asc" },
+        skip: 3,
+        take: 100,
+      }),
+    );
+  });
+
   it("logs before and after values on redirect update", async () => {
     const { controller, audit } = makeSut();
 

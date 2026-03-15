@@ -1,6 +1,6 @@
 {
   "name": "@org/contracts",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Blueprint API contract artifacts and generated SDK",
   "type": "module",
   "main": "./dist/sdk/index.js",
@@ -38,6 +38,6 @@
   "publishConfig": {
     "access": "public"
   },
-  "contractHash": "2b72c3e0dbaadf0c93be0bca820232c266d5d2436fb6cb2cdf46b8b783f69320",
+  "contractHash": "fba4da2da9e1324fd00d5efcd77ce94be520dce814e94f662b8e4c8ebedf5654",
   "license": "MIT"
 }

@@ -1,5 +1,8 @@
 import { cookies } from "next/headers";
 
+const DEFAULT_AUDIT_LIMIT = 50;
+const MAX_AUDIT_LIMIT = 100;
+
 export type AdminAuditLog = {
   id: string;
   userId: string | null;
@@ -9,6 +12,11 @@ export type AdminAuditLog = {
   metadata: unknown;
   createdAt: string;
   user: { id: string; email: string; name: string | null } | null;
+};
+
+export type AuditPagination = {
+  limit: number;
+  offset: number;
 };
 
 function getApiBase() {
@@ -31,16 +39,30 @@ function buildHeaders() {
   return headers;
 }
 
+function normalizePagination(limit?: number, offset?: number): AuditPagination {
+  return {
+    limit:
+      typeof limit === "number"
+        ? Math.min(MAX_AUDIT_LIMIT, Math.max(1, limit))
+        : DEFAULT_AUDIT_LIMIT,
+    offset: typeof offset === "number" && offset >= 0 ? offset : 0,
+  };
+}
+
 export async function listAdminAuditLogs(filters?: {
   userId?: string;
   action?: string;
   entityType?: string;
-}): Promise<AdminAuditLog[]> {
+  limit?: number;
+  offset?: number;
+}): Promise<{ items: AdminAuditLog[]; pagination: AuditPagination }> {
+  const pagination = normalizePagination(filters?.limit, filters?.offset);
   const params = new URLSearchParams();
   if (filters?.userId) params.set("userId", filters.userId);
   if (filters?.action) params.set("action", filters.action);
   if (filters?.entityType) params.set("entityType", filters.entityType);
-  params.set("limit", "200");
+  params.set("limit", String(pagination.limit));
+  params.set("offset", String(pagination.offset));
 
   const response = await fetch(
     `${getApiBase()}/admin/audit-logs?${params.toString()}`,
@@ -51,8 +73,8 @@ export async function listAdminAuditLogs(filters?: {
   );
 
   if (!response.ok) {
-    return [];
+    return { items: [], pagination };
   }
 
-  return (await response.json()) as AdminAuditLog[];
+  return { items: (await response.json()) as AdminAuditLog[], pagination };
 }

@@ -38,9 +38,11 @@ export class AuditService {
     userId?: string;
     action?: string;
     entityType?: string;
+    offset?: number;
+    cursor?: string;
     limit?: number;
   }) {
-    const limit = Math.min(Math.max(filters.limit ?? 100, 1), 200);
+    const limit = Math.min(Math.max(filters.limit ?? 50, 1), 100);
 
     return this.prisma.auditLog.findMany({
       where: {
@@ -49,6 +51,8 @@ export class AuditService {
         ...(filters.entityType ? { entityType: filters.entityType } : {}),
       },
       orderBy: { createdAt: "desc" },
+      skip: filters.cursor ? 1 : filters.offset,
+      cursor: filters.cursor ? { id: filters.cursor } : undefined,
       take: limit,
       include: {
         user: {
