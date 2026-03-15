@@ -260,6 +260,36 @@ function toIsoDateTimeOrNull(value: string): string | null {
   return date.toISOString();
 }
 
+type ImpactSummaryItem = {
+  label: string;
+  oldValue?: string;
+  newValue?: string;
+};
+
+function formatImpactValue(value: string | null | undefined): string {
+  if (value === null || value === undefined || value.trim() === "") {
+    return "(empty)";
+  }
+  return value;
+}
+
+function formatImpactSummaryMessage(items: ImpactSummaryItem[]): string {
+  if (items.length === 0) {
+    return "";
+  }
+
+  const lines = ["This change will:"];
+  for (const item of items) {
+    lines.push(`- ${item.label}`);
+    if (item.oldValue !== undefined || item.newValue !== undefined) {
+      lines.push(`  Old: ${item.oldValue ?? "(unknown)"}`);
+      lines.push(`  New: ${item.newValue ?? "(unknown)"}`);
+    }
+  }
+  lines.push("", "Continue?");
+  return lines.join("\n");
+}
+
 function getPublicationStatus(page: {
   published: boolean;
   publishAt: string | null;
@@ -387,13 +417,6 @@ export function PageEditorClient({
   const [media, setMedia] = React.useState<AdminMedia[]>([]);
   const [nextBlockType, setNextBlockType] =
     React.useState<AdminPageBlockType>("hero");
-  const [pendingSlugConfirmation, setPendingSlugConfirmation] = React.useState<{
-    oldUrl: string;
-    newUrl: string;
-  } | null>(null);
-  const slugConfirmationResolver = React.useRef<
-    ((confirmed: boolean) => void) | null
-  >(null);
 
   React.useEffect(() => {
     if (!initialPage?.id) {
@@ -585,22 +608,6 @@ export function PageEditorClient({
     });
   }
 
-  function requestSlugChangeConfirmation(
-    oldUrl: string,
-    newUrl: string,
-  ): Promise<boolean> {
-    return new Promise((resolve) => {
-      slugConfirmationResolver.current = resolve;
-      setPendingSlugConfirmation({ oldUrl, newUrl });
-    });
-  }
-
-  function resolveSlugConfirmation(confirmed: boolean) {
-    slugConfirmationResolver.current?.(confirmed);
-    slugConfirmationResolver.current = null;
-    setPendingSlugConfirmation(null);
-  }
-
   function getSectionSummary(block: EditableBlock): string {
     const schema = getSchemaForBlock(block.type);
     const summaryKey = schema.summaryField;
@@ -717,17 +724,6 @@ export function PageEditorClient({
       return;
     }
 
-    if (slugChanged && canEditSlug) {
-      const oldUrl = `/page/${originalSlug}`;
-      const newUrl = `/page/${normalizedSlug}`;
-      const confirmed = await requestSlugChangeConfirmation(oldUrl, newUrl);
-
-      if (!confirmed) {
-        setStatus("Slug change cancelled.");
-        return;
-      }
-    }
-
     const parsedBlocks: Array<{
       type: AdminPageBlockType;
       data: Record<string, unknown>;
@@ -816,6 +812,82 @@ export function PageEditorClient({
     ) {
       setError("Unpublish date/time must be after publish date/time.");
       return;
+    }
+
+    const impactSummaryItems: ImpactSummaryItem[] = [];
+    const initialWorkflowStatus =
+      initialPage?.workflowStatus ??
+      (initialPage?.published ? "published" : "draft");
+    const initialPublished = initialPage?.published ?? false;
+    const initialCanonicalUrl = initialPage?.canonicalUrl ?? null;
+    const nextCanonicalUrl = canonicalUrl.trim() || null;
+    const initialNoIndex = initialPage?.noIndex ?? false;
+    const initialPublishAtIso = initialPage?.publishAt ?? null;
+    const initialUnpublishAtIso = initialPage?.unpublishAt ?? null;
+
+    if (slugChanged) {
+      impactSummaryItems.push({
+        label: "change the public URL",
+        oldValue: `/page/${originalSlug}`,
+        newValue: `/page/${normalizedSlug}`,
+      });
+      impactSummaryItems.push({
+        label: "affect redirects or inbound links",
+      });
+    }
+
+    if (initialCanonicalUrl !== nextCanonicalUrl) {
+      impactSummaryItems.push({
+        label: "change canonical URL used by search engines",
+        oldValue: formatImpactValue(initialCanonicalUrl),
+        newValue: formatImpactValue(nextCanonicalUrl),
+      });
+    }
+
+    if (initialNoIndex !== noIndex) {
+      impactSummaryItems.push({
+        label: "affect search engine indexing",
+        oldValue: initialNoIndex ? "noindex" : "index",
+        newValue: noIndex ? "noindex" : "index",
+      });
+    }
+
+    const nextPublished = nextWorkflowStatus === "published";
+    if (initialPublished !== nextPublished) {
+      impactSummaryItems.push({
+        label: "change whether the page is publicly visible",
+        oldValue: initialPublished ? "public" : "hidden",
+        newValue: nextPublished ? "public" : "hidden",
+      });
+    }
+
+    if (
+      initialPublishAtIso !== publishAtIso ||
+      initialUnpublishAtIso !== unpublishAtIso
+    ) {
+      impactSummaryItems.push({
+        label: "change scheduled visibility",
+        oldValue: `publishAt=${formatImpactValue(initialPublishAtIso)}, unpublishAt=${formatImpactValue(initialUnpublishAtIso)}`,
+        newValue: `publishAt=${formatImpactValue(publishAtIso)}, unpublishAt=${formatImpactValue(unpublishAtIso)}`,
+      });
+    }
+
+    if (initialWorkflowStatus !== nextWorkflowStatus) {
+      impactSummaryItems.push({
+        label: "change workflow status",
+        oldValue: workflowLabel(initialWorkflowStatus),
+        newValue: workflowLabel(nextWorkflowStatus),
+      });
+    }
+
+    if (impactSummaryItems.length > 0) {
+      const confirmed = window.confirm(
+        formatImpactSummaryMessage(impactSummaryItems),
+      );
+      if (!confirmed) {
+        setStatus("Save cancelled.");
+        return;
+      }
     }
 
     setIsSaving(true);
@@ -1444,33 +1516,6 @@ export function PageEditorClient({
           )}
         </div>
       </form>
-
-      {pendingSlugConfirmation ? (
-        <div
-          role="dialog"
-          aria-modal="true"
-          className="page-editor__confirm-modal"
-        >
-          <p>
-            <strong>Changing the slug will change the page URL.</strong>
-          </p>
-          <p>Old URL: {pendingSlugConfirmation.oldUrl}</p>
-          <p>New URL: {pendingSlugConfirmation.newUrl}</p>
-          <p>This may break existing links and SEO.</p>
-          <p>Continue?</p>
-          <div>
-            <button
-              type="button"
-              onClick={() => resolveSlugConfirmation(false)}
-            >
-              Cancel
-            </button>
-            <button type="button" onClick={() => resolveSlugConfirmation(true)}>
-              Continue
-            </button>
-          </div>
-        </div>
-      ) : null}
     </section>
   );
 }
