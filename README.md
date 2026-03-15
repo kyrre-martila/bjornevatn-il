@@ -109,6 +109,20 @@ Set up environment variables first (see [docs/OPERATIONS.md](docs/OPERATIONS.md#
 - New project bootstrap checklist: [NEW_PROJECT.md](NEW_PROJECT.md)
 - Extended operational docs: [docs/OPERATIONS.md](docs/OPERATIONS.md)
 
+
+## Staging workflow (operations)
+
+Staging operations are documented for agency-safe usage in:
+
+- [DEPLOY.md — Staging deployment model and safety](DEPLOY.md#8-staging-deployment-model-and-safety)
+- [docs/OPERATIONS.md — Staging environment workflow](docs/OPERATIONS.md#staging-environment-workflow-agency-operations)
+
+Key guardrails:
+
+- Editor has no staging access; admin can view status; superadmin can run destructive actions.
+- Reset-from-live overwrites staging, and push-to-live overwrites live.
+- Use backups + audit review before every push-to-live.
+
 ## Operational References
 
 - [docs/SECURITY.md](docs/SECURITY.md)

@@ -99,26 +99,72 @@ Optional environment variables:
 - `SMOKE_API_BASE_PATH` (default: `/api/v1`)
 - `SMOKE_TIMEOUT_MS` (default: `10000`)
 
-## Staging environment sync operations
+## Staging environment workflow (agency operations)
 
-The API staging admin endpoints now rely on local PostgreSQL tooling (`pg_dump`, `psql`) and `rsync` through `apps/api/scripts/staging-env-sync.sh`.
+Use staging as a controlled pre-production clone of live for editorial QA and release checks.
 
-Required environment variables:
+### Environment model
+
+- **live**: production database + uploads used by the public site.
+- **staging**: non-public validation environment used before publishing changes to live.
+
+### Required environment variables for staging operations
+
+The API staging admin endpoints rely on local PostgreSQL tooling (`pg_dump`, `psql`) and `rsync` through `apps/api/scripts/staging-env-sync.sh`.
+
+Required:
 
 - `LIVE_DATABASE_URL`
 - `STAGING_DATABASE_URL`
 - `LIVE_UPLOADS_PATH`
 - `STAGING_UPLOADS_PATH`
 
-Optional operational override:
+Environment mode flags (recommended/required for hardened behavior):
 
-- `STAGING_SYNC_SCRIPT_PATH` (absolute path to the helper script if not using the default project locations).
+- `NODE_ENV=production`
+- `DEPLOY_ENV=staging` (staging runtime) / `DEPLOY_ENV=production` (live runtime)
 
-Optional extra safety for push-to-live:
+Optional safety/operations:
 
-- `STAGING_PUSH_CONFIRMATION_TOKEN` (if set, callers must provide this token in the API request body).
+- `STAGING_PUSH_CONFIRMATION_TOKEN` (if set, callers must provide this token in the API payload)
+- `STAGING_SYNC_SCRIPT_PATH` (absolute helper script override if not using default project path)
 
-The push-to-live API path also requires an explicit payload flag: `confirmPushToLive=true`.
+### How staging actions work
+
+- **Reset staging from live**
+  - Copies live database to staging database.
+  - Syncs live uploads to staging uploads.
+  - Overwrites all staging data/media.
+- **Push staging to live**
+  - Copies staging database to live database.
+  - Syncs staging uploads to live uploads.
+  - Overwrites all live data/media.
+  - Requires `confirmPushToLive=true` in request payload.
+  - If configured, also requires matching `confirmationToken` (`STAGING_PUSH_CONFIRMATION_TOKEN`).
+- **Delete staging**
+  - Drops/recreates staging schema and removes staging uploads path.
+
+### Lock behavior
+
+- Destructive staging actions acquire a lock (`syncing`, `pushing`, `deleting`).
+- While locked, concurrent destructive actions are rejected.
+- On success, lock returns to `idle` and state is updated.
+- On failure, state is marked `stale` and lock returns to `idle` for operator recovery.
+
+### Access model
+
+- **Editor**: no staging access.
+- **Admin**: can view staging status.
+- **Superadmin**: can run reset-from-live, push-to-live, and delete staging.
+
+### Safety warnings
+
+- ⚠️ Push-to-live overwrites live data.
+- ⚠️ Reset-from-live overwrites staging data.
+- ⚠️ Staging actions should always be auditable.
+- ⚠️ Backups are strongly recommended before push-to-live.
+
+### Audit events
 
 Audit log action names emitted by staging admin endpoints:
 
@@ -127,3 +173,15 @@ Audit log action names emitted by staging admin endpoints:
 - `staging_push_to_live`
 - `staging_deleted`
 - `staging_action_failed`
+
+### Recommended staging checklist
+
+Before approving push-to-live:
+
+- [ ] Verify auth/login and role gating.
+- [ ] Verify page editing flow in admin UI.
+- [ ] Verify publish flow (draft/revision/publish).
+- [ ] Verify redirect behavior.
+- [ ] Verify media upload, render, and replace/delete behavior.
+- [ ] Verify revision restore on representative pages/content items.
+- [ ] Verify smoke test pass (`pnpm smoke:test`).

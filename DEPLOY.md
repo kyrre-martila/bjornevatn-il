@@ -166,7 +166,65 @@ This prevents test/dev token shortcuts from silently leaking into staging.
 | `NEXT_PUBLIC_CSP_MEDIA_ORIGINS` | - | ✅ | Optional | Comma-separated external media/CDN origins added to `img-src`. |
 | `MEDIA_STORAGE_PROVIDER` | ✅ | - | Optional | Only `local` implemented by default blueprint. |
 
-## 8) Database requirements
+## 8) Staging deployment model and safety
+
+### Environment model
+
+- **live**: production data and uploads; this is your public source of truth.
+- **staging**: pre-production clone used by admins/superadmins for release validation.
+
+### Required staging sync environment variables
+
+These variables are required when using staging sync actions (`reset-from-live`, `push-to-live`, `delete`):
+
+- `LIVE_DATABASE_URL`
+- `STAGING_DATABASE_URL`
+- `LIVE_UPLOADS_PATH`
+- `STAGING_UPLOADS_PATH`
+
+Environment mode flags for hardened behavior:
+
+- `NODE_ENV=production`
+- `DEPLOY_ENV=staging` (for staging) or `DEPLOY_ENV=production` (for live)
+
+Recommended safety add-ons:
+
+- `STAGING_PUSH_CONFIRMATION_TOKEN` (optional second confirmation for push-to-live)
+- `STAGING_SYNC_SCRIPT_PATH` (optional absolute path override for sync helper script)
+
+### How staging operations behave
+
+- **Reset staging from live** copies live DB/uploads to staging and overwrites existing staging content.
+- **Push staging to live** copies staging DB/uploads to live and overwrites live production content.
+- **Delete staging** drops staging schema/content and removes staging uploads.
+- Operations are lock-protected; only one destructive staging action can run at a time.
+  - During execution the lock status is `syncing`, `pushing`, or `deleting`.
+  - If an operation fails mid-flight, status is marked `stale` and lock returns to `idle`.
+
+### Access model
+
+- **Editor**: cannot access staging endpoints/actions.
+- **Admin**: can view staging status.
+- **Superadmin**: can run reset, push-to-live, and delete staging actions.
+
+### Safety warnings
+
+- ⚠️ **Push-to-live overwrites live data and uploads.**
+- ⚠️ **Reset-from-live overwrites staging data and uploads.**
+- ⚠️ **All staging actions should be audit logged and reviewed.**
+- ⚠️ **Take verified backups before any push-to-live action.**
+
+### Recommended staging release checklist
+
+- [ ] Verify authentication and role-based access behavior.
+- [ ] Verify page editing in admin workflows.
+- [ ] Verify draft/revision/publish flow.
+- [ ] Verify redirect behavior.
+- [ ] Verify media upload/render/delete behavior.
+- [ ] Verify revision restore on representative content.
+- [ ] Run deployment smoke tests (`pnpm smoke:test`).
+
+## 9) Database requirements
 
 - PostgreSQL 16-compatible
 - network access from API runtime
