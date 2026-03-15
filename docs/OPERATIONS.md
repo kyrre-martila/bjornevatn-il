@@ -79,21 +79,32 @@ Run the post-deploy smoke test from the repo root:
 pnpm smoke:test
 ```
 
-The script validates these endpoints:
+The script validates these endpoints and role checks:
 
 - API health endpoint (`GET /health`)
-- login endpoint (`POST /api/v1/auth/login`)
+- login endpoints for admin/editor/superadmin (`POST /api/v1/auth/login`)
 - admin authentication (`GET /api/v1/content/pages` with admin session cookie)
 - public content endpoint (`GET /api/v1/public/content/pages`)
+- staging status endpoint (`GET /api/v1/admin/staging/status`)
+- staging page access with auth cookie (`GET /admin/staging`)
+- staging authorization controls:
+  - reset-from-live (`POST /api/v1/admin/staging/reset-from-live`)
+  - push-to-live (`POST /api/v1/admin/staging/push-to-live`)
+  - delete staging (`DELETE /api/v1/admin/staging`)
 - sitemap endpoint (`GET /sitemap.xml`)
 
 Required environment variables:
 
-- `SMOKE_ADMIN_PASSWORD`: password for the admin account used in the check.
+- `SMOKE_ADMIN_PASSWORD`: password for admin account.
+- `SMOKE_EDITOR_PASSWORD`: password for editor account.
+- `SMOKE_SUPERADMIN_PASSWORD`: password for superadmin account.
 
 Optional environment variables:
 
 - `SMOKE_ADMIN_EMAIL` (default: `admin@example.com`)
+- `SMOKE_EDITOR_EMAIL` (default: `editor@example.com`)
+- `SMOKE_SUPERADMIN_EMAIL` (default: `superadmin@example.com`)
+- `SMOKE_STAGING_PUSH_CONFIRMATION_TOKEN` (set when API requires `STAGING_PUSH_CONFIRMATION_TOKEN`)
 - `SMOKE_API_ORIGIN` (default: `http://localhost:4000`)
 - `SMOKE_WEB_ORIGIN` (default: `http://localhost:3000`)
 - `SMOKE_API_BASE_PATH` (default: `/api/v1`)
