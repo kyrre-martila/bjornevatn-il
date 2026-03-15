@@ -4,6 +4,8 @@ import "./globals.css";
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 
+import { StagingBanner } from "./StagingBanner";
+
 export const metadata: Metadata = {
   title: "Blueprint App",
   description: "Fullstack blueprint",
@@ -28,7 +30,10 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className="app-root">{children}</body>
+      <body className="app-root">
+        <StagingBanner />
+        {children}
+      </body>
     </html>
   );
 }

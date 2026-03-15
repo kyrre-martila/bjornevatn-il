@@ -1743,3 +1743,64 @@ button:focus-visible {
   color: var(--site-color-primary, var(--color-primary));
   text-decoration: underline;
 }
+
+.staging-banner {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  background: #b45309;
+  color: #fff;
+  border-bottom: 2px solid #7c2d12;
+}
+
+.staging-banner__inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0.5rem 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  font-size: 0.875rem;
+}
+
+.staging-banner__pill {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 999px;
+  padding: 0.125rem 0.5rem;
+  font-weight: 600;
+}
+
+.staging-banner__link,
+.staging-banner__button {
+  background: rgba(255, 255, 255, 0.2);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  border-radius: 0.375rem;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.8rem;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.staging-banner__actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.staging-banner__status,
+.staging-banner__error {
+  font-size: 0.75rem;
+}
+
+.staging-banner__error {
+  color: #fef3c7;
+}
+
+.staging-banner__spacer {
+  height: 3rem;
+}
