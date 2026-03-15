@@ -1632,6 +1632,18 @@ export class ContentController {
   private async validateContentTypeFields(
     fields: ContentFieldDefinition[],
   ): Promise<void> {
+    const relationsByField = new Map<
+      string,
+      {
+        targetType: "contentType" | "page" | "media";
+        targetSlug?: string;
+        targetModel?: string;
+        multiple?: boolean;
+      }
+    >();
+
+    const contentTypeSlugs = new Set<string>();
+
     for (const field of fields) {
       if (
         field.type !== "relation" &&
@@ -1665,6 +1677,8 @@ export class ContentController {
         );
       }
 
+      relationsByField.set(field.key, relation);
+
       if (relation.targetType === "contentType") {
         const targetSlug = relation.targetSlug?.trim();
         const targetModel = relation.targetModel?.trim();
@@ -1675,12 +1689,34 @@ export class ContentController {
           );
         }
 
-        const target = await this.contentTypes.findBySlug(resolvedTarget);
-        if (!target) {
-          throw new BadRequestException(
-            `Field ${field.key} references unknown content type slug: ${resolvedTarget}.`,
-          );
-        }
+        contentTypeSlugs.add(resolvedTarget);
+      }
+    }
+
+    const contentTypes = await this.contentTypes.findManyBySlugs([
+      ...contentTypeSlugs,
+    ]);
+    const contentTypeBySlug = new Map(
+      contentTypes.map((contentType) => [contentType.slug, contentType]),
+    );
+
+    for (const field of fields) {
+      const relation = relationsByField.get(field.key);
+      if (!relation || relation.targetType !== "contentType") {
+        continue;
+      }
+
+      const targetSlug = relation.targetSlug?.trim();
+      const targetModel = relation.targetModel?.trim();
+      const resolvedTarget = targetSlug || targetModel;
+      if (!resolvedTarget) {
+        continue;
+      }
+
+      if (!contentTypeBySlug.has(resolvedTarget)) {
+        throw new BadRequestException(
+          `Field ${field.key} references unknown content type slug: ${resolvedTarget}.`,
+        );
       }
     }
   }
@@ -1736,6 +1772,23 @@ export class ContentController {
 
       return [normalized];
     };
+
+    const contentTypeSlugs = new Set<string>();
+    const pageIds = new Set<string>();
+    const mediaIds = new Set<string>();
+    const contentItemIds = new Set<string>();
+
+    const relationChecks: Array<{
+      field: ContentFieldDefinition;
+      relation: {
+        targetType: "contentType" | "page" | "media";
+        targetSlug?: string;
+        targetModel?: string;
+        multiple?: boolean;
+      };
+      ids: string[];
+      resolvedTarget?: string;
+    }> = [];
 
     for (const field of fields) {
       const value = data[field.key];
@@ -1810,10 +1863,52 @@ export class ContentController {
       }
 
       const ids = normalizeRelationIds(field, value);
+      let resolvedTarget: string | undefined;
+      if (relation.targetType === "contentType") {
+        const targetSlug = relation.targetSlug?.trim();
+        const targetModel = relation.targetModel?.trim();
+        resolvedTarget = targetSlug || targetModel;
+        if (!resolvedTarget) {
+          throw new BadRequestException(
+            `Field ${field.key} requires relation.targetSlug or relation.targetModel when targetType is contentType.`,
+          );
+        }
+        contentTypeSlugs.add(resolvedTarget);
+      }
+
       for (const refId of ids) {
         if (relation.targetType === "page") {
-          const page = await this.pages.findById(refId);
-          if (!page) {
+          pageIds.add(refId);
+        } else if (relation.targetType === "media") {
+          mediaIds.add(refId);
+        } else if (relation.targetType === "contentType") {
+          contentItemIds.add(refId);
+        }
+      }
+
+      relationChecks.push({ field, relation, ids, resolvedTarget });
+    }
+
+    const [pages, media, contentItems, targetContentTypes] = await Promise.all([
+      this.pages.findManyByIds([...pageIds]),
+      this.media.findManyByIds([...mediaIds]),
+      this.contentItems.findManyByIds([...contentItemIds]),
+      this.contentTypes.findManyBySlugs([...contentTypeSlugs]),
+    ]);
+
+    const pageById = new Map(pages.map((page) => [page.id, page]));
+    const mediaById = new Map(media.map((item) => [item.id, item]));
+    const contentItemById = new Map(contentItems.map((item) => [item.id, item]));
+    const contentTypeBySlug = new Map(
+      targetContentTypes.map((contentType) => [contentType.slug, contentType]),
+    );
+
+    for (const check of relationChecks) {
+      const { field, relation, ids, resolvedTarget } = check;
+
+      for (const refId of ids) {
+        if (relation.targetType === "page") {
+          if (!pageById.has(refId)) {
             throw new BadRequestException(
               `Field ${field.key} references missing page.`,
             );
@@ -1822,13 +1917,13 @@ export class ContentController {
         }
 
         if (relation.targetType === "media") {
-          const media = await this.media.findById(refId);
-          if (!media) {
+          const matchedMedia = mediaById.get(refId);
+          if (!matchedMedia) {
             throw new BadRequestException(
               `Field ${field.key} references missing media.`,
             );
           }
-          if (!media.alt.trim()) {
+          if (!matchedMedia.alt.trim()) {
             throw new BadRequestException(
               `Field ${field.key} references media without alt text. Update that media item before saving.`,
             );
@@ -1837,24 +1932,18 @@ export class ContentController {
         }
 
         if (relation.targetType === "contentType") {
-          const targetSlug = relation.targetSlug?.trim();
-          const targetModel = relation.targetModel?.trim();
-          const resolvedTarget = targetSlug || targetModel;
           if (!resolvedTarget) {
-            throw new BadRequestException(
-              `Field ${field.key} requires relation.targetSlug or relation.targetModel when targetType is contentType.`,
-            );
+            continue;
           }
 
-          const targetContentType =
-            await this.contentTypes.findBySlug(resolvedTarget);
+          const targetContentType = contentTypeBySlug.get(resolvedTarget);
           if (!targetContentType) {
             throw new BadRequestException(
               `Field ${field.key} references unknown content type slug: ${resolvedTarget}.`,
             );
           }
 
-          const referencedItem = await this.contentItems.findById(refId);
+          const referencedItem = contentItemById.get(refId);
           if (
             !referencedItem ||
             referencedItem.contentTypeId !== targetContentType.id

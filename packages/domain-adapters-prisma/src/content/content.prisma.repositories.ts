@@ -589,6 +589,18 @@ export class PagesPrismaRepository implements PagesRepository {
     return page ? mapPage(page) : null;
   }
 
+  async findManyByIds(ids: string[]): Promise<Page[]> {
+    if (ids.length === 0) {
+      return [];
+    }
+
+    const pages = await this.prisma.page.findMany({
+      where: { id: { in: ids } },
+      include: { blocks: { orderBy: { order: "asc" } } },
+    });
+    return pages.map(mapPage);
+  }
+
   async findBySlug(slug: string): Promise<Page | null> {
     const page = await this.prisma.page.findUnique({
       where: { slug },
@@ -1038,6 +1050,17 @@ export class ContentTypesPrismaRepository implements ContentTypesRepository {
     return type ? mapContentType(type) : null;
   }
 
+  async findManyBySlugs(slugs: string[]): Promise<ContentType[]> {
+    if (slugs.length === 0) {
+      return [];
+    }
+
+    const types = await this.prisma.contentType.findMany({
+      where: { slug: { in: slugs } },
+    });
+    return types.map(mapContentType);
+  }
+
   async findBySlug(slug: string): Promise<ContentType | null> {
     const type = await this.prisma.contentType.findUnique({ where: { slug } });
     return type ? mapContentType(type) : null;
@@ -1170,6 +1193,18 @@ export class ContentItemsPrismaRepository implements ContentItemsRepository {
 
     const [resolved] = await this.resolveReferences([mapContentItem(item)]);
     return resolved ?? null;
+  }
+
+  async findManyByIds(ids: string[]): Promise<ContentItem[]> {
+    if (ids.length === 0) {
+      return [];
+    }
+
+    const items = await this.prisma.contentItem.findMany({
+      where: { id: { in: ids } },
+    });
+
+    return this.resolveReferences(items.map(mapContentItem));
   }
 
   async findBySlug(
@@ -1960,6 +1995,18 @@ export class MediaPrismaRepository implements MediaRepository {
   async findById(id: string): Promise<Media | null> {
     const media = await this.prisma.media.findUnique({ where: { id } });
     return media ? mapMedia(media) : null;
+  }
+
+  async findManyByIds(ids: string[]): Promise<Media[]> {
+    if (ids.length === 0) {
+      return [];
+    }
+
+    const media = await this.prisma.media.findMany({
+      where: { id: { in: ids } },
+    });
+
+    return media.map(mapMedia);
   }
 
   async create(data: Omit<Media, "id" | "createdAt">): Promise<Media> {

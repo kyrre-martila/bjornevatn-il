@@ -35,6 +35,7 @@ export type RevisionWriteMetadata = {
 export interface PagesRepository {
   findMany(pagination?: PaginationParams): Promise<Page[]>;
   findById(id: string): Promise<Page | null>;
+  findManyByIds(ids: string[]): Promise<Page[]>;
   findBySlug(slug: string): Promise<Page | null>;
   findBySlugOrRedirect(slug: string): Promise<SlugLookupResult<Page> | null>;
   create(data: Omit<Page, "id" | "createdAt" | "updatedAt">): Promise<Page>;
@@ -76,6 +77,7 @@ export interface ContentTypesRepository {
   findMany(pagination?: PaginationParams): Promise<ContentType[]>;
   findManyPublic(pagination?: PaginationParams): Promise<ContentType[]>;
   findById(id: string): Promise<ContentType | null>;
+  findManyBySlugs(slugs: string[]): Promise<ContentType[]>;
   findBySlug(slug: string): Promise<ContentType | null>;
   findPublicBySlug(slug: string): Promise<ContentType | null>;
   create(
@@ -106,6 +108,7 @@ export interface ContentItemsRepository {
     contentTypeSlug: string,
   ): Promise<ContentItemTreeNode[]>;
   findById(id: string): Promise<ContentItem | null>;
+  findManyByIds(ids: string[]): Promise<ContentItem[]>;
   findBySlug(
     contentTypeSlug: string,
     slug: string,
@@ -160,6 +163,7 @@ export interface SiteSettingsRepository {
 export interface MediaRepository {
   findMany(pagination?: PaginationParams): Promise<Media[]>;
   findById(id: string): Promise<Media | null>;
+  findManyByIds(ids: string[]): Promise<Media[]>;
   create(data: Omit<Media, "id" | "createdAt">): Promise<Media>;
   update(
     id: string,

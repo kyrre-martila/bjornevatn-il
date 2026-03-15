@@ -3,7 +3,7 @@ jest.mock("bcrypt", () => ({
   compare: jest.fn(),
 }));
 
-import { ConflictException } from "@nestjs/common";
+import { BadRequestException, ConflictException } from "@nestjs/common";
 import type {
   ContentItemsRepository,
   ContentTypesRepository,
@@ -111,5 +111,154 @@ describe("ContentController deleteContentType", () => {
 
     expect(contentItems.countByContentTypeId).toHaveBeenCalledWith("type-3");
     expect(contentTypes.delete).toHaveBeenCalledWith("type-3");
+  });
+});
+
+
+describe("ContentController createContentItem validation batching", () => {
+  function makeSut() {
+    const pages = {
+      findManyByIds: jest.fn().mockResolvedValue([{ id: "page-1" }]),
+      findById: jest.fn(),
+    } as unknown as jest.Mocked<PagesRepository>;
+
+    const contentTypes = {
+      findById: jest.fn().mockResolvedValue({
+        id: "type-post",
+        slug: "post",
+        name: "Post",
+        description: "",
+        fields: [
+          {
+            key: "relatedPosts",
+            type: "contentItem",
+            required: false,
+            relation: { targetType: "contentType", targetSlug: "post", multiple: true },
+          },
+          {
+            key: "heroMedia",
+            type: "media",
+            required: false,
+            relation: { targetType: "media" },
+          },
+          {
+            key: "landingPage",
+            type: "page",
+            required: false,
+            relation: { targetType: "page" },
+          },
+        ],
+      }),
+      findManyBySlugs: jest.fn().mockResolvedValue([
+        {
+          id: "type-post",
+          slug: "post",
+          name: "Post",
+          description: "",
+          fields: [],
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          templateKey: null,
+          isPublic: true,
+        },
+      ]),
+    } as unknown as jest.Mocked<ContentTypesRepository>;
+
+    const contentItems = {
+      countByContentTypeId: jest.fn(),
+      findManyByIds: jest
+        .fn()
+        .mockResolvedValue([{ id: "item-1", contentTypeId: "type-post" }]),
+      findById: jest.fn(),
+      create: jest.fn().mockResolvedValue({ id: "created-item" }),
+    } as unknown as jest.Mocked<ContentItemsRepository>;
+
+    const navigation = {} as NavigationItemsRepository;
+    const settings = {} as SiteSettingsRepository;
+
+    const media = {
+      findMany: jest.fn().mockResolvedValue([]),
+      findManyByIds: jest
+        .fn()
+        .mockResolvedValue([{ id: "media-1", alt: "Descriptive alt text" }]),
+      findById: jest.fn(),
+    } as unknown as jest.Mocked<MediaRepository>;
+
+    const auth = {
+      validateUser: jest.fn().mockResolvedValue({
+        id: "editor-1",
+        role: "superadmin",
+      }),
+    } as unknown as jest.Mocked<AuthService>;
+
+    const audit = {
+      log: jest.fn(),
+    } as unknown as jest.Mocked<AuditService>;
+
+    const mediaService = {} as MediaService;
+    const mediaUsageService = {
+      isMediaUrlUsed: jest.fn(),
+      getUsedUrls: jest.fn(),
+    } as unknown as jest.Mocked<MediaUsageService>;
+
+    const controller = new ContentController(
+      pages,
+      contentTypes,
+      contentItems,
+      navigation,
+      settings,
+      media,
+      mediaService,
+      mediaUsageService,
+      auth,
+      audit,
+    );
+
+    return { controller, pages, contentTypes, contentItems, media };
+  }
+
+  it("uses batched repository lookups for relation validation", async () => {
+    const { controller, pages, contentTypes, contentItems, media } = makeSut();
+
+    await controller.createContentItem(makeRequest(), {
+      contentTypeId: "type-post",
+      slug: "new-item",
+      title: "New item",
+      data: {
+        relatedPosts: ["item-1"],
+        heroMedia: "media-1",
+        landingPage: "page-1",
+      },
+      published: false,
+    });
+
+    expect(contentTypes.findManyBySlugs).toHaveBeenCalledWith(["post"]);
+    expect(pages.findManyByIds).toHaveBeenCalledWith(["page-1"]);
+    expect(media.findManyByIds).toHaveBeenCalledWith(["media-1"]);
+    expect(contentItems.findManyByIds).toHaveBeenCalledWith(["item-1"]);
+    expect(pages.findById).not.toHaveBeenCalled();
+    expect(media.findById).not.toHaveBeenCalled();
+    expect(contentItems.findById).not.toHaveBeenCalled();
+  });
+
+  it("keeps validation behavior for unknown relation content types", async () => {
+    const { controller, contentTypes } = makeSut();
+    contentTypes.findManyBySlugs = jest.fn().mockResolvedValue([]);
+
+    await expect(
+      controller.createContentItem(makeRequest(), {
+        contentTypeId: "type-post",
+        slug: "new-item",
+        title: "New item",
+        data: {
+          relatedPosts: ["item-1"],
+        },
+        published: false,
+      }),
+    ).rejects.toEqual(
+      new BadRequestException(
+        "Field relatedPosts references unknown content type slug: post.",
+      ),
+    );
   });
 });
