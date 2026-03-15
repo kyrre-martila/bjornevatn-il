@@ -24,6 +24,34 @@ This repository is a blueprint, not a finished product. The architecture and def
 - **Production guidance:** local storage is production-usable for single-server deployments (homelab/single VM/simple VPS) when `uploads/` is persisted and backed up.
 - **Cloud-provider go-live requirements:** before enabling S3/R2/Supabase, implement and validate provider behavior end-to-end (upload/delete/url generation/credentials/policies/operational monitoring).
 
+### Production readiness matrix
+
+| Area | Status | Notes |
+| --- | --- | --- |
+| Auth | **implemented** | Local email/password auth with JWT + server-side session validation, password reset flow, and cookie-first web auth are available now. |
+| RBAC | **partially implemented** | Role-aware admin access exists (`editor`/`admin`/`super_admin`), but fine-grained, policy-level permissions are project-specific. |
+| Pages/content editing | **implemented** | Admin APIs and web UI support editing pages, blocks, content types, and content items. |
+| Media storage | **partially implemented** | Local filesystem provider is production-usable for single-server setups; cloud object storage providers are extension points. |
+| Revisions | **implemented** | Page/content revision history and restore flows are included in the content domain. |
+| Scheduled publishing | **planned** | Not shipped as an automated scheduling workflow in this blueprint. |
+| Approval workflow | **planned** | Multi-step editorial approval flows are intentionally left for project customization. |
+| Audit log | **partially implemented** | Audit logging infrastructure exists, but full editorial-event coverage should be extended per project requirements. |
+| Redirects | **implemented** | Legacy slug redirects are supported in public content resolution. |
+| Deployment | **implemented** | Docker + CI/CD-oriented deployment scaffolding and production checks are included. |
+| Staging | **partially implemented** | Environment-aware hardening exists; teams still need to provision and operate their own staging environment/process. |
+
+### Before first client launch
+
+- [ ] Keep public registration disabled unless explicitly required (`REGISTRATION_ENABLED=false` and matching web toggle).
+- [ ] Configure and validate the mailer for password-reset and operational emails.
+- [ ] Verify database and upload-storage backups (and restore procedure).
+- [ ] Verify `/health` and readiness checks in the target environment.
+- [ ] Test end-to-end auth flows (login, logout, forgot password, reset password).
+- [ ] Test redirect handling for changed/legacy slugs.
+- [ ] Test the real publish workflow your editors will use (draft/revision/publish expectations).
+- [ ] Confirm media storage mode (local persisted volume vs custom object storage provider).
+- [ ] Confirm admin/editor role assignments and least-privilege access before handoff.
+
 ## One root-level workflow
 
 ```bash
