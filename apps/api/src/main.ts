@@ -33,6 +33,7 @@ import { join } from "node:path";
 import type { Logger } from "pino";
 import { startOtel, shutdownOtel } from "../otel";
 import { PrismaService } from "./prisma/prisma.service";
+import { API_PREFIX } from "./config/api-prefix";
 
 function configureCors(app: INestApplication, allowedOrigins: string[]) {
   const allowedMethods = "GET,POST,PUT,PATCH,DELETE,OPTIONS";
@@ -76,7 +77,6 @@ function configureCors(app: INestApplication, allowedOrigins: string[]) {
   });
 }
 
-const API_PREFIX = "api/v1";
 
 async function emitOpenApiDocument(app: INestApplication) {
   const { SwaggerModule, DocumentBuilder } = await import("@nestjs/swagger");
