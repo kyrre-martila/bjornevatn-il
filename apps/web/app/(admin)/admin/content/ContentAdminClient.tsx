@@ -165,6 +165,82 @@ function formatImpactSummaryMessage(items: ImpactSummaryItem[]): string {
   return lines.join("\n");
 }
 
+function buildContentImpactSummaryItems(params: {
+  previousSlug: string;
+  nextSlug: string;
+  typeSlug: string;
+  existingCanonicalUrl: string | null;
+  nextCanonicalUrl: string | null;
+  existingNoIndex: boolean;
+  nextNoIndex: boolean;
+  existingPublished: boolean;
+  nextPublished: boolean;
+  existingPublishAt: string | null;
+  nextPublishAt: string | null;
+  existingUnpublishAt: string | null;
+  nextUnpublishAt: string | null;
+  existingWorkflowStatus: WorkflowStatus;
+  nextWorkflowStatus: WorkflowStatus;
+}): ImpactSummaryItem[] {
+  const items: ImpactSummaryItem[] = [];
+
+  if (params.previousSlug !== params.nextSlug) {
+    items.push({
+      label: "change the public URL",
+      oldValue: `/${params.typeSlug}/${params.previousSlug}`,
+      newValue: `/${params.typeSlug}/${params.nextSlug}`,
+    });
+    items.push({
+      label: "affect redirects or inbound links",
+    });
+  }
+
+  if (params.existingCanonicalUrl !== params.nextCanonicalUrl) {
+    items.push({
+      label: "change canonical URL used by search engines",
+      oldValue: formatImpactValue(params.existingCanonicalUrl),
+      newValue: formatImpactValue(params.nextCanonicalUrl),
+    });
+  }
+
+  if (params.existingNoIndex !== params.nextNoIndex) {
+    items.push({
+      label: "affect search engine indexing",
+      oldValue: params.existingNoIndex ? "noindex" : "index",
+      newValue: params.nextNoIndex ? "noindex" : "index",
+    });
+  }
+
+  if (params.existingPublished !== params.nextPublished) {
+    items.push({
+      label: "change whether the page is publicly visible",
+      oldValue: params.existingPublished ? "public" : "hidden",
+      newValue: params.nextPublished ? "public" : "hidden",
+    });
+  }
+
+  if (
+    params.existingPublishAt !== params.nextPublishAt ||
+    params.existingUnpublishAt !== params.nextUnpublishAt
+  ) {
+    items.push({
+      label: "change scheduled visibility",
+      oldValue: `publishAt=${formatImpactValue(params.existingPublishAt)}, unpublishAt=${formatImpactValue(params.existingUnpublishAt)}`,
+      newValue: `publishAt=${formatImpactValue(params.nextPublishAt)}, unpublishAt=${formatImpactValue(params.nextUnpublishAt)}`,
+    });
+  }
+
+  if (params.existingWorkflowStatus !== params.nextWorkflowStatus) {
+    items.push({
+      label: "change workflow status",
+      oldValue: workflowStatusLabel(params.existingWorkflowStatus),
+      newValue: workflowStatusLabel(params.nextWorkflowStatus),
+    });
+  }
+
+  return items;
+}
+
 function describeApiError(fallback: string, payload: unknown): string {
   if (typeof payload === "string" && payload.trim()) {
     return payload;
@@ -1041,12 +1117,14 @@ function ContentItemEditor({
 
   return (
     <form
+      className="page-editor__form page-editor__card"
       onSubmit={(e) => {
         e.preventDefault();
         void submit("draft");
       }}
     >
       <h4>{item.title}</h4>
+      <p className="page-editor__field-help">Update this entry using the guided fields below.</p>
       <label>
         Title
         <input
@@ -1489,13 +1567,13 @@ export function ContentAdminClient({
     };
 
     if (!payload.name) {
-      setError("Content model name is required before saving.");
+      setError("Content type name is required before saving.");
       return;
     }
 
     if (!payload.slug || !isValidSlug(payload.slug)) {
       setError(
-        "Content model URL slug can use only lowercase letters, numbers, and single hyphens.",
+        "Content type URL slug can use only lowercase letters, numbers, and single hyphens.",
       );
       return;
     }
@@ -1542,7 +1620,7 @@ export function ContentAdminClient({
       isPublic: true,
       fields: [],
     });
-    setStatus("Content model saved.");
+    setStatus("Content type saved.");
   }
 
   async function deleteContentType(id: string) {
@@ -1587,7 +1665,7 @@ export function ContentAdminClient({
       return next;
     });
     setSelectedTypeId((current) => (current === id ? "" : current));
-    setStatus("Content model deleted.");
+    setStatus("Content type deleted.");
   }
 
   async function saveContentItem(payload: {
@@ -1622,82 +1700,69 @@ export function ContentAdminClient({
       return;
     }
 
+    let impactSummaryItems: ImpactSummaryItem[] = [];
     if (payload.id) {
       const existing = selectedItems.find((entry) => entry.id === payload.id);
       if (existing) {
         const previousSlug = normalizeSlug(existing.slug);
         const nextSlug = normalizeSlug(payload.slug);
-        if (previousSlug !== nextSlug) {
-          if (!canEditSlug) {
-            setError("Only admins and superadmins can change entry URLs.");
-            return;
-          }
+        if (previousSlug !== nextSlug && !canEditSlug) {
+          setError("Only admins and superadmins can change entry URLs.");
+          return;
         }
 
-        const impactSummaryItems: ImpactSummaryItem[] = [];
-        if (previousSlug !== nextSlug) {
-          impactSummaryItems.push({
-            label: "change the public URL",
-            oldValue: `/${selectedType.slug}/${previousSlug}`,
-            newValue: `/${selectedType.slug}/${nextSlug}`,
-          });
-          impactSummaryItems.push({
-            label: "affect redirects or inbound links",
-          });
-        }
+        impactSummaryItems = buildContentImpactSummaryItems({
+          previousSlug,
+          nextSlug,
+          typeSlug: selectedType.slug,
+          existingCanonicalUrl: existing.canonicalUrl ?? null,
+          nextCanonicalUrl: payload.canonicalUrl,
+          existingNoIndex: existing.noIndex,
+          nextNoIndex: payload.noIndex,
+          existingPublished: existing.published,
+          nextPublished: payload.published,
+          existingPublishAt: existing.publishAt ?? null,
+          nextPublishAt: payload.publishAt,
+          existingUnpublishAt: existing.unpublishAt ?? null,
+          nextUnpublishAt: payload.unpublishAt,
+          existingWorkflowStatus:
+            existing.workflowStatus ?? (existing.published ? "published" : "draft"),
+          nextWorkflowStatus: payload.workflowStatus,
+        });
+      }
+    } else {
+      if (payload.published) {
+        impactSummaryItems.push({
+          label: "make this entry publicly visible after saving",
+          oldValue: "hidden",
+          newValue: "public",
+        });
+      }
 
-        if ((existing.canonicalUrl ?? null) !== payload.canonicalUrl) {
-          impactSummaryItems.push({
-            label: "change canonical URL used by search engines",
-            oldValue: formatImpactValue(existing.canonicalUrl),
-            newValue: formatImpactValue(payload.canonicalUrl),
-          });
-        }
+      if (payload.noIndex) {
+        impactSummaryItems.push({
+          label: "request search engines not to index this entry",
+          oldValue: "index",
+          newValue: "noindex",
+        });
+      }
 
-        if (existing.noIndex !== payload.noIndex) {
-          impactSummaryItems.push({
-            label: "affect search engine indexing",
-            oldValue: existing.noIndex ? "noindex" : "index",
-            newValue: payload.noIndex ? "noindex" : "index",
-          });
-        }
+      if (payload.publishAt || payload.unpublishAt) {
+        impactSummaryItems.push({
+          label: "apply a publishing schedule to this new entry",
+          oldValue: "publishAt=(empty), unpublishAt=(empty)",
+          newValue: `publishAt=${formatImpactValue(payload.publishAt)}, unpublishAt=${formatImpactValue(payload.unpublishAt)}`,
+        });
+      }
+    }
 
-        if (existing.published !== payload.published) {
-          impactSummaryItems.push({
-            label: "change whether the page is publicly visible",
-            oldValue: existing.published ? "public" : "hidden",
-            newValue: payload.published ? "public" : "hidden",
-          });
-        }
-
-        if (
-          (existing.publishAt ?? null) !== payload.publishAt ||
-          (existing.unpublishAt ?? null) !== payload.unpublishAt
-        ) {
-          impactSummaryItems.push({
-            label: "change scheduled visibility",
-            oldValue: `publishAt=${formatImpactValue(existing.publishAt)}, unpublishAt=${formatImpactValue(existing.unpublishAt)}`,
-            newValue: `publishAt=${formatImpactValue(payload.publishAt)}, unpublishAt=${formatImpactValue(payload.unpublishAt)}`,
-          });
-        }
-
-        if (existing.workflowStatus !== payload.workflowStatus) {
-          impactSummaryItems.push({
-            label: "change workflow status",
-            oldValue: workflowStatusLabel(existing.workflowStatus),
-            newValue: workflowStatusLabel(payload.workflowStatus),
-          });
-        }
-
-        if (impactSummaryItems.length > 0) {
-          const confirmed = window.confirm(
-            formatImpactSummaryMessage(impactSummaryItems),
-          );
-          if (!confirmed) {
-            setStatus("Save cancelled.");
-            return;
-          }
-        }
+    if (impactSummaryItems.length > 0) {
+      const confirmed = window.confirm(
+        formatImpactSummaryMessage(impactSummaryItems),
+      );
+      if (!confirmed) {
+        setStatus("Save cancelled.");
+        return;
       }
     }
 
@@ -1835,14 +1900,14 @@ export function ContentAdminClient({
         <strong>{isSimpleMode ? "Simple mode" : "Advanced mode"}</strong>
       </p>
       <p>
-        Day-to-day editing happens below. Schema and field design tools are
-        separated into a protected setup area.
+        Day-to-day editing happens below. Content setup tools are kept in a
+        separate protected area.
       </p>
-      {error && <p>{error}</p>}
-      {status && <p>{status}</p>}
+      {error && <p className="page-editor__error">{error}</p>}
+      {status && <p className="page-editor__status">{status}</p>}
 
       <h2>Content editing</h2>
-      <div>
+      <div className="page-editor__actions">
         {contentTypes.map((type) => (
           <button
             key={type.id}
