@@ -11,6 +11,8 @@ import type {
   Taxonomy,
   Term,
   ContentItemTerm,
+  PageRevision,
+  ContentItemRevision,
 } from "./content.entity";
 
 export type PaginationParams = {
@@ -31,6 +33,14 @@ export interface PagesRepository {
     data: Partial<Omit<Page, "id" | "createdAt" | "updatedAt">>,
   ): Promise<Page>;
   delete(id: string): Promise<void>;
+  listRevisions(pageId: string): Promise<PageRevision[]>;
+  findRevisionById(pageId: string, revisionId: string): Promise<PageRevision | null>;
+  restoreRevision(
+    pageId: string,
+    revisionId: string,
+    restoredById?: string | null,
+    revisionNote?: string | null,
+  ): Promise<Page>;
 }
 
 export interface PageBlocksRepository {
@@ -94,6 +104,17 @@ export interface ContentItemsRepository {
     data: Partial<Omit<ContentItem, "id" | "createdAt" | "updatedAt">>,
   ): Promise<ContentItem>;
   delete(id: string): Promise<void>;
+  listRevisions(contentItemId: string): Promise<ContentItemRevision[]>;
+  findRevisionById(
+    contentItemId: string,
+    revisionId: string,
+  ): Promise<ContentItemRevision | null>;
+  restoreRevision(
+    contentItemId: string,
+    revisionId: string,
+    restoredById?: string | null,
+    revisionNote?: string | null,
+  ): Promise<ContentItem>;
 }
 
 export interface NavigationItemsRepository {

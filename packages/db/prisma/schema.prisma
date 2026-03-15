@@ -95,9 +95,22 @@ model Page {
   updatedAt      DateTime    @updatedAt
   blocks         PageBlock[]
   slugRedirects  PageSlugRedirect[]
+  revisions      PageRevision[]
 
   @@index([slug])
   @@index([published])
+}
+
+model PageRevision {
+  id           String   @id @default(cuid())
+  pageId       String
+  page         Page     @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  snapshot     Json
+  revisionNote String?
+  createdById  String?
+  createdAt    DateTime @default(now())
+
+  @@index([pageId, createdAt])
 }
 
 model PageSlugRedirect {
@@ -161,12 +174,25 @@ model ContentItem {
   updatedAt      DateTime    @updatedAt
   slugRedirects  ContentItemSlugRedirect[]
   terms          ContentItemTerm[]
+  revisions      ContentItemRevision[]
 
   @@unique([contentTypeId, slug])
   @@index([contentTypeId])
   @@index([parentId])
   @@index([contentTypeId, parentId, sortOrder])
   @@index([published])
+}
+
+model ContentItemRevision {
+  id            String      @id @default(cuid())
+  contentItemId String
+  contentItem   ContentItem @relation(fields: [contentItemId], references: [id], onDelete: Cascade)
+  snapshot      Json
+  revisionNote  String?
+  createdById   String?
+  createdAt     DateTime    @default(now())
+
+  @@index([contentItemId, createdAt])
 }
 
 model ContentItemSlugRedirect {

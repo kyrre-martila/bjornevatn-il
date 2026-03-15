@@ -27,6 +27,8 @@ export type {
   ContentFieldRelationConfig,
   ContentFieldRelationTargetType,
   ContentItem,
+  PageRevision,
+  ContentItemRevision,
   ResolvedContentFieldReference,
   ContentItemTreeNode,
   NavigationItem,

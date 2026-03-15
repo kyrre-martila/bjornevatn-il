@@ -22,6 +22,8 @@ import type {
   NavigationItem,
   NavigationItemsRepository,
   Page,
+  PageRevision,
+  ContentItemRevision,
   PageBlock,
   PageBlockType,
   PageBlocksRepository,
@@ -53,7 +55,7 @@ function normalizePaginationLimit(limit?: number): number {
 function buildPaginationArgs(
   pagination?: PaginationParams,
   cursorField: "id" | "key" = "id",
-): { take: number; skip?: number; cursor?: { id: string } | { key: string } } {
+): any {
   const take = normalizePaginationLimit(pagination?.limit);
   const cursor =
     typeof pagination?.cursor === "string" && pagination.cursor.trim()
@@ -152,6 +154,44 @@ function mapInputBlocks(blocks: PageBlock[]) {
     order: block.order,
   }));
 }
+function mapPageRevision(revision: {
+  id: string;
+  pageId: string;
+  snapshot: unknown;
+  revisionNote: string | null;
+  createdById: string | null;
+  createdAt: Date;
+}): PageRevision {
+  return {
+    ...revision,
+    snapshot:
+      revision.snapshot &&
+      typeof revision.snapshot === "object" &&
+      !Array.isArray(revision.snapshot)
+        ? (revision.snapshot as Record<string, unknown>)
+        : {},
+  };
+}
+
+function mapContentItemRevision(revision: {
+  id: string;
+  contentItemId: string;
+  snapshot: unknown;
+  revisionNote: string | null;
+  createdById: string | null;
+  createdAt: Date;
+}): ContentItemRevision {
+  return {
+    ...revision,
+    snapshot:
+      revision.snapshot &&
+      typeof revision.snapshot === "object" &&
+      !Array.isArray(revision.snapshot)
+        ? (revision.snapshot as Record<string, unknown>)
+        : {},
+  };
+}
+
 
 const CONTENT_FIELD_TYPES: ContentFieldType[] = [
   "text",
@@ -457,14 +497,14 @@ export class PagesPrismaRepository implements PagesRepository {
   private readonly prisma = getPrisma();
 
   async findMany(pagination?: PaginationParams): Promise<Page[]> {
-    const pages = await this.prisma.page.findMany({
+    const pages = (await this.prisma.page.findMany({
       orderBy: { createdAt: "desc" },
       include: { blocks: { orderBy: { order: "asc" } } },
       ...buildPaginationArgs(pagination),
       ...(typeof pagination?.published === "boolean"
         ? { where: { published: pagination.published } }
         : {}),
-    });
+    })) as Parameters<typeof mapPage>[0][];
     return pages.map(mapPage);
   }
 
@@ -550,10 +590,20 @@ export class PagesPrismaRepository implements PagesRepository {
     const { blocks, ...pageData } = data;
 
     return this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-      const existing = await tx.page.findUnique({ where: { id } });
+      const existing = await tx.page.findUnique({
+        where: { id },
+        include: { blocks: { orderBy: { order: "asc" } } },
+      });
       if (!existing) {
         throw new DomainError("VALIDATION_ERROR", "Page not found.");
       }
+
+      await tx.pageRevision.create({
+        data: {
+          pageId: existing.id,
+          snapshot: existing as unknown as InputJsonValue,
+        },
+      });
 
       const nextSlug =
         typeof pageData.slug === "string" ? pageData.slug : existing.slug;
@@ -612,6 +662,121 @@ export class PagesPrismaRepository implements PagesRepository {
                 create: mapInputBlocks(blocks),
               }
             : undefined,
+        },
+        include: { blocks: { orderBy: { order: "asc" } } },
+      });
+
+      return mapPage(page);
+    });
+  }
+
+  async listRevisions(pageId: string): Promise<PageRevision[]> {
+    const revisions = await this.prisma.pageRevision.findMany({
+      where: { pageId },
+      orderBy: { createdAt: "desc" },
+    });
+    return revisions.map(mapPageRevision);
+  }
+
+  async findRevisionById(
+    pageId: string,
+    revisionId: string,
+  ): Promise<PageRevision | null> {
+    const revision = await this.prisma.pageRevision.findFirst({
+      where: { id: revisionId, pageId },
+    });
+    return revision ? mapPageRevision(revision) : null;
+  }
+
+  async restoreRevision(
+    pageId: string,
+    revisionId: string,
+    restoredById?: string | null,
+    revisionNote?: string | null,
+  ): Promise<Page> {
+    return this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+      const current = await tx.page.findUnique({
+        where: { id: pageId },
+        include: { blocks: { orderBy: { order: "asc" } } },
+      });
+      if (!current) {
+        throw new DomainError("VALIDATION_ERROR", "Page not found.");
+      }
+
+      const revision = await tx.pageRevision.findFirst({
+        where: { id: revisionId, pageId },
+      });
+      if (!revision) {
+        throw new DomainError("VALIDATION_ERROR", "Page revision not found.");
+      }
+
+      await tx.pageRevision.create({
+        data: {
+          pageId,
+          snapshot: current as unknown as InputJsonValue,
+          createdById: restoredById ?? null,
+          revisionNote: revisionNote ?? null,
+        },
+      });
+
+      const snapshot = revision.snapshot as Record<string, unknown>;
+      const blocksSnapshot = Array.isArray(snapshot.blocks)
+        ? snapshot.blocks
+        : [];
+
+      await tx.pageBlock.deleteMany({ where: { pageId } });
+
+      const page = await tx.page.update({
+        where: { id: pageId },
+        data: {
+          slug: typeof snapshot.slug === "string" ? snapshot.slug : current.slug,
+          title: typeof snapshot.title === "string" ? snapshot.title : current.title,
+          seoTitle:
+            snapshot.seoTitle === null || typeof snapshot.seoTitle === "string"
+              ? snapshot.seoTitle
+              : current.seoTitle,
+          seoDescription:
+            snapshot.seoDescription === null || typeof snapshot.seoDescription === "string"
+              ? snapshot.seoDescription
+              : current.seoDescription,
+          seoImage:
+            snapshot.seoImage === null || typeof snapshot.seoImage === "string"
+              ? snapshot.seoImage
+              : current.seoImage,
+          canonicalUrl:
+            snapshot.canonicalUrl === null || typeof snapshot.canonicalUrl === "string"
+              ? snapshot.canonicalUrl
+              : current.canonicalUrl,
+          noIndex:
+            typeof snapshot.noIndex === "boolean" ? snapshot.noIndex : current.noIndex,
+          published:
+            typeof snapshot.published === "boolean"
+              ? snapshot.published
+              : current.published,
+          templateKey:
+            snapshot.templateKey === null || typeof snapshot.templateKey === "string"
+              ? snapshot.templateKey
+              : current.templateKey,
+          blocks: {
+            create: blocksSnapshot
+              .map((block, index) => {
+                if (!block || typeof block !== "object" || Array.isArray(block)) {
+                  return null;
+                }
+                const b = block as Record<string, unknown>;
+                return {
+                  type: typeof b.type === "string" ? b.type : "rich_text",
+                  data:
+                    b.data && typeof b.data === "object" && !Array.isArray(b.data)
+                      ? (b.data as InputJsonValue)
+                      : ({} as InputJsonValue),
+                  order: typeof b.order === "number" ? b.order : index,
+                };
+              })
+              .filter((entry): entry is { type: string; data: InputJsonValue; order: number } =>
+                Boolean(entry),
+              ),
+          },
         },
         include: { blocks: { orderBy: { order: "asc" } } },
       });
@@ -1076,6 +1241,13 @@ export class ContentItemsPrismaRepository implements ContentItemsRepository {
         throw new DomainError("VALIDATION_ERROR", "Content item not found.");
       }
 
+      await tx.contentItemRevision.create({
+        data: {
+          contentItemId: existing.id,
+          snapshot: existing as unknown as InputJsonValue,
+        },
+      });
+
       const nextSlug =
         typeof data.slug === "string" ? data.slug : existing.slug;
       const nextContentTypeId = data.contentTypeId ?? existing.contentTypeId;
@@ -1153,6 +1325,103 @@ export class ContentItemsPrismaRepository implements ContentItemsRepository {
             data.data === undefined ? undefined : (data.data as InputJsonValue),
         },
       });
+      return mapContentItem(item);
+    });
+  }
+
+  async listRevisions(contentItemId: string): Promise<ContentItemRevision[]> {
+    const revisions = await this.prisma.contentItemRevision.findMany({
+      where: { contentItemId },
+      orderBy: { createdAt: "desc" },
+    });
+    return revisions.map(mapContentItemRevision);
+  }
+
+  async findRevisionById(
+    contentItemId: string,
+    revisionId: string,
+  ): Promise<ContentItemRevision | null> {
+    const revision = await this.prisma.contentItemRevision.findFirst({
+      where: { id: revisionId, contentItemId },
+    });
+    return revision ? mapContentItemRevision(revision) : null;
+  }
+
+  async restoreRevision(
+    contentItemId: string,
+    revisionId: string,
+    restoredById?: string | null,
+    revisionNote?: string | null,
+  ): Promise<ContentItem> {
+    return this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+      const current = await tx.contentItem.findUnique({ where: { id: contentItemId } });
+      if (!current) {
+        throw new DomainError("VALIDATION_ERROR", "Content item not found.");
+      }
+
+      const revision = await tx.contentItemRevision.findFirst({
+        where: { id: revisionId, contentItemId },
+      });
+      if (!revision) {
+        throw new DomainError("VALIDATION_ERROR", "Content item revision not found.");
+      }
+
+      await tx.contentItemRevision.create({
+        data: {
+          contentItemId,
+          snapshot: current as unknown as InputJsonValue,
+          createdById: restoredById ?? null,
+          revisionNote: revisionNote ?? null,
+        },
+      });
+
+      const snapshot = revision.snapshot as Record<string, unknown>;
+      const item = await tx.contentItem.update({
+        where: { id: contentItemId },
+        data: {
+          contentTypeId:
+            typeof snapshot.contentTypeId === "string"
+              ? snapshot.contentTypeId
+              : current.contentTypeId,
+          parentId:
+            snapshot.parentId === null || typeof snapshot.parentId === "string"
+              ? snapshot.parentId
+              : current.parentId,
+          sortOrder:
+            typeof snapshot.sortOrder === "number"
+              ? snapshot.sortOrder
+              : current.sortOrder,
+          slug: typeof snapshot.slug === "string" ? snapshot.slug : current.slug,
+          title: typeof snapshot.title === "string" ? snapshot.title : current.title,
+          seoTitle:
+            snapshot.seoTitle === null || typeof snapshot.seoTitle === "string"
+              ? snapshot.seoTitle
+              : current.seoTitle,
+          seoDescription:
+            snapshot.seoDescription === null || typeof snapshot.seoDescription === "string"
+              ? snapshot.seoDescription
+              : current.seoDescription,
+          seoImage:
+            snapshot.seoImage === null || typeof snapshot.seoImage === "string"
+              ? snapshot.seoImage
+              : current.seoImage,
+          canonicalUrl:
+            snapshot.canonicalUrl === null || typeof snapshot.canonicalUrl === "string"
+              ? snapshot.canonicalUrl
+              : current.canonicalUrl,
+          noIndex:
+            typeof snapshot.noIndex === "boolean" ? snapshot.noIndex : current.noIndex,
+          data:
+            snapshot.data && typeof snapshot.data === "object" && !Array.isArray(snapshot.data)
+              ? (snapshot.data as InputJsonValue)
+              : (current.data as unknown as InputJsonValue),
+          published:
+            typeof snapshot.published === "boolean"
+              ? snapshot.published
+              : current.published,
+        },
+      });
+
       return mapContentItem(item);
     });
   }

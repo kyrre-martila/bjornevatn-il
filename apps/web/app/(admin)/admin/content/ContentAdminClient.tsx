@@ -33,6 +33,13 @@ type ContentItemDraft = {
   values: Record<string, string | string[]>;
 };
 
+type AdminContentItemRevision = {
+  id: string;
+  createdAt: string;
+  revisionNote: string | null;
+  createdById: string | null;
+};
+
 type ContentTypeDraft = {
   id?: string;
   name: string;
@@ -728,6 +735,7 @@ function ContentItemEditor({
   canUseMediaLibrary,
   canEditSlug,
   canEditRelations,
+  onRestoreRevision,
 }: {
   item: AdminContentItem;
   contentType: AdminContentType;
@@ -750,6 +758,7 @@ function ContentItemEditor({
   canUseMediaLibrary: boolean;
   canEditSlug: boolean;
   canEditRelations: boolean;
+  onRestoreRevision: (revisionId: string) => Promise<void>;
 }) {
   const [title, setTitle] = React.useState(item.title);
   const [slug, setSlug] = React.useState(item.slug);
@@ -766,6 +775,26 @@ function ContentItemEditor({
   const [values, setValues] = React.useState<Record<string, string | string[]>>(
     buildValues(contentType.fields, item.data),
   );
+  const [revisions, setRevisions] = React.useState<AdminContentItemRevision[]>([]);
+
+  React.useEffect(() => {
+    let active = true;
+    void fetch(`/api/admin/content-items/${item.id}/revisions`, { cache: "no-store" })
+      .then((res) =>
+        res.ok
+          ? (res.json() as Promise<AdminContentItemRevision[]>)
+          : Promise.resolve([]),
+      )
+      .then((items) => {
+        if (active) {
+          setRevisions(items);
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [item.id]);
 
   React.useEffect(() => {
     setValues(buildValues(contentType.fields, item.data));
@@ -944,6 +973,31 @@ function ContentItemEditor({
           guided fields first.
         </p>
       )}
+      <fieldset>
+        <legend>Revision history</legend>
+        {revisions.length === 0 ? <small>No revisions yet.</small> : null}
+        <ul>
+          {revisions.map((revision) => (
+            <li key={revision.id}>
+              {new Date(revision.createdAt).toLocaleString()} {revision.revisionNote ?? "Snapshot"}
+              <button
+                type="button"
+                onClick={() => {
+                  const confirmation = window.confirm(
+                    "Restore this revision? Current entry data will be replaced.",
+                  );
+                  if (!confirmation) {
+                    return;
+                  }
+                  void onRestoreRevision(revision.id);
+                }}
+              >
+                Restore
+              </button>
+            </li>
+          ))}
+        </ul>
+      </fieldset>
       <button type="submit">Save</button>
       <button type="button" onClick={() => void onDelete(item.id)}>
         Delete
@@ -1711,6 +1765,28 @@ export function ContentAdminClient({
               canUseMediaLibrary={canUseMediaLibrary}
               canEditSlug={canEditSlug}
               canEditRelations={canEditRelations}
+              onRestoreRevision={async (revisionId) => {
+                const res = await fetch(
+                  `/api/admin/content-items/${item.id}/revisions/${revisionId}/restore`,
+                  {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                      revisionNote: "Restored from revision history",
+                    }),
+                  },
+                );
+
+                if (!res.ok) {
+                  const payload = (await res.json().catch(() => null)) as unknown;
+                  throw new Error(
+                    describeApiError("Failed to restore revision.", payload),
+                  );
+                }
+
+                setStatus("Entry revision restored.");
+                await loadItemsPage(selectedType.id, selectedOffset);
+              }}
             />
           ))}
 

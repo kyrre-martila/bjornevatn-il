@@ -39,6 +39,15 @@ export type PageBlockType =
   | "image"
   | "news_list";
 
+export type PageRevision = {
+  id: string;
+  pageId: string;
+  snapshot: Record<string, unknown>;
+  revisionNote: string | null;
+  createdById: string | null;
+  createdAt: Date;
+};
+
 export type PageBlock = {
   id: string;
   pageId: string;
@@ -173,6 +182,15 @@ export type Media = {
   sizeBytes: number | null;
   originalFilename: string | null;
   storageKey: string | null;
+  createdAt: Date;
+};
+
+export type ContentItemRevision = {
+  id: string;
+  contentItemId: string;
+  snapshot: Record<string, unknown>;
+  revisionNote: string | null;
+  createdById: string | null;
   createdAt: Date;
 };
 

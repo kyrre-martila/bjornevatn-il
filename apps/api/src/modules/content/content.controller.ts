@@ -49,6 +49,7 @@ import {
   requireMinimumRole,
   requireSuperAdmin,
 } from "../../common/auth/admin-access";
+import { readAccessToken } from "../../common/auth/read-access-token";
 import type { Request } from "express";
 
 const PAGE_BLOCK_TYPES = [
@@ -520,6 +521,13 @@ class AdminListQueryDto {
   cursor?: string;
 }
 
+class RestoreRevisionDto {
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  revisionNote?: string;
+}
+
 class ListContentItemsQueryDto {
   @ApiProperty({ required: false, enum: ["flat", "tree"], default: "flat" })
   @IsOptional()
@@ -752,6 +760,34 @@ export class ContentController {
   async getPage(@Req() req: Request, @Param("id") id: string) {
     await requireMinimumRole(req, this.auth, "editor");
     return this.pages.findById(id);
+  }
+
+  @Get("pages/:id/revisions")
+  async listPageRevisions(@Req() req: Request, @Param("id") id: string) {
+    await requireMinimumRole(req, this.auth, "editor");
+    return this.pages.listRevisions(id);
+  }
+
+  @Get("pages/:id/revisions/:revisionId")
+  async getPageRevision(
+    @Req() req: Request,
+    @Param("id") id: string,
+    @Param("revisionId") revisionId: string,
+  ) {
+    await requireMinimumRole(req, this.auth, "editor");
+    return this.pages.findRevisionById(id, revisionId);
+  }
+
+  @Post("pages/:id/revisions/:revisionId/restore")
+  async restorePageRevision(
+    @Req() req: Request,
+    @Param("id") id: string,
+    @Param("revisionId") revisionId: string,
+    @Body() body: RestoreRevisionDto,
+  ) {
+    await requireMinimumRole(req, this.auth, "admin");
+    const userId = await this.getCurrentUserId(req);
+    return this.pages.restoreRevision(id, revisionId, userId, body.revisionNote);
   }
 
   @Get("pages/slug/:slug")
@@ -1034,6 +1070,39 @@ export class ContentController {
   async getContentItem(@Req() req: Request, @Param("id") id: string) {
     await requireMinimumRole(req, this.auth, "editor");
     return this.contentItems.findById(id);
+  }
+
+  @Get("items/:id/revisions")
+  async listContentItemRevisions(@Req() req: Request, @Param("id") id: string) {
+    await requireMinimumRole(req, this.auth, "editor");
+    return this.contentItems.listRevisions(id);
+  }
+
+  @Get("items/:id/revisions/:revisionId")
+  async getContentItemRevision(
+    @Req() req: Request,
+    @Param("id") id: string,
+    @Param("revisionId") revisionId: string,
+  ) {
+    await requireMinimumRole(req, this.auth, "editor");
+    return this.contentItems.findRevisionById(id, revisionId);
+  }
+
+  @Post("items/:id/revisions/:revisionId/restore")
+  async restoreContentItemRevision(
+    @Req() req: Request,
+    @Param("id") id: string,
+    @Param("revisionId") revisionId: string,
+    @Body() body: RestoreRevisionDto,
+  ) {
+    await requireMinimumRole(req, this.auth, "admin");
+    const userId = await this.getCurrentUserId(req);
+    return this.contentItems.restoreRevision(
+      id,
+      revisionId,
+      userId,
+      body.revisionNote,
+    );
   }
 
   @Get("items/type/:contentTypeId")
@@ -1558,6 +1627,20 @@ export class ContentController {
       existing.id,
     );
     return this.contentItems.update(id, body);
+  }
+
+  private async getCurrentUserId(req: Request): Promise<string | null> {
+    const token = readAccessToken(req);
+    if (!token) {
+      return null;
+    }
+
+    try {
+      const user = await this.auth.validateUser(token);
+      return user.id;
+    } catch {
+      return null;
+    }
   }
 
   private ensureEditorCannotModifyRelationFields(

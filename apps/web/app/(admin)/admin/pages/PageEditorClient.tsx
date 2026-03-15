@@ -9,6 +9,13 @@ import type {
   AdminPageBlockType,
 } from "../../../../lib/admin/pages";
 
+type AdminPageRevision = {
+  id: string;
+  createdAt: string;
+  revisionNote: string | null;
+  createdById: string | null;
+};
+
 type AdminMedia = {
   id: string;
   url: string;
@@ -300,6 +307,9 @@ export function PageEditorClient({
   );
   const [isSaving, setIsSaving] = React.useState(false);
   const [isDeleting, setIsDeleting] = React.useState(false);
+  const [revisions, setRevisions] = React.useState<AdminPageRevision[]>([]);
+  const [isLoadingRevisions, setIsLoadingRevisions] = React.useState(false);
+  const [isRestoringRevision, setIsRestoringRevision] = React.useState(false);
   const [media, setMedia] = React.useState<AdminMedia[]>([]);
   const [nextBlockType, setNextBlockType] =
     React.useState<AdminPageBlockType>("hero");
@@ -310,6 +320,76 @@ export function PageEditorClient({
   const slugConfirmationResolver = React.useRef<
     ((confirmed: boolean) => void) | null
   >(null);
+
+  React.useEffect(() => {
+    if (!initialPage?.id) {
+      return;
+    }
+
+    let active = true;
+    setIsLoadingRevisions(true);
+    void fetch(`/api/admin/pages/${initialPage.id}/revisions`, { cache: "no-store" })
+      .then((res) =>
+        res.ok
+          ? (res.json() as Promise<AdminPageRevision[]>)
+          : Promise.resolve([]),
+      )
+      .then((items) => {
+        if (active) {
+          setRevisions(items);
+        }
+      })
+      .finally(() => {
+        if (active) {
+          setIsLoadingRevisions(false);
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [initialPage?.id, status]);
+
+  async function restoreRevision(revisionId: string) {
+    if (!initialPage?.id) {
+      return;
+    }
+
+    const confirmation = window.confirm(
+      "Restore this page revision? Current content will be replaced.",
+    );
+    if (!confirmation) {
+      return;
+    }
+
+    setIsRestoringRevision(true);
+    setError(null);
+    try {
+      const res = await fetch(
+        `/api/admin/pages/${initialPage.id}/revisions/${revisionId}/restore`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ revisionNote: "Restored from revision history" }),
+        },
+      );
+      if (!res.ok) {
+        const payload = (await res.json().catch(() => null)) as unknown;
+        throw new Error(describeApiError("Failed to restore revision.", payload));
+      }
+
+      setStatus("Revision restored.");
+      router.refresh();
+    } catch (restoreError) {
+      setError(
+        restoreError instanceof Error
+          ? restoreError.message
+          : "Failed to restore revision.",
+      );
+    } finally {
+      setIsRestoringRevision(false);
+    }
+  }
 
   React.useEffect(() => {
     let active = true;
@@ -1117,6 +1197,31 @@ export function PageEditorClient({
 
         {error && <p className="page-editor__error">{error}</p>}
         {status && <p className="page-editor__status">{status}</p>}
+
+        {initialPage ? (
+          <fieldset>
+            <legend>Revision history</legend>
+            {isLoadingRevisions ? <p>Loading revisions...</p> : null}
+            {!isLoadingRevisions && revisions.length === 0 ? (
+              <p>No revisions yet. Revisions are created when a page is updated.</p>
+            ) : null}
+            <ul>
+              {revisions.map((revision) => (
+                <li key={revision.id}>
+                  <span>{new Date(revision.createdAt).toLocaleString()}</span>{" "}
+                  <span>{revision.revisionNote || "Snapshot"}</span>{" "}
+                  <button
+                    type="button"
+                    onClick={() => void restoreRevision(revision.id)}
+                    disabled={isRestoringRevision}
+                  >
+                    {isRestoringRevision ? "Restoring..." : "Restore"}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </fieldset>
+        ) : null}
 
         <div className="page-editor__actions">
           <button type="submit" disabled={isSaving}>
