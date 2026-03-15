@@ -137,15 +137,22 @@ export class RedirectsController {
       },
     });
 
+    const userId = await this.getCurrentUserId(req);
+
     this.audit.log({
-      userId: await this.getCurrentUserId(req),
+      userId,
       action: "redirect_create",
       entityType: "redirect",
       entityId: created.id,
       metadata: {
-        fromPath: created.fromPath,
-        toPath: created.toPath,
-        statusCode: created.statusCode,
+        actor: {
+          userId,
+        },
+        after: {
+          fromPath: created.fromPath,
+          toPath: created.toPath,
+          statusCode: created.statusCode,
+        },
       },
     });
 
@@ -163,6 +170,10 @@ export class RedirectsController {
     const fromPath = normalizePath(body.fromPath, "fromPath");
     const toPath = normalizePath(body.toPath, "toPath");
 
+    const existing = await this.prisma.redirectRule.findUnique({
+      where: { id },
+    });
+
     const updated = await this.prisma.redirectRule.update({
       where: { id },
       data: {
@@ -172,15 +183,29 @@ export class RedirectsController {
       },
     });
 
+    const userId = await this.getCurrentUserId(req);
+
     this.audit.log({
-      userId: await this.getCurrentUserId(req),
+      userId,
       action: "redirect_update",
       entityType: "redirect",
       entityId: updated.id,
       metadata: {
-        fromPath: updated.fromPath,
-        toPath: updated.toPath,
-        statusCode: updated.statusCode,
+        actor: {
+          userId,
+        },
+        before: existing
+          ? {
+              fromPath: existing.fromPath,
+              toPath: existing.toPath,
+              statusCode: existing.statusCode,
+            }
+          : null,
+        after: {
+          fromPath: updated.fromPath,
+          toPath: updated.toPath,
+          statusCode: updated.statusCode,
+        },
       },
     });
 
@@ -199,18 +224,25 @@ export class RedirectsController {
     });
     await this.prisma.redirectRule.delete({ where: { id } });
 
+    const userId = await this.getCurrentUserId(req);
+
     this.audit.log({
-      userId: await this.getCurrentUserId(req),
+      userId,
       action: "redirect_delete",
       entityType: "redirect",
       entityId: id,
-      metadata: existing
-        ? {
-            fromPath: existing.fromPath,
-            toPath: existing.toPath,
-            statusCode: existing.statusCode,
-          }
-        : undefined,
+      metadata: {
+        actor: {
+          userId,
+        },
+        before: existing
+          ? {
+              fromPath: existing.fromPath,
+              toPath: existing.toPath,
+              statusCode: existing.statusCode,
+            }
+          : null,
+      },
     });
 
     return { ok: true };

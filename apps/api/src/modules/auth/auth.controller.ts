@@ -116,6 +116,18 @@ export class AuthController {
       dto,
       this.extractSessionContext(req),
     );
+    this.audit.log({
+      userId: result.user.id,
+      action: "registration",
+      entityType: "user",
+      entityId: result.user.id,
+      metadata: {
+        actor: {
+          id: result.user.id,
+          email: result.user.email,
+        },
+      },
+    });
     this.writeAccessCookie(req, res, result.accessToken);
     return this.toAuthResponse(result.user);
   }
@@ -128,7 +140,28 @@ export class AuthController {
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ): Promise<AuthResponseDto> {
-    const result = await this.auth.login(dto, this.extractSessionContext(req));
+    let result;
+    try {
+      result = await this.auth.login(dto, this.extractSessionContext(req));
+    } catch (error) {
+      if (error instanceof UnauthorizedException) {
+        this.audit.log({
+          userId: null,
+          action: "login_failed",
+          entityType: "session",
+          entityId: null,
+          metadata: {
+            actor: {
+              email: dto.email.trim().toLowerCase(),
+              ip: req.ip,
+            },
+            reason: "invalid_credentials",
+          },
+        });
+      }
+      throw error;
+    }
+
     this.writeAccessCookie(req, res, result.accessToken);
     this.audit.log({
       userId: result.user.id,
