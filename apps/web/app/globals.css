@@ -1366,6 +1366,23 @@ button:focus-visible {
   border-color: var(--site-color-primary, var(--color-primary));
 }
 
+
+.page-editor__card {
+  border: 1px solid var(--site-color-border, var(--color-border-subtle));
+  border-radius: var(--site-radius-md, var(--radius-m));
+  background: var(--site-color-bg, var(--color-neutral-0));
+  box-shadow: var(--site-shadow-sm, var(--shadow-1));
+  padding: var(--space-m);
+}
+
+.page-editor__card fieldset {
+  border: 1px solid var(--site-color-border, var(--color-border-subtle));
+  border-radius: var(--site-radius-sm, var(--radius-s));
+  padding: var(--space-s);
+  display: grid;
+  gap: var(--space-2xs);
+}
+
 .page-editor__blocks {
   display: grid;
   gap: var(--space-s);

@@ -1090,8 +1090,8 @@ export function PageEditorClient({
         </Link>
         <h1>{initialPage ? "Edit page" : "Create page"}</h1>
         <p className="page-editor__help">
-          Use guided fields to edit what visitors see. Advanced developer data
-          is restricted to super admins as a fallback option.
+          Use guided fields to edit what visitors see. Extra technical controls
+          are limited to super admins when needed.
         </p>
         <p className="page-editor__field-help">
           Editing mode:{" "}
@@ -1434,7 +1434,7 @@ export function PageEditorClient({
                 {canManageStructure && (
                   <>
                     <label>
-                      Block type
+                      Section type
                       <select
                         value={activeBlock.type}
                         onChange={(e) =>
@@ -1456,7 +1456,7 @@ export function PageEditorClient({
 
                     {canEditRawJson && (
                       <label>
-                        Advanced data (JSON)
+                        Advanced section data (JSON)
                         <textarea
                           rows={14}
                           value={activeBlockJson}
