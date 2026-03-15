@@ -1183,6 +1183,15 @@ export function PageEditorClient({
                   onChange={(e) => setUnpublishAt(e.target.value)}
                 />
               </label>
+              <small className="page-editor__field-help">
+                Scheduling is enforced when public pages are requested. This
+                blueprint does not run an automated publish/unpublish cron job
+                by default.
+              </small>
+              <small className="page-editor__field-help">
+                Cache note: public responses may be cached for up to 60 seconds,
+                so scheduled visibility changes can appear with a short delay.
+              </small>
             </fieldset>
 
             <fieldset className="page-editor__seo">

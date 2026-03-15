@@ -1104,6 +1104,15 @@ function ContentItemEditor({
               onChange={(e) => setUnpublishAt(e.target.value)}
             />
           </label>
+          <small>
+            Scheduling is enforced when public content endpoints are requested.
+            This blueprint does not run an automated publish/unpublish cron job
+            by default.
+          </small>
+          <small>
+            Cache note: public responses may be cached for up to 60 seconds, so
+            scheduled visibility changes can appear with a short delay.
+          </small>
           <fieldset>
             <legend>Publishing and preview</legend>
             <p>
