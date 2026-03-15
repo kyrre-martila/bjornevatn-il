@@ -32,6 +32,7 @@ Security guidance for the content website blueprint (public site + admin/editor 
 
 ## Token Handling
 
+- Staging domain and staging management surfaces are protected by the existing cookie/session auth flow: unauthenticated requests receive 401 (or are redirected to `/login` for pages), `editor` is forbidden, and only `admin`/`superadmin` can access staging routes; destructive staging operations remain superadmin-only.
 - Access tokens are short-lived and include a session id (`sid`).
 - API accepts a token only when JWT verification succeeds **and** the referenced `Session` row is active.
 - Logout and forced sign-out revoke the server-side session immediately.

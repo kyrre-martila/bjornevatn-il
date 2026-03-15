@@ -10,7 +10,10 @@ import {
 import { ConfigService } from "@nestjs/config";
 import type { Request } from "express";
 
-import { requireSuperAdmin } from "../../common/auth/admin-access";
+import {
+  requireMinimumRole,
+  requireSuperAdmin,
+} from "../../common/auth/admin-access";
 import { readAccessToken } from "../../common/auth/read-access-token";
 import { AuthService } from "../auth/auth.service";
 import { StagingAdminService } from "./staging.service";
@@ -30,8 +33,8 @@ export class StagingController {
 
   @Get("status")
   async getStatus(@Req() req: Request) {
-    const actor = await this.resolveActor(req);
-    return this.stagingService.getStatus(actor ?? undefined);
+    const actor = await this.requireAdminActor(req);
+    return this.stagingService.getStatus(actor);
   }
 
   @Post("reset-from-live")
@@ -68,22 +71,16 @@ export class StagingController {
     }
   }
 
-  private async resolveActor(req: Request) {
+  private async requireAdminActor(req: Request) {
+    await requireMinimumRole(req, this.authService, "admin");
     const token = readAccessToken(req);
-    if (!token) {
-      return null;
-    }
+    const user = await this.authService.validateUser(token!);
 
-    try {
-      const user = await this.authService.validateUser(token);
-      return {
-        userId: user.id,
-        email: user.email,
-        name: user.name,
-      };
-    } catch {
-      return null;
-    }
+    return {
+      userId: user.id,
+      email: user.email,
+      name: user.name,
+    };
   }
 
   private async requireSuperAdminActor(req: Request) {
