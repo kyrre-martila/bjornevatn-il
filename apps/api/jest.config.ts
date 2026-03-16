@@ -26,9 +26,7 @@ const config: Config = {
       "../../packages/domain-adapters-prisma/src/index.ts",
     ),
 
-    "^(\\.{1,2}/(common|users|auth|prisma)/.*)\\.js$": "$1.ts",
-    "^(\\.{1,2}/prisma\\.client)\\.js$": "$1.ts",
-    "^(\\.{1,2}/users/.*)\\.js$": "$1.ts",
+    "^(\\.{1,2}/.*)\\.js$": "$1",
   },
 
   moduleFileExtensions: ["ts", "tsx", "js", "json"],
