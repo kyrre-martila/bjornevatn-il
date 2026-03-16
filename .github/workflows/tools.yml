@@ -114,7 +114,11 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Typecheck
-        run: pnpm -r run typecheck
+        run: |
+          pnpm --filter @org/domain build
+          pnpm --filter @org/domain-adapters-prisma build
+          pnpm --filter api exec tsc --noEmit -p tsconfig.json
+          pnpm --filter web exec tsc --noEmit -p tsconfig.json
 
   unit:
     name: Unit tests
@@ -141,7 +145,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Test (unit)
-        run: pnpm -r run test:unit -- --ci --reporter=default
+        run: pnpm run test:unit -- --ci --reporter=default
 
   prettier:
     name: Prettier check
@@ -167,9 +171,4 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Prettier
-        run: |
-          if pnpm -s -w exec -- which prettier >/dev/null 2>&1; then
-            pnpm -r run prettier:check || npx prettier --check .
-          else
-            npx prettier --check .
-          fi
+        run: npx prettier --check .
