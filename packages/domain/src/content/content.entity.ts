@@ -180,6 +180,15 @@ export type NavigationItem = {
   parentId: string | null;
 };
 
+export type Redirect = {
+  id: string;
+  fromPath: string;
+  toPath: string;
+  statusCode: 301 | 302;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
 
 export type SiteEnvironmentName = "live" | "staging";
 

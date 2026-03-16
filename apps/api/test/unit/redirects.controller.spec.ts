@@ -5,8 +5,9 @@ jest.mock("bcrypt", () => ({
 
 import type { Request } from "express";
 
+import type { RedirectsRepository } from "@org/domain";
+
 import { RedirectsController } from "../../src/modules/redirects/redirects.controller";
-import type { PrismaService } from "../../src/prisma/prisma.service";
 import type { AuthService } from "../../src/modules/auth/auth.service";
 import type { AuditService } from "../../src/modules/audit/audit.service";
 
@@ -19,36 +20,34 @@ describe("RedirectsController", () => {
   }
 
   function makeSut() {
-    const prisma = {
-      redirectRule: {
-        create: jest.fn().mockResolvedValue({
-          id: "redirect-1",
-          fromPath: "/old",
-          toPath: "/new",
-          statusCode: 301,
-          createdAt: new Date("2024-01-01T00:00:00.000Z"),
-          updatedAt: new Date("2024-01-01T00:00:00.000Z"),
-        }),
-        findUnique: jest.fn().mockResolvedValue({
-          id: "redirect-1",
-          fromPath: "/old",
-          toPath: "/new",
-          statusCode: 301,
-          createdAt: new Date("2024-01-01T00:00:00.000Z"),
-          updatedAt: new Date("2024-01-01T00:00:00.000Z"),
-        }),
-        update: jest.fn().mockResolvedValue({
-          id: "redirect-1",
-          fromPath: "/old-2",
-          toPath: "/new-2",
-          statusCode: 302,
-          createdAt: new Date("2024-01-01T00:00:00.000Z"),
-          updatedAt: new Date("2024-01-02T00:00:00.000Z"),
-        }),
-        delete: jest.fn().mockResolvedValue({ id: "redirect-1" }),
-        findMany: jest.fn().mockResolvedValue([]),
-      },
-    } as unknown as jest.Mocked<PrismaService>;
+    const redirects = {
+      create: jest.fn().mockResolvedValue({
+        id: "redirect-1",
+        fromPath: "/old",
+        toPath: "/new",
+        statusCode: 301,
+        createdAt: new Date("2024-01-01T00:00:00.000Z"),
+        updatedAt: new Date("2024-01-01T00:00:00.000Z"),
+      }),
+      findById: jest.fn().mockResolvedValue({
+        id: "redirect-1",
+        fromPath: "/old",
+        toPath: "/new",
+        statusCode: 301,
+        createdAt: new Date("2024-01-01T00:00:00.000Z"),
+        updatedAt: new Date("2024-01-01T00:00:00.000Z"),
+      }),
+      update: jest.fn().mockResolvedValue({
+        id: "redirect-1",
+        fromPath: "/old-2",
+        toPath: "/new-2",
+        statusCode: 302,
+        createdAt: new Date("2024-01-01T00:00:00.000Z"),
+        updatedAt: new Date("2024-01-02T00:00:00.000Z"),
+      }),
+      delete: jest.fn().mockResolvedValue(undefined),
+      findMany: jest.fn().mockResolvedValue([]),
+    } as unknown as jest.Mocked<RedirectsRepository>;
 
     const auth = {
       validateUser: jest.fn().mockResolvedValue({ id: "admin-1", role: "admin" }),
@@ -58,21 +57,20 @@ describe("RedirectsController", () => {
       log: jest.fn(),
     } as unknown as jest.Mocked<AuditService>;
 
-    const controller = new RedirectsController(prisma, auth, audit);
-    return { controller, prisma, audit };
+    const controller = new RedirectsController(redirects, auth, audit);
+    return { controller, redirects, audit };
   }
 
 
   it("applies paginated list guardrails for redirects", async () => {
-    const { controller, prisma } = makeSut();
+    const { controller, redirects } = makeSut();
 
     await controller.list(makeRequest(), { limit: 999, offset: 3 });
 
-    expect(prisma.redirectRule.findMany).toHaveBeenCalledWith(
+    expect(redirects.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        orderBy: { fromPath: "asc" },
-        skip: 3,
-        take: 100,
+        offset: 3,
+        limit: 100,
       }),
     );
   });

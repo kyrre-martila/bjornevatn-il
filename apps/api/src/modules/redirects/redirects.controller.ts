@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Body,
   Controller,
+  Inject,
   Delete,
   Get,
   Param,
@@ -10,6 +11,7 @@ import {
   Query,
   Req,
 } from "@nestjs/common";
+import type { Redirect, RedirectsRepository } from "@org/domain";
 import { ApiProperty, ApiQuery, ApiTags } from "@nestjs/swagger";
 import { Type } from "class-transformer";
 import { IsIn, IsInt, IsOptional, IsString, Max, Min } from "class-validator";
@@ -17,7 +19,6 @@ import type { Request } from "express";
 
 import { requireMinimumRole } from "../../common/auth/admin-access";
 import { readAccessToken } from "../../common/auth/read-access-token";
-import { PrismaService } from "../../prisma/prisma.service";
 import { AuditService } from "../audit/audit.service";
 import { AuthService } from "../auth/auth.service";
 
@@ -113,14 +114,7 @@ function normalizePath(value: string, fieldName: string): string {
   return trimmed;
 }
 
-function toDto(redirect: {
-  id: string;
-  fromPath: string;
-  toPath: string;
-  statusCode: number;
-  createdAt: Date;
-  updatedAt: Date;
-}): RedirectDto {
+function toDto(redirect: Redirect): RedirectDto {
   return {
     id: redirect.id,
     fromPath: redirect.fromPath,
@@ -135,7 +129,8 @@ function toDto(redirect: {
 @Controller("admin/redirects")
 export class RedirectsController {
   constructor(
-    private readonly prisma: PrismaService,
+    @Inject("RedirectsRepository")
+    private readonly redirects: RedirectsRepository,
     private readonly auth: AuthService,
     private readonly audit: AuditService,
   ) {}
@@ -162,11 +157,10 @@ export class RedirectsController {
         ? Math.min(MAX_LIST_LIMIT, Math.max(1, query.limit))
         : DEFAULT_LIST_LIMIT;
 
-    const redirects = await this.prisma.redirectRule.findMany({
-      orderBy: { fromPath: "asc" },
-      skip: query.cursor ? 1 : query.offset,
-      cursor: query.cursor ? { id: query.cursor } : undefined,
-      take: limit,
+    const redirects = await this.redirects.findMany({
+      offset: query.offset,
+      cursor: query.cursor,
+      limit,
     });
 
     return redirects.map(toDto);
@@ -182,12 +176,10 @@ export class RedirectsController {
     const fromPath = normalizePath(body.fromPath, "fromPath");
     const toPath = normalizePath(body.toPath, "toPath");
 
-    const created = await this.prisma.redirectRule.create({
-      data: {
-        fromPath,
-        toPath,
-        statusCode: body.statusCode,
-      },
+    const created = await this.redirects.create({
+      fromPath,
+      toPath,
+      statusCode: body.statusCode,
     });
 
     const userId = await this.getCurrentUserId(req);
@@ -223,17 +215,12 @@ export class RedirectsController {
     const fromPath = normalizePath(body.fromPath, "fromPath");
     const toPath = normalizePath(body.toPath, "toPath");
 
-    const existing = await this.prisma.redirectRule.findUnique({
-      where: { id },
-    });
+    const existing = await this.redirects.findById(id);
 
-    const updated = await this.prisma.redirectRule.update({
-      where: { id },
-      data: {
-        fromPath,
-        toPath,
-        statusCode: body.statusCode,
-      },
+    const updated = await this.redirects.update(id, {
+      fromPath,
+      toPath,
+      statusCode: body.statusCode,
     });
 
     const userId = await this.getCurrentUserId(req);
@@ -272,10 +259,8 @@ export class RedirectsController {
   ): Promise<{ ok: true }> {
     await requireMinimumRole(req, this.auth, "admin");
 
-    const existing = await this.prisma.redirectRule.findUnique({
-      where: { id },
-    });
-    await this.prisma.redirectRule.delete({ where: { id } });
+    const existing = await this.redirects.findById(id);
+    await this.redirects.delete(id);
 
     const userId = await this.getCurrentUserId(req);
 

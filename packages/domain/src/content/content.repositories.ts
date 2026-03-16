@@ -4,6 +4,7 @@ import type {
   ContentItemTreeNode,
   Media,
   NavigationItem,
+  Redirect,
   Page,
   PageBlock,
   SiteSetting,
@@ -154,6 +155,17 @@ export interface NavigationItemsRepository {
     id: string,
     data: Partial<Omit<NavigationItem, "id">>,
   ): Promise<NavigationItem>;
+  delete(id: string): Promise<void>;
+}
+
+export interface RedirectsRepository {
+  findMany(pagination?: PaginationParams): Promise<Redirect[]>;
+  findById(id: string): Promise<Redirect | null>;
+  create(data: Omit<Redirect, "id" | "createdAt" | "updatedAt">): Promise<Redirect>;
+  update(
+    id: string,
+    data: Partial<Omit<Redirect, "id" | "createdAt" | "updatedAt">>,
+  ): Promise<Redirect>;
   delete(id: string): Promise<void>;
 }
 

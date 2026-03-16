@@ -21,6 +21,8 @@ import type {
   ContentItemTermsRepository,
   NavigationItem,
   NavigationItemsRepository,
+  Redirect,
+  RedirectsRepository,
   Page,
   PageRevision,
   ContentItemRevision,
@@ -1961,6 +1963,20 @@ export class NavigationItemsPrismaRepository
 }
 
 
+function mapRedirect(redirect: {
+  id: string;
+  fromPath: string;
+  toPath: string;
+  statusCode: number;
+  createdAt: Date;
+  updatedAt: Date;
+}): Redirect {
+  return {
+    ...redirect,
+    statusCode: redirect.statusCode === 302 ? 302 : 301,
+  };
+}
+
 function mapSiteEnvironmentStatus(status: {
   environment: string;
   state: string;
@@ -1983,6 +1999,43 @@ function mapSiteEnvironmentStatus(status: {
     createdAt: status.createdAt,
     updatedAt: status.updatedAt,
   };
+}
+
+export class RedirectsPrismaRepository implements RedirectsRepository {
+  private readonly prisma = getPrisma();
+
+  async findMany(pagination?: PaginationParams): Promise<Redirect[]> {
+    const redirects = await this.prisma.redirectRule.findMany({
+      orderBy: { fromPath: "asc" },
+      ...buildPaginationArgs(pagination),
+    });
+
+    return redirects.map(mapRedirect);
+  }
+
+  async findById(id: string): Promise<Redirect | null> {
+    const redirect = await this.prisma.redirectRule.findUnique({ where: { id } });
+    return redirect ? mapRedirect(redirect) : null;
+  }
+
+  async create(
+    data: Omit<Redirect, "id" | "createdAt" | "updatedAt">,
+  ): Promise<Redirect> {
+    const redirect = await this.prisma.redirectRule.create({ data });
+    return mapRedirect(redirect);
+  }
+
+  async update(
+    id: string,
+    data: Partial<Omit<Redirect, "id" | "createdAt" | "updatedAt">>,
+  ): Promise<Redirect> {
+    const redirect = await this.prisma.redirectRule.update({ where: { id }, data });
+    return mapRedirect(redirect);
+  }
+
+  async delete(id: string): Promise<void> {
+    await this.prisma.redirectRule.delete({ where: { id } });
+  }
 }
 
 export class SiteSettingsPrismaRepository implements SiteSettingsRepository {

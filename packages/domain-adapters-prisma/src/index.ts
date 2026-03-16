@@ -11,6 +11,7 @@ export {
   TermsPrismaRepository,
   ContentItemTermsPrismaRepository,
   NavigationItemsPrismaRepository,
+  RedirectsPrismaRepository,
   SiteSettingsPrismaRepository,
   SiteEnvironmentStatusPrismaRepository,
   MediaPrismaRepository,
