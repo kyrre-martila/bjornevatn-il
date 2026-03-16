@@ -40,13 +40,13 @@ spec:
               name: http
           readinessProbe:
             httpGet:
-              path: /
+              path: /api/health?ready=1
               port: http
             periodSeconds: 10
             failureThreshold: 3
           livenessProbe:
             httpGet:
-              path: /
+              path: /api/health
               port: http
             initialDelaySeconds: 10
             periodSeconds: 20

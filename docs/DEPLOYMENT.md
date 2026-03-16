@@ -5,7 +5,7 @@
 1. Copy `.env.prod.example` → `.env.prod` and set secrets.
 2. Run stack: `docker compose -f infra/docker-compose.prod.yml --env-file .env.prod up -d`.
 3. Wait for Traefik admin UI at `https://traefik.localhost` (self-signed TLS).
-4. Verify API health at `https://api.localhost/health` and website health at `https://app.localhost/api/health`.
+4. Verify API readiness at `https://api.localhost/health/ready`, API liveness at `https://api.localhost/health/live`, and web health at `https://app.localhost/api/health` plus web readiness at `https://app.localhost/api/health?ready=1`.
 
 ## Environment Variables
 
@@ -17,7 +17,7 @@
 
 - Traefik terminates TLS (self-signed certificates). Override certs by mounting files under `infra/certs`.
 - Default ports: 443 (HTTPS), 80 (HTTP redirect), MailHog 8025, Postgres 5432.
-- Healthchecks defined in `infra/docker-compose.prod.yml` for API (`/health`) and web (`/api/health`).
+- Healthchecks defined in `infra/docker-compose.prod.yml` for API readiness (`/health/ready`) and web readiness (`/api/health?ready=1`).
 - API production container starts Nest from `dist/src/main.js` (matching `apps/api` TypeScript build output).
 
 ## Registry Push
@@ -41,8 +41,8 @@ Upload scanning is exposed as a pluggable `MediaUploadScanner` hook. The default
 
 1. Ensure database is reachable.
 2. Apply migrations before release (`pnpm db:migrate`).
-3. Start API and verify `GET /health`.
-4. Start web and verify `GET /api/health`.
+3. Start API and verify `GET /health/live` and `GET /health/ready`.
+4. Start web and verify `GET /api/health` and `GET /api/health?ready=1`.
 5. Run an auth smoke test (login, `/api/v1/me`, logout).
 
 Staging should set `DEPLOY_ENV=staging` so startup/runtime guardrails match production expectations.

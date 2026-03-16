@@ -31,8 +31,9 @@ env:
   WEB:
     NODE_ENV: production
     NODE_OPTIONS: --max-old-space-size=256
-    API_BASE_PATH: /api/v1
-    API_ORIGIN: http://blueprint-api:3000
+    NEXT_PUBLIC_SITE_URL: https://app.example.com
+    NEXT_PUBLIC_API_URL: http://blueprint-api:3000
+    NEXT_PUBLIC_API_BASE_PATH: /api/v1
 
 resources:
   api: {}
