@@ -11,6 +11,5 @@ export async function POST(request: Request) {
     method: "POST",
     request,
     errorMessage: "Unable to push staging to live.",
-    includeJsonContentType: false,
   });
 }

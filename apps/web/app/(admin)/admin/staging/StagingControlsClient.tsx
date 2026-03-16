@@ -61,7 +61,12 @@ export function StagingControlsClient({ canTriggerActions, initialStatus }: Prop
             ? "/api/admin/staging/push-live"
             : "/api/admin/staging";
       const method = action === "delete" ? "DELETE" : "POST";
-      const res = await fetch(route, { method });
+      const payload = action === "push" ? { confirmPushToLive: true } : undefined;
+      const res = await fetch(route, {
+        method,
+        headers: payload ? { "Content-Type": "application/json" } : undefined,
+        body: payload ? JSON.stringify(payload) : undefined,
+      });
       const data = await res.json().catch(() => null);
 
       if (!res.ok) {

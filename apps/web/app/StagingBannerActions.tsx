@@ -27,7 +27,12 @@ export function StagingBannerActions({ canRunActions }: Props) {
 
     try {
       const route = action === "reset" ? "/api/admin/staging/reset" : "/api/admin/staging/push-live";
-      const res = await fetch(route, { method: "POST" });
+      const payload = action === "push" ? { confirmPushToLive: true } : undefined;
+      const res = await fetch(route, {
+        method: "POST",
+        headers: payload ? { "Content-Type": "application/json" } : undefined,
+        body: payload ? JSON.stringify(payload) : undefined,
+      });
       const data = await res.json().catch(() => null);
 
       if (!res.ok) {
