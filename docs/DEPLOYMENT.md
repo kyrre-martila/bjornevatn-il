@@ -18,6 +18,7 @@
 - Traefik terminates TLS (self-signed certificates). Override certs by mounting files under `infra/certs`.
 - Default ports: 443 (HTTPS), 80 (HTTP redirect), MailHog 8025, Postgres 5432.
 - Healthchecks defined in `infra/docker-compose.prod.yml` for API (`/health`) and web (`/api/health`).
+- API production container starts Nest from `dist/src/main.js` (matching `apps/api` TypeScript build output).
 
 ## Registry Push
 
