@@ -43,7 +43,6 @@ import type {
   ContentItem,
   ContentItemTreeNode,
 } from "@org/domain";
-import { MediaService } from "./media.service";
 import { MediaUsageService } from "./media-usage.service";
 import { AuthService } from "../auth/auth.service";
 import { AuditService } from "../audit/audit.service";
@@ -647,33 +646,6 @@ class ListContentItemsQueryDto {
   cursor?: string;
 }
 
-class ListMediaQueryDto {
-  @ApiProperty({ required: false, minimum: 0 })
-  @IsOptional()
-  @Type(() => Number)
-  @IsNumber()
-  @Min(0)
-  offset?: number;
-
-  @ApiProperty({
-    required: false,
-    minimum: 1,
-    maximum: MAX_LIST_LIMIT,
-    default: DEFAULT_LIST_LIMIT,
-  })
-  @IsOptional()
-  @Type(() => Number)
-  @IsNumber()
-  @Min(1)
-  @Max(MAX_LIST_LIMIT)
-  limit?: number;
-
-  @ApiProperty({ required: false })
-  @IsOptional()
-  @IsString()
-  cursor?: string;
-}
-
 class CreateNavigationItemDto {
   @ApiProperty()
   @IsString()
@@ -727,94 +699,6 @@ class UpsertSiteSettingDto {
   value!: string;
 }
 
-class CreateMediaDto {
-  @ApiProperty()
-  @IsUrl()
-  url!: string;
-
-  @ApiProperty()
-  @IsString()
-  alt!: string;
-
-  @ApiProperty({ required: false })
-  @IsOptional()
-  @IsInt()
-  @Min(0)
-  width?: number;
-
-  @ApiProperty({ required: false })
-  @IsOptional()
-  @IsInt()
-  @Min(0)
-  height?: number;
-
-  @ApiProperty({ required: false })
-  @IsOptional()
-  @IsString()
-  mimeType?: string;
-
-  @ApiProperty({ required: false })
-  @IsOptional()
-  @IsInt()
-  @Min(0)
-  sizeBytes?: number;
-
-  @ApiProperty({ required: false })
-  @IsOptional()
-  @IsString()
-  originalFilename?: string;
-
-  @ApiProperty({ required: false })
-  @IsOptional()
-  @IsString()
-  storageKey?: string;
-}
-
-class UpdateMediaDto {
-  @ApiProperty({ required: false })
-  @IsOptional()
-  @IsUrl()
-  url?: string;
-
-  @ApiProperty({ required: false })
-  @IsOptional()
-  @IsString()
-  alt?: string;
-
-  @ApiProperty({ required: false })
-  @IsOptional()
-  @IsInt()
-  @Min(0)
-  width?: number;
-
-  @ApiProperty({ required: false })
-  @IsOptional()
-  @IsInt()
-  @Min(0)
-  height?: number;
-
-  @ApiProperty({ required: false })
-  @IsOptional()
-  @IsString()
-  mimeType?: string;
-
-  @ApiProperty({ required: false })
-  @IsOptional()
-  @IsInt()
-  @Min(0)
-  sizeBytes?: number;
-
-  @ApiProperty({ required: false })
-  @IsOptional()
-  @IsString()
-  originalFilename?: string;
-
-  @ApiProperty({ required: false })
-  @IsOptional()
-  @IsString()
-  storageKey?: string;
-}
-
 @ApiTags("content")
 @Controller("admin/content")
 export class ContentController {
@@ -831,7 +715,6 @@ export class ContentController {
     private readonly settings: SiteSettingsRepository,
     @Inject("MediaRepository")
     private readonly media: MediaRepository,
-    private readonly mediaService: MediaService,
     private readonly mediaUsageService: MediaUsageService,
     private readonly auth: AuthService,
     private readonly audit: AuditService,
@@ -1605,28 +1488,6 @@ export class ContentController {
         }
       }
     }
-  }
-
-  private async validateMediaAltBeforeUpdate(
-    mediaId: string,
-    nextAlt: string | undefined,
-  ) {
-    if (nextAlt === undefined || nextAlt.trim()) {
-      return;
-    }
-
-    const mediaItem = await this.media.findById(mediaId);
-    if (!mediaItem) {
-      throw new BadRequestException("Media item not found.");
-    }
-
-    if (!(await this.mediaUsageService.isMediaUrlUsed(mediaItem.url))) {
-      return;
-    }
-
-    throw new BadRequestException(
-      "Alt text is required for media used in page blocks or content items.",
-    );
   }
 
   private async validateContentTypeFields(
@@ -2495,55 +2356,5 @@ export class ContentController {
     }
   }
 
-  @Get("media")
-  async listMedia(@Req() req: Request, @Query() query: ListMediaQueryDto) {
-    await requireMinimumRole(req, this.auth, "editor");
-    const mediaItems = await this.media.findMany(this.buildPagination(query));
-    const usedUrls = await this.mediaUsageService.getUsedUrls(
-      mediaItems.map((item) => item.url),
-    );
 
-    return mediaItems.map((item) => ({
-      ...item,
-      isUsed: usedUrls.has(item.url),
-    }));
-  }
-
-  @Get("media/:id")
-  async getMedia(@Req() req: Request, @Param("id") id: string) {
-    await requireMinimumRole(req, this.auth, "editor");
-    return this.media.findById(id);
-  }
-
-  @Post("media")
-  async createMedia(@Req() req: Request, @Body() body: CreateMediaDto) {
-    await requireMinimumRole(req, this.auth, "editor");
-    return this.media.create({
-      ...body,
-      width: body.width ?? null,
-      height: body.height ?? null,
-      mimeType: body.mimeType ?? null,
-      sizeBytes: body.sizeBytes ?? null,
-      originalFilename: body.originalFilename ?? null,
-      storageKey: body.storageKey ?? null,
-    });
-  }
-
-  @Patch("media/:id")
-  async updateMedia(
-    @Req() req: Request,
-    @Param("id") id: string,
-    @Body() body: UpdateMediaDto,
-  ) {
-    await requireMinimumRole(req, this.auth, "editor");
-    await this.validateMediaAltBeforeUpdate(id, body.alt);
-    return this.media.update(id, body);
-  }
-
-  @Delete("media/:id")
-  async deleteMedia(@Req() req: Request, @Param("id") id: string) {
-    await requireMinimumRole(req, this.auth, "admin");
-    await this.mediaService.delete(id);
-    return { ok: true };
-  }
 }
