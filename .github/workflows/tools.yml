@@ -64,6 +64,9 @@ jobs:
       - name: Generate OpenAPI
         run: pnpm generate:openapi
 
+      - name: Validate OpenAPI contract invariants
+        run: node packages/contracts/scripts/validate-openapi.mjs
+
       - name: Verify OpenAPI is up to date
         run: git diff --exit-code -- packages/contracts/openapi.v1.json
 

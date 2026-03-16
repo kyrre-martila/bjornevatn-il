@@ -22,8 +22,9 @@ if (typeof spec.openapi !== "string" || !spec.openapi.startsWith("3.0.")) {
 }
 
 const paths = spec.paths ?? {};
+const pathKeys = Object.keys(paths);
 const allowedNonVersionedPaths = new Set(["/health"]);
-for (const key of Object.keys(paths)) {
+for (const key of pathKeys) {
   if (!key.startsWith("/api/v1") && !allowedNonVersionedPaths.has(key)) {
     throw new Error(
       `contracts: invalid path '${key}' – endpoints must be under /api/v1 or explicitly allowlisted`,
@@ -37,6 +38,37 @@ for (const pattern of bannedPatterns) {
     throw new Error(
       `contracts: detected disallowed field matching ${pattern} in OpenAPI document`,
     );
+  }
+}
+
+const requiredExactRoutes = [
+  "/api/v1/admin/content/pages/{id}/revisions",
+  "/api/v1/admin/content/pages/{id}/revisions/{revisionId}",
+  "/api/v1/admin/content/pages/{id}/revisions/{revisionId}/restore",
+  "/api/v1/admin/content/items/{id}/revisions",
+  "/api/v1/admin/content/items/{id}/revisions/{revisionId}",
+  "/api/v1/admin/content/items/{id}/revisions/{revisionId}/restore",
+  "/api/v1/admin/staging/status",
+  "/api/v1/admin/staging/reset-from-live",
+  "/api/v1/admin/staging/push-to-live",
+];
+
+for (const route of requiredExactRoutes) {
+  if (!pathKeys.includes(route)) {
+    throw new Error(`contracts: required route missing from OpenAPI spec: ${route}`);
+  }
+}
+
+const requiredRouteGroupPrefixes = [
+  "/api/v1/admin/content/",
+  "/api/v1/admin/staging/",
+  "/api/v1/public/content/",
+];
+
+for (const prefix of requiredRouteGroupPrefixes) {
+  const hasGroup = pathKeys.some((route) => route.startsWith(prefix));
+  if (!hasGroup) {
+    throw new Error(`contracts: required route group missing from OpenAPI spec: ${prefix}*`);
   }
 }
 

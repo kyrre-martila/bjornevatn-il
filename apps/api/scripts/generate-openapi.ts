@@ -30,6 +30,8 @@ const REPOSITORY_PROVIDER_TOKENS = [
   "MediaRepository",
 ] as const;
 
+const OPENAPI_NOISE_KEYS = new Set(["x-generated-at", "x-generator", "x-generated"]);
+
 
 function stubBcryptNativeBinding() {
   const moduleWithLoad = Module as typeof Module & {
@@ -54,6 +56,32 @@ function stubBcryptNativeBinding() {
     }
     return originalLoad.call(this, request, parent, isMain);
   };
+}
+
+function sortObjectKeys(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    return value.map((item) => sortObjectKeys(item));
+  }
+  if (value && typeof value === "object") {
+    const entries = Object.entries(value as Record<string, unknown>)
+      .filter(([key]) => !OPENAPI_NOISE_KEYS.has(key.toLowerCase()))
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([key, childValue]) => [key, sortObjectKeys(childValue)]);
+
+    return Object.fromEntries(entries);
+  }
+  return value;
+}
+
+function canonicalizeOpenApiDocument(document: Record<string, unknown>) {
+  const normalized = sortObjectKeys(document) as Record<string, unknown>;
+  if (normalized.info && typeof normalized.info === "object") {
+    const info = normalized.info as Record<string, unknown>;
+    if (typeof info.version === "string" && /\d{4}-\d{2}-\d{2}T/.test(info.version)) {
+      info.version = "1.0.0";
+    }
+  }
+  return normalized;
 }
 
 async function generateOpenApi() {
@@ -100,8 +128,15 @@ async function generateOpenApi() {
       deepScanRoutes: true,
     });
 
+    const normalizedDocument = canonicalizeOpenApiDocument(
+      document as unknown as Record<string, unknown>,
+    );
+
     mkdirSync(dirname(OPENAPI_OUTPUT_PATH), { recursive: true });
-    writeFileSync(OPENAPI_OUTPUT_PATH, `${JSON.stringify(document, null, 2)}\n`);
+    writeFileSync(
+      OPENAPI_OUTPUT_PATH,
+      `${JSON.stringify(normalizedDocument, null, 2)}\n`,
+    );
 
     console.log(`OpenAPI generated at ${OPENAPI_OUTPUT_PATH}`);
   } finally {
