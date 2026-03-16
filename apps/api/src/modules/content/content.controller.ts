@@ -1652,7 +1652,7 @@ export class ContentController {
   }
 
   private logSchedulingAuditIfChanged(params: {
-    userId: string;
+    userId: string | null;
     entityType: "page" | "content_item";
     entityId: string;
     previous: { publishAt: Date | null; unpublishAt: Date | null } | undefined;

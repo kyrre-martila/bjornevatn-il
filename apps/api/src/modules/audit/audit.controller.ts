@@ -91,14 +91,21 @@ export class AuditController {
   @ApiQuery({ name: "userId", required: false, type: String })
   @ApiQuery({ name: "action", required: false, type: String })
   @ApiQuery({ name: "entityType", required: false, type: String })
-  @ApiQuery({ name: "offset", required: false, type: Number, minimum: 0 })
+  @ApiQuery({
+    name: "offset",
+    required: false,
+    type: Number,
+    schema: { minimum: 0 },
+  })
   @ApiQuery({
     name: "limit",
     required: false,
     type: Number,
-    minimum: 1,
-    maximum: MAX_LIST_LIMIT,
-    schema: { default: DEFAULT_LIST_LIMIT },
+    schema: {
+      minimum: 1,
+      maximum: MAX_LIST_LIMIT,
+      default: DEFAULT_LIST_LIMIT,
+    },
   })
   @ApiQuery({ name: "cursor", required: false, type: String })
   async list(

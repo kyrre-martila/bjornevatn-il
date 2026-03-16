@@ -1,4 +1,4 @@
-import { createHealthProbeUrl } from "@/lib/api";
+import { createHealthProbeUrl } from "../../../lib/api";
 import { NextRequest, NextResponse } from "next/server";
 
 function parseBooleanFlag(value: string | null): boolean {
