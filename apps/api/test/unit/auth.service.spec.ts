@@ -46,6 +46,7 @@ type SessionsMock = {
   create: jest.Mock;
   findByToken: jest.Mock;
   revoke: jest.Mock;
+  extend: jest.Mock;
 };
 
 type MailerMock = {
@@ -81,6 +82,7 @@ const createService = (options: ServiceOptions = {}) => {
     create: jest.fn(),
     findByToken: jest.fn(),
     revoke: jest.fn(),
+    extend: jest.fn(),
   };
   const mailer: MailerMock = {
     sendPasswordResetLink: jest.fn(),
@@ -529,5 +531,66 @@ describe("AuthService", () => {
     await service.hashPassword("Password123");
 
     expect(bcrypt.hash).toHaveBeenCalledWith("Password123", 12);
+  });
+
+  it("refreshes an active session with same sid and extended expiry", async () => {
+    const { service, prisma, jwt, sessions } = createService();
+    jwt.verify
+      .mockReturnValueOnce({
+        sub: "user-1",
+        email: "user@example.com",
+        sid: "sid-1",
+        exp: 1_900_000_000,
+      })
+      .mockReturnValueOnce({
+        sub: "user-1",
+        email: "user@example.com",
+        sid: "sid-1",
+        exp: 2_000_000_000,
+      });
+    sessions.findByToken.mockResolvedValue({
+      token: "sid-1",
+      userId: "user-1",
+      revokedAt: null,
+      expiresAt: new Date(Date.now() + 60_000),
+    });
+    prisma.user.findUnique.mockResolvedValue({
+      id: "user-1",
+      email: "user@example.com",
+      passwordHash: "stored-hash",
+      name: "User",
+      displayName: "User",
+      role: "editor",
+    });
+    jwt.sign.mockReturnValue("new-access-token");
+
+    const result = await service.refreshAccessToken("old-access-token");
+
+    expect(result.accessToken).toBe("new-access-token");
+    expect(sessions.extend).toHaveBeenCalledWith(
+      "sid-1",
+      new Date(2_000_000_000 * 1000),
+    );
+  });
+
+  it("rejects refresh for expired sessions", async () => {
+    const { service, jwt, sessions } = createService();
+    jwt.verify.mockReturnValue({
+      sub: "user-1",
+      email: "user@example.com",
+      sid: "sid-1",
+      exp: 1_900_000_000,
+    });
+    sessions.findByToken.mockResolvedValue({
+      token: "sid-1",
+      userId: "user-1",
+      revokedAt: null,
+      expiresAt: new Date(Date.now() - 60_000),
+    });
+
+    await expect(
+      service.refreshAccessToken("old-access-token"),
+    ).rejects.toBeInstanceOf(UnauthorizedException);
+    expect(sessions.revoke).toHaveBeenCalled();
   });
 });

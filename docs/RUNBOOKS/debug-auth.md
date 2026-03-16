@@ -25,3 +25,9 @@
 1. Query the `Session` table for the token `sid` to verify `revokedAt` and `expiresAt`.
 2. If multiple stale sessions exist, revoke rows for the user and force re-login.
 3. Re-authenticate and verify a new token contains a new `sid`.
+
+## Session Expiry UX
+
+1. Browser clients detect upstream `401` responses in the shared fetch helper and redirect to `/login?next=<current_path>`.
+2. If users report sudden redirects while active, check `/api/v1/auth/refresh` responses and verify the backing `Session` row is not revoked/expired.
+3. If refresh fails repeatedly, clear stale `access` cookies and force a fresh login to mint a new session id.

@@ -33,6 +33,11 @@ export type AuthResult = {
   accessToken: string;
 };
 
+export type SessionContext = {
+  ip?: string | null;
+  userAgent?: string | null;
+};
+
 type JwtPayload = {
   sub: string;
   email: string;
@@ -91,7 +96,7 @@ export class AuthService {
       password: string;
       name?: string;
     },
-    context: { ip?: string | null; userAgent?: string | null } = {},
+    context: SessionContext = {},
   ): Promise<AuthResult> {
     const email = input.email.trim().toLowerCase();
     const existing = await this.prisma.user.findUnique({ where: { email } });
@@ -117,7 +122,7 @@ export class AuthService {
 
   async login(
     input: { email: string; password: string },
-    context: { ip?: string | null; userAgent?: string | null } = {},
+    context: SessionContext = {},
   ): Promise<AuthResult> {
     const email = input.email.trim().toLowerCase();
     const user = await this.prisma.user.findUnique({ where: { email } });
@@ -239,6 +244,44 @@ export class AuthService {
     await this.sessions.revoke(payload.sid, new Date());
   }
 
+  async refreshAccessToken(token: string): Promise<AuthResult> {
+    const payload = this.decodeToken(token);
+    if (!payload?.sid) {
+      throw new UnauthorizedException("Invalid token");
+    }
+
+    const session = await this.sessions.findByToken(payload.sid);
+    if (!session || session.userId !== payload.sub || session.revokedAt) {
+      throw new UnauthorizedException("Session is not active");
+    }
+
+    if (session.expiresAt.getTime() <= Date.now()) {
+      await this.sessions.revoke(payload.sid, new Date());
+      throw new UnauthorizedException("Session expired");
+    }
+
+    const user = await this.prisma.user.findUnique({
+      where: { id: payload.sub },
+    });
+    if (!user) {
+      throw new UnauthorizedException("Invalid token");
+    }
+
+    const accessToken = this.signToken({
+      sub: user.id,
+      email: user.email,
+      sid: payload.sid,
+    });
+    const verified = this.decodeToken(accessToken);
+    if (!verified?.exp) {
+      throw new UnauthorizedException("Unable to create session token");
+    }
+
+    await this.sessions.extend(payload.sid, new Date(verified.exp * 1000));
+
+    return { user: this.toPublicUser(user), accessToken };
+  }
+
   private async assertSessionIsActive(payload: JwtPayload): Promise<void> {
     if (!payload.sid) {
       throw new UnauthorizedException("Invalid token");
@@ -261,7 +304,7 @@ export class AuthService {
 
   private async issueAccessTokenForUser(
     user: { id: string; email: string },
-    context: { ip?: string | null; userAgent?: string | null },
+    context: SessionContext,
   ): Promise<string> {
     const sid = randomUUID();
     const accessToken = this.signToken({

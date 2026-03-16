@@ -66,6 +66,15 @@ describe("AuthController", () => {
           }),
       decodeToken: jest.fn().mockReturnValue({ exp: 9999999999 }),
       revokeSessionFromToken: jest.fn(),
+      refreshAccessToken: jest.fn().mockResolvedValue({
+        user: {
+          id: "user-1",
+          email: "new@example.com",
+          name: "New User",
+          role: "editor",
+        },
+        accessToken: "access-token",
+      }),
     } as unknown as jest.Mocked<AuthService>;
 
     const config = {
@@ -132,6 +141,20 @@ describe("AuthController", () => {
         }),
       }),
     );
+  });
+
+  it("refreshes access token for an active session", async () => {
+    const { controller, auth } = makeSut();
+
+    await controller.refresh(
+      {
+        ...makeReq(),
+        cookies: { access: "old-access-token" },
+      } as unknown as Request,
+      makeRes(),
+    );
+
+    expect(auth.refreshAccessToken).toHaveBeenCalledWith("old-access-token");
   });
 
   it("blocks registration when disabled", async () => {

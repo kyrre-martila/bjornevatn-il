@@ -17,5 +17,7 @@ Accepted
 ## Consequences
 
 - CSRF middleware required for cookie sessions.
-- Logout revokes the active server-side session. No refresh token rotation is used.
+- Logout revokes the active server-side session.
+- Session renewal uses `POST /auth/refresh` to reissue short-lived access JWTs for active sessions (same `sid`, server-side expiry extended).
+- Full refresh-token rotation is intentionally not part of this model.
 - Documentation must highlight different storage strategies (see [docs/SECURITY.md](../SECURITY.md)).

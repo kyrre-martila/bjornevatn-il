@@ -193,6 +193,23 @@ export class AuthController {
     return { success: true };
   }
 
+  @Post("refresh")
+  @HttpCode(HttpStatus.OK)
+  @ApiOkResponse({ type: AuthResponseDto })
+  async refresh(
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<AuthResponseDto> {
+    const token = readAccessToken(req);
+    if (!token) {
+      throw new UnauthorizedException("Missing token");
+    }
+
+    const result = await this.auth.refreshAccessToken(token);
+    this.writeAccessCookie(req, res, result.accessToken);
+    return this.toAuthResponse(result.user);
+  }
+
   @Post("logout")
   @HttpCode(HttpStatus.OK)
   @ApiOkResponse({ type: LogoutResponseDto })

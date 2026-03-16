@@ -13,11 +13,12 @@ The API uses **stateful server-side sessions backed by the `Session` table** whi
 
 This guarantees revoked sessions are rejected immediately, even if the JWT itself has not yet expired.
 
-## Refresh tokens
+## Session renewal behavior
 
-Refresh tokens are **not implemented** in this module.
-The source of truth for auth state is the active `Session` row referenced by the JWT `sid`.
+The model intentionally avoids long-lived refresh tokens. Instead, clients may call `POST /auth/refresh` while they still have an active `access` cookie.
 
-**Implemented vs planned:**
-- Implemented: access-token issuance + server-side session validation/revocation.
-- Planned (optional): refresh-token rotation semantics (and storage model) if a project needs longer-lived re-auth flows.
+- The endpoint validates the current JWT and session row (`sid`).
+- If valid and unexpired, it issues a fresh access JWT with the same `sid` and updates `Session.expiresAt` to match the new JWT expiry.
+- If the session is revoked/expired, the endpoint returns `401` and clients should redirect to login.
+
+This keeps auth session-first, preserves immediate revocation semantics, and reduces silent expiry surprises for active editors.

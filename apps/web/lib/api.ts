@@ -54,6 +54,30 @@ export function resolveApiUrl(path: string): string {
   return ensureAbsoluteUrl(path);
 }
 
+function buildLoginRedirectTarget(): string {
+  if (typeof window === "undefined") {
+    return "/login";
+  }
+
+  const next = `${window.location.pathname}${window.location.search}`;
+  return `/login?next=${encodeURIComponent(next)}`;
+}
+
+function redirectToLoginOnUnauthorized(response: Response): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  if (window.location.pathname === "/login") {
+    return;
+  }
+
+  const marker = response.headers.get("x-session-expired") ?? "";
+  if (response.status === 401 || marker.toLowerCase() === "true") {
+    window.location.assign(buildLoginRedirectTarget());
+  }
+}
+
 export async function apiFetch(
   path: string,
   init: RequestInit = {},
@@ -74,7 +98,10 @@ export async function apiFetch(
 
   requestInit.headers = headers;
 
-  return fetch(url, requestInit);
+  const response = await fetch(url, requestInit);
+
+  redirectToLoginOnUnauthorized(response);
+  return response;
 }
 
 export function getCsrfTokenFromCookieHeader(

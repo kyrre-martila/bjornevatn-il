@@ -28,4 +28,11 @@ export class SessionRepository {
       data: { revokedAt },
     });
   }
+
+  extend(token: string, expiresAt: Date) {
+    return this.prisma.session.updateMany({
+      where: { token, revokedAt: null },
+      data: { expiresAt },
+    });
+  }
 }
