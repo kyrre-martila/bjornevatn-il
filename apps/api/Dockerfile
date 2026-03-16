@@ -1,17 +1,20 @@
 # syntax=docker/dockerfile:1.7
-FROM node:20-alpine AS base
+FROM node:20-bookworm-slim AS base
 WORKDIR /app
 ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
 RUN corepack enable
 
 FROM base AS builder
-RUN apk add --no-cache libc6-compat openssl python3 make g++
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends openssl python3 make g++ \
+  && rm -rf /var/lib/apt/lists/*
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json turbo.json ./
 COPY apps ./apps
 COPY packages ./packages
 ENV NODE_ENV=development
 RUN pnpm install --filter api... --frozen-lockfile
+RUN pnpm --filter api prisma:generate
 RUN pnpm --filter api... build
 RUN pnpm prune --prod
 

@@ -78,25 +78,8 @@ jobs:
       - name: Install deps
         run: pnpm install --frozen-lockfile
 
-      # --- Prisma generate i adapter-pakken ---
-      # 1) Kopiér API-skjema til adapter, så generering skjer i adapterens kontekst
-      - name: Copy Prisma schema into adapter package
-        run: |
-          mkdir -p packages/domain-adapters-prisma/prisma
-          cp packages/db/prisma/schema.prisma packages/domain-adapters-prisma/prisma/schema.prisma
-
-      # 2) Kjør prisma generate via npx mot adapterens schema
-      - name: Generate Prisma Client in adapter (using API schema)
-        working-directory: packages/domain-adapters-prisma
-        run: npx prisma generate --schema prisma/schema.prisma
-
-      # (Valgfritt) generer også i API-prosjektet dersom API bruker @prisma/client direkte
-      - name: Generate Prisma Client in API (optional)
-        working-directory: apps/api
-        run: |
-          if [ -f prisma/schema.prisma ]; then
-            npx prisma generate --schema prisma/schema.prisma
-          fi
+      - name: Generate Prisma Client
+        run: pnpm --filter api prisma:generate
 
       # Build API og last opp logg ved feil
       - name: Build api

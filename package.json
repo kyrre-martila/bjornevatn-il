@@ -27,6 +27,7 @@
     "sdk:ts": "openapi-generator-cli generate -g typescript-fetch -i packages/contracts/dist/openapi.v1.json -o packages/sdk-ts --additional-properties=useSingleRequestParameter=true,typescriptThreePlus=true",
     "sdk:all": "pnpm api:openapi && pnpm contracts:sync && pnpm sdk:ts",
     "format": "prettier --write .",
+    "postinstall": "pnpm db:generate",
     "db:generate": "pnpm --filter @blueprint/db exec prisma generate",
     "db:migrate": "pnpm --filter @blueprint/db exec prisma migrate deploy",
     "db:status": "pnpm --filter @blueprint/db exec prisma migrate status",
