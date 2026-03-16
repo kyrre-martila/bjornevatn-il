@@ -18,6 +18,8 @@ import { ContentController } from "../../src/modules/content/content.controller"
 import type { AuthService } from "../../src/modules/auth/auth.service";
 import type { AuditService } from "../../src/modules/audit/audit.service";
 import type { MediaUsageService } from "../../src/modules/content/media-usage.service";
+import { ContentWorkflowService } from "../../src/modules/content/content-workflow.service";
+import { ContentValidationService } from "../../src/modules/content/content-validation.service";
 
 function makeRequest(token = "test-token"): Request {
   return {
@@ -54,6 +56,14 @@ describe("ContentController deleteContentType", () => {
 
     const mediaUsageService = {} as MediaUsageService;
 
+    const workflowService = new ContentWorkflowService();
+    const validationService = new ContentValidationService(
+      pages,
+      contentTypes,
+      contentItems,
+      media,
+    );
+
     const controller = new ContentController(
       pages,
       contentTypes,
@@ -62,6 +72,8 @@ describe("ContentController deleteContentType", () => {
       settings,
       media,
       mediaUsageService,
+      workflowService,
+      validationService,
       auth,
       audit,
     );
@@ -102,7 +114,9 @@ describe("ContentController deleteContentType", () => {
   it("allows deletion when content type has no items", async () => {
     const { controller, contentItems, contentTypes } = makeSut(0);
 
-    await expect(controller.deleteContentType(makeRequest(), "type-3")).resolves.toEqual({
+    await expect(
+      controller.deleteContentType(makeRequest(), "type-3"),
+    ).resolves.toEqual({
       ok: true,
     });
 
@@ -110,7 +124,6 @@ describe("ContentController deleteContentType", () => {
     expect(contentTypes.delete).toHaveBeenCalledWith("type-3");
   });
 });
-
 
 describe("ContentController createContentItem validation batching", () => {
   function makeSut() {
@@ -131,7 +144,11 @@ describe("ContentController createContentItem validation batching", () => {
             key: "relatedPosts",
             type: "contentItem",
             required: false,
-            relation: { targetType: "contentType", targetSlug: "post", multiple: true },
+            relation: {
+              targetType: "contentType",
+              targetSlug: "post",
+              multiple: true,
+            },
           },
           {
             key: "heroMedia",
@@ -198,6 +215,14 @@ describe("ContentController createContentItem validation batching", () => {
       getUsedUrls: jest.fn(),
     } as unknown as jest.Mocked<MediaUsageService>;
 
+    const workflowService = new ContentWorkflowService();
+    const validationService = new ContentValidationService(
+      pages,
+      contentTypes,
+      contentItems,
+      media,
+    );
+
     const controller = new ContentController(
       pages,
       contentTypes,
@@ -206,6 +231,8 @@ describe("ContentController createContentItem validation batching", () => {
       settings,
       media,
       mediaUsageService,
+      workflowService,
+      validationService,
       auth,
       audit,
     );
@@ -260,7 +287,6 @@ describe("ContentController createContentItem validation batching", () => {
   });
 });
 
-
 describe("ContentController media URL validation uses targeted lookups", () => {
   function makeTargetedSut() {
     const pages = {
@@ -268,7 +294,14 @@ describe("ContentController media URL validation uses targeted lookups", () => {
       findById: jest.fn(),
       findBySlug: jest.fn().mockResolvedValue(null),
       findBySlugOrRedirect: jest.fn(),
-      create: jest.fn().mockResolvedValue({ id: "page-1", slug: "page", title: "Page", published: false }),
+      create: jest
+        .fn()
+        .mockResolvedValue({
+          id: "page-1",
+          slug: "page",
+          title: "Page",
+          published: false,
+        }),
     } as unknown as jest.Mocked<PagesRepository>;
 
     const contentTypes = {
@@ -280,7 +313,12 @@ describe("ContentController media URL validation uses targeted lookups", () => {
         fields: [
           { key: "heroImage", type: "image", required: false },
           { key: "galleryImage", type: "image", required: false },
-          { key: "heroMedia", type: "media", required: false, relation: { targetType: "media" } },
+          {
+            key: "heroMedia",
+            type: "media",
+            required: false,
+            relation: { targetType: "media" },
+          },
         ],
       }),
       findManyBySlugs: jest.fn().mockResolvedValue([]),
@@ -300,14 +338,18 @@ describe("ContentController media URL validation uses targeted lookups", () => {
     const settings = {} as SiteSettingsRepository;
 
     const media = {
-      findManyByIds: jest.fn().mockResolvedValue([{ id: "media-1", alt: "good alt" }]),
+      findManyByIds: jest
+        .fn()
+        .mockResolvedValue([{ id: "media-1", alt: "good alt" }]),
       findById: jest.fn(),
       findManyByUrls: jest.fn().mockResolvedValue([]),
       findMany: jest.fn(),
     } as unknown as jest.Mocked<MediaRepository>;
 
     const auth = {
-      validateUser: jest.fn().mockResolvedValue({ id: "editor-1", role: "super_admin" }),
+      validateUser: jest
+        .fn()
+        .mockResolvedValue({ id: "editor-1", role: "super_admin" }),
     } as unknown as jest.Mocked<AuthService>;
 
     const audit = { log: jest.fn() } as unknown as jest.Mocked<AuditService>;
@@ -317,6 +359,14 @@ describe("ContentController media URL validation uses targeted lookups", () => {
       getUsedUrls: jest.fn(),
     } as unknown as jest.Mocked<MediaUsageService>;
 
+    const workflowService = new ContentWorkflowService();
+    const validationService = new ContentValidationService(
+      pages,
+      contentTypes,
+      contentItems,
+      media,
+    );
+
     const controller = new ContentController(
       pages,
       contentTypes,
@@ -325,6 +375,8 @@ describe("ContentController media URL validation uses targeted lookups", () => {
       settings,
       media,
       mediaUsageService,
+      workflowService,
+      validationService,
       auth,
       audit,
     );
@@ -336,7 +388,9 @@ describe("ContentController media URL validation uses targeted lookups", () => {
     const { controller, media } = makeTargetedSut();
     media.findManyByUrls = jest
       .fn()
-      .mockResolvedValue([{ id: "img-1", url: "/uploads/small.jpg", alt: "Small image" }]);
+      .mockResolvedValue([
+        { id: "img-1", url: "/uploads/small.jpg", alt: "Small image" },
+      ]);
 
     await controller.createContentItem(makeRequest(), {
       contentTypeId: "type-gallery",
@@ -382,7 +436,9 @@ describe("ContentController media URL validation uses targeted lookups", () => {
     const { controller, media } = makeTargetedSut();
     media.findManyByUrls = jest
       .fn()
-      .mockResolvedValue([{ id: "img-2", url: "/uploads/missing-alt.jpg", alt: "   " }]);
+      .mockResolvedValue([
+        { id: "img-2", url: "/uploads/missing-alt.jpg", alt: "   " },
+      ]);
 
     await expect(
       controller.createContentItem(makeRequest(), {
@@ -415,7 +471,11 @@ describe("ContentController media URL validation uses targeted lookups", () => {
         blocks: [
           { type: "image", data: { src: "/uploads/ok.jpg" }, order: 0 },
           { type: "hero", data: { imageUrl: "/uploads/bad.jpg" }, order: 1 },
-          { type: "hero", data: { imageUrl: "/uploads/not-found.jpg" }, order: 2 },
+          {
+            type: "hero",
+            data: { imageUrl: "/uploads/not-found.jpg" },
+            order: 2,
+          },
         ],
         published: false,
       }),

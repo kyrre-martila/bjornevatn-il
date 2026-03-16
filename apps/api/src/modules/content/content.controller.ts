@@ -39,11 +39,12 @@ import type {
   NavigationItemsRepository,
   PagesRepository,
   SiteSettingsRepository,
-  ContentFieldDefinition,
   ContentItem,
   ContentItemTreeNode,
 } from "@org/domain";
 import { MediaUsageService } from "./media-usage.service";
+import { ContentWorkflowService } from "./content-workflow.service";
+import { ContentValidationService } from "./content-validation.service";
 import { AuthService } from "../auth/auth.service";
 import { AuditService } from "../audit/audit.service";
 import {
@@ -716,6 +717,8 @@ export class ContentController {
     @Inject("MediaRepository")
     private readonly media: MediaRepository,
     private readonly mediaUsageService: MediaUsageService,
+    private readonly workflowService: ContentWorkflowService,
+    private readonly validationService: ContentValidationService,
     private readonly auth: AuthService,
     private readonly audit: AuditService,
   ) {}
@@ -801,9 +804,9 @@ export class ContentController {
       );
     }
     await this.ensurePageSlugDoesNotConflict(body.slug);
-    await this.validatePageBlocksMediaAlt(body.title, body.blocks);
-    const normalizedBody = this.normalizePublishingWindow(body);
-    const workflowUpdate = this.resolveWorkflowUpdate(
+    await this.validationService.validatePageBlocksMediaAlt(body.blocks);
+    const normalizedBody = this.workflowService.normalizePublishingWindow(body);
+    const workflowUpdate = this.workflowService.resolveWorkflowUpdate(
       role,
       undefined,
       undefined,
@@ -914,18 +917,18 @@ export class ContentController {
     }
 
     if (body.blocks) {
-      await this.validatePageBlocksMediaAlt(
-        body.title ?? existingPage.title,
-        body.blocks,
-      );
+      await this.validationService.validatePageBlocksMediaAlt(body.blocks);
     }
 
     if (body.slug !== undefined) {
       await this.ensurePageSlugDoesNotConflict(body.slug, id);
     }
 
-    const normalizedBody = this.normalizePublishingWindow(body, existingPage);
-    const workflowUpdate = this.resolveWorkflowUpdate(
+    const normalizedBody = this.workflowService.normalizePublishingWindow(
+      body,
+      existingPage,
+    );
+    const workflowUpdate = this.workflowService.resolveWorkflowUpdate(
       role,
       existingPage.workflowStatus,
       existingPage.published,
@@ -1081,7 +1084,7 @@ export class ContentController {
   ) {
     await requireSuperAdmin(req, this.auth);
     await this.ensureContentTypeSlugDoesNotConflict(body.slug);
-    await this.validateContentTypeFields(body.fields);
+    await this.validationService.validateContentTypeFields(body.fields);
     return this.contentTypes.create({
       ...body,
       templateKey: body.templateKey ?? null,
@@ -1097,7 +1100,7 @@ export class ContentController {
   ) {
     await requireSuperAdmin(req, this.auth);
     if (body.fields) {
-      await this.validateContentTypeFields(body.fields);
+      await this.validationService.validateContentTypeFields(body.fields);
     }
 
     if (body.slug !== undefined) {
@@ -1423,408 +1426,6 @@ export class ContentController {
       }));
   }
 
-  private extractPageBlockMediaUrls(block: {
-    type: string;
-    data: Record<string, unknown>;
-  }): string[] {
-    if (block.type === "image") {
-      const src = block.data.src;
-      return typeof src === "string" && src.trim() ? [src.trim()] : [];
-    }
-
-    if (block.type === "hero") {
-      const imageUrl = block.data.imageUrl;
-      return typeof imageUrl === "string" && imageUrl.trim()
-        ? [imageUrl.trim()]
-        : [];
-    }
-
-    return [];
-  }
-
-  private async getMediaByUrlMap(
-    urls: Iterable<string>,
-  ): Promise<Map<string, { id: string; alt: string }>> {
-    const normalizedUrls = [...new Set([...urls].map((url) => url.trim()).filter(Boolean))];
-    const media = await this.media.findManyByUrls(normalizedUrls);
-    return new Map(media.map((item) => [item.url, { id: item.id, alt: item.alt }]));
-  }
-
-  private async validatePageBlocksMediaAlt(
-    pageTitle: string,
-    blocks: Array<{ type: string; data: Record<string, unknown> }>,
-  ): Promise<void> {
-    const referencedUrls = new Set<string>();
-
-    for (const block of blocks) {
-      for (const url of this.extractPageBlockMediaUrls(block)) {
-        referencedUrls.add(url);
-      }
-    }
-
-    const mediaByUrl = await this.getMediaByUrlMap(referencedUrls);
-
-    for (const [index, block] of blocks.entries()) {
-      const urls = this.extractPageBlockMediaUrls(block);
-      for (const url of urls) {
-        const matched = mediaByUrl.get(url);
-        if (matched && !matched.alt.trim()) {
-          throw new BadRequestException(
-            `Page block #${index + 1} (${block.type}) references media without alt text. Update that media item's alt text before saving.`,
-          );
-        }
-      }
-    }
-  }
-
-  private async validateContentTypeFields(
-    fields: ContentFieldDefinition[],
-  ): Promise<void> {
-    const relationsByField = new Map<
-      string,
-      {
-        targetType: "contentType" | "page" | "media";
-        targetSlug?: string;
-        targetModel?: string;
-        multiple?: boolean;
-      }
-    >();
-
-    const contentTypeSlugs = new Set<string>();
-
-    for (const field of fields) {
-      if (
-        field.type !== "relation" &&
-        field.type !== "contentItem" &&
-        field.type !== "media" &&
-        field.type !== "page"
-      ) {
-        continue;
-      }
-
-      const relation =
-        field.type === "relation"
-          ? field.relation
-          : {
-              targetType:
-                field.type === "contentItem"
-                  ? ("contentType" as const)
-                  : field.type,
-              ...(field.relation?.targetSlug
-                ? { targetSlug: field.relation.targetSlug }
-                : {}),
-              ...(field.relation?.targetModel
-                ? { targetModel: field.relation.targetModel }
-                : {}),
-              ...(field.relation?.multiple ? { multiple: true } : {}),
-            };
-
-      if (!relation) {
-        throw new BadRequestException(
-          `Field ${field.key} requires relation configuration.`,
-        );
-      }
-
-      relationsByField.set(field.key, relation);
-
-      if (relation.targetType === "contentType") {
-        const targetSlug = relation.targetSlug?.trim();
-        const targetModel = relation.targetModel?.trim();
-        const resolvedTarget = targetSlug || targetModel;
-        if (!resolvedTarget) {
-          throw new BadRequestException(
-            `Field ${field.key} requires relation.targetSlug or relation.targetModel when targetType is contentType.`,
-          );
-        }
-
-        contentTypeSlugs.add(resolvedTarget);
-      }
-    }
-
-    const contentTypes = await this.contentTypes.findManyBySlugs([
-      ...contentTypeSlugs,
-    ]);
-    const contentTypeBySlug = new Map(
-      contentTypes.map((contentType) => [contentType.slug, contentType]),
-    );
-
-    for (const field of fields) {
-      const relation = relationsByField.get(field.key);
-      if (!relation || relation.targetType !== "contentType") {
-        continue;
-      }
-
-      const targetSlug = relation.targetSlug?.trim();
-      const targetModel = relation.targetModel?.trim();
-      const resolvedTarget = targetSlug || targetModel;
-      if (!resolvedTarget) {
-        continue;
-      }
-
-      if (!contentTypeBySlug.has(resolvedTarget)) {
-        throw new BadRequestException(
-          `Field ${field.key} references unknown content type slug: ${resolvedTarget}.`,
-        );
-      }
-    }
-  }
-
-  private async validateContentItemData(
-    fields: ContentFieldDefinition[],
-    data: Record<string, unknown>,
-  ) {
-    const normalizeRelationIds = (
-      field: ContentFieldDefinition,
-      value: unknown,
-    ): string[] => {
-      const multiple = Boolean(field.relation?.multiple);
-
-      if (multiple) {
-        if (!Array.isArray(value)) {
-          throw new BadRequestException(
-            `Field ${field.key} must be an array of reference ids.`,
-          );
-        }
-
-        const ids = value.map((entry) => {
-          if (typeof entry !== "string") {
-            throw new BadRequestException(
-              `Field ${field.key} must contain only string reference ids.`,
-            );
-          }
-
-          return entry.trim();
-        });
-
-        const filtered = ids.filter(Boolean);
-        if (field.required && filtered.length === 0) {
-          throw new BadRequestException(`Missing required field: ${field.key}`);
-        }
-
-        return filtered;
-      }
-
-      if (typeof value !== "string") {
-        throw new BadRequestException(`Field ${field.key} must be a string.`);
-      }
-
-      const normalized = value.trim();
-      if (!normalized) {
-        if (field.required) {
-          throw new BadRequestException(`Missing required field: ${field.key}`);
-        }
-        return [];
-      }
-
-      return [normalized];
-    };
-
-    const contentTypeSlugs = new Set<string>();
-    const pageIds = new Set<string>();
-    const mediaIds = new Set<string>();
-    const contentItemIds = new Set<string>();
-    const imageUrls = new Set<string>();
-
-    const relationChecks: Array<{
-      field: ContentFieldDefinition;
-      relation: {
-        targetType: "contentType" | "page" | "media";
-        targetSlug?: string;
-        targetModel?: string;
-        multiple?: boolean;
-      };
-      ids: string[];
-      resolvedTarget?: string;
-    }> = [];
-
-    for (const field of fields) {
-      const value = data[field.key];
-      if (
-        field.required &&
-        (value === undefined || value === null || value === "")
-      ) {
-        throw new BadRequestException(`Missing required field: ${field.key}`);
-      }
-
-      if (value === undefined || value === null || value === "") {
-        continue;
-      }
-
-      if (field.type === "boolean") {
-        if (typeof value !== "boolean") {
-          throw new BadRequestException(
-            `Field ${field.key} must be a boolean.`,
-          );
-        }
-        continue;
-      }
-
-      if (field.type === "image") {
-        if (typeof value !== "string") {
-          throw new BadRequestException(`Field ${field.key} must be a string.`);
-        }
-
-        const normalized = value.trim();
-        if (normalized) {
-          imageUrls.add(normalized);
-        }
-        continue;
-      }
-
-      if (
-        field.type !== "relation" &&
-        field.type !== "media" &&
-        field.type !== "contentItem" &&
-        field.type !== "page"
-      ) {
-        if (typeof value !== "string") {
-          throw new BadRequestException(`Field ${field.key} must be a string.`);
-        }
-        continue;
-      }
-
-      const relation =
-        field.type === "relation"
-          ? field.relation
-          : {
-              targetType:
-                field.type === "contentItem"
-                  ? ("contentType" as const)
-                  : field.type,
-              ...(field.relation?.targetSlug
-                ? { targetSlug: field.relation.targetSlug }
-                : {}),
-              ...(field.relation?.targetModel
-                ? { targetModel: field.relation.targetModel }
-                : {}),
-              ...(field.relation?.multiple ? { multiple: true } : {}),
-            };
-
-      if (!relation) {
-        throw new BadRequestException(
-          `Field ${field.key} requires relation configuration.`,
-        );
-      }
-
-      const ids = normalizeRelationIds(field, value);
-      let resolvedTarget: string | undefined;
-      if (relation.targetType === "contentType") {
-        const targetSlug = relation.targetSlug?.trim();
-        const targetModel = relation.targetModel?.trim();
-        resolvedTarget = targetSlug || targetModel;
-        if (!resolvedTarget) {
-          throw new BadRequestException(
-            `Field ${field.key} requires relation.targetSlug or relation.targetModel when targetType is contentType.`,
-          );
-        }
-        contentTypeSlugs.add(resolvedTarget);
-      }
-
-      for (const refId of ids) {
-        if (relation.targetType === "page") {
-          pageIds.add(refId);
-        } else if (relation.targetType === "media") {
-          mediaIds.add(refId);
-        } else if (relation.targetType === "contentType") {
-          contentItemIds.add(refId);
-        }
-      }
-
-      relationChecks.push({ field, relation, ids, resolvedTarget });
-    }
-
-    const [pages, media, contentItems, targetContentTypes, mediaByUrl] = await Promise.all([
-      this.pages.findManyByIds([...pageIds]),
-      this.media.findManyByIds([...mediaIds]),
-      this.contentItems.findManyByIds([...contentItemIds]),
-      this.contentTypes.findManyBySlugs([...contentTypeSlugs]),
-      this.getMediaByUrlMap(imageUrls),
-    ]);
-
-    const pageById = new Map(pages.map((page) => [page.id, page]));
-    const mediaById = new Map(media.map((item) => [item.id, item]));
-    const contentItemById = new Map(contentItems.map((item) => [item.id, item]));
-    const contentTypeBySlug = new Map(
-      targetContentTypes.map((contentType) => [contentType.slug, contentType]),
-    );
-
-    for (const field of fields) {
-      if (field.type !== "image") {
-        continue;
-      }
-
-      const value = data[field.key];
-      if (value === undefined || value === null || value === "") {
-        continue;
-      }
-
-      const normalized = typeof value === "string" ? value.trim() : "";
-      if (!normalized) {
-        continue;
-      }
-
-      const matchedMedia = mediaByUrl.get(normalized);
-      if (matchedMedia && !matchedMedia.alt.trim()) {
-        throw new BadRequestException(
-          `Field ${field.key} references media without alt text. Update that media item before saving.`,
-        );
-      }
-    }
-
-    for (const check of relationChecks) {
-      const { field, relation, ids, resolvedTarget } = check;
-
-      for (const refId of ids) {
-        if (relation.targetType === "page") {
-          if (!pageById.has(refId)) {
-            throw new BadRequestException(
-              `Field ${field.key} references missing page.`,
-            );
-          }
-          continue;
-        }
-
-        if (relation.targetType === "media") {
-          const matchedMedia = mediaById.get(refId);
-          if (!matchedMedia) {
-            throw new BadRequestException(
-              `Field ${field.key} references missing media.`,
-            );
-          }
-          if (!matchedMedia.alt.trim()) {
-            throw new BadRequestException(
-              `Field ${field.key} references media without alt text. Update that media item before saving.`,
-            );
-          }
-          continue;
-        }
-
-        if (relation.targetType === "contentType") {
-          if (!resolvedTarget) {
-            continue;
-          }
-
-          const targetContentType = contentTypeBySlug.get(resolvedTarget);
-          if (!targetContentType) {
-            throw new BadRequestException(
-              `Field ${field.key} references unknown content type slug: ${resolvedTarget}.`,
-            );
-          }
-
-          const referencedItem = contentItemById.get(refId);
-          if (
-            !referencedItem ||
-            referencedItem.contentTypeId !== targetContentType.id
-          ) {
-            throw new BadRequestException(
-              `Field ${field.key} must reference an item from content type: ${resolvedTarget}.`,
-            );
-          }
-        }
-      }
-    }
-  }
-
   @Post("items")
   async createContentItem(
     @Req() req: Request,
@@ -1836,8 +1437,11 @@ export class ContentController {
       throw new BadRequestException("Invalid content type.");
     }
 
-    await this.validateContentItemData(contentType.fields, body.data);
-    this.ensureEditorCannotModifyRelationFields(
+    await this.validationService.validateContentItemData(
+      contentType.fields,
+      body.data,
+    );
+    this.validationService.ensureEditorCannotModifyRelationFields(
       role,
       contentType.fields,
       body.data,
@@ -1847,8 +1451,8 @@ export class ContentController {
       body.contentTypeId,
       body.parentId ?? null,
     );
-    const normalizedBody = this.normalizePublishingWindow(body);
-    const workflowUpdate = this.resolveWorkflowUpdate(
+    const normalizedBody = this.workflowService.normalizePublishingWindow(body);
+    const workflowUpdate = this.workflowService.resolveWorkflowUpdate(
       role,
       undefined,
       undefined,
@@ -1974,8 +1578,11 @@ export class ContentController {
     }
 
     const data = body.data ?? existing.data;
-    await this.validateContentItemData(contentType.fields, data);
-    this.ensureEditorCannotModifyRelationFields(
+    await this.validationService.validateContentItemData(
+      contentType.fields,
+      data,
+    );
+    this.validationService.ensureEditorCannotModifyRelationFields(
       role,
       contentType.fields,
       data,
@@ -1986,8 +1593,11 @@ export class ContentController {
       body.parentId === undefined ? existing.parentId : body.parentId,
       existing.id,
     );
-    const normalizedBody = this.normalizePublishingWindow(body, existing);
-    const workflowUpdate = this.resolveWorkflowUpdate(
+    const normalizedBody = this.workflowService.normalizePublishingWindow(
+      body,
+      existing,
+    );
+    const workflowUpdate = this.workflowService.resolveWorkflowUpdate(
       role,
       existing.workflowStatus,
       existing.published,
@@ -2045,9 +1655,7 @@ export class ContentController {
     userId: string;
     entityType: "page" | "content_item";
     entityId: string;
-    previous:
-      | { publishAt: Date | null; unpublishAt: Date | null }
-      | undefined;
+    previous: { publishAt: Date | null; unpublishAt: Date | null } | undefined;
     next: { publishAt: Date | null; unpublishAt: Date | null };
   }) {
     const previousPublishAt = params.previous?.publishAt?.toISOString() ?? null;
@@ -2081,90 +1689,6 @@ export class ContentController {
     });
   }
 
-  private parseScheduledDate(
-    value: string | null | undefined,
-    fieldName: "publishAt" | "unpublishAt",
-  ): Date | null | undefined {
-    if (value === undefined) {
-      return undefined;
-    }
-
-    if (value === null) {
-      return null;
-    }
-
-    const parsed = new Date(value);
-    if (Number.isNaN(parsed.getTime())) {
-      throw new BadRequestException(`${fieldName} must be a valid date/time.`);
-    }
-
-    return parsed;
-  }
-
-  private normalizePublishingWindow<
-    T extends { publishAt?: string | null; unpublishAt?: string | null },
-  >(
-    body: T,
-    current?: { publishAt: Date | null; unpublishAt: Date | null },
-  ): T & { publishAt?: Date | null; unpublishAt?: Date | null } {
-    const publishAt = this.parseScheduledDate(body.publishAt, "publishAt");
-    const unpublishAt = this.parseScheduledDate(
-      body.unpublishAt,
-      "unpublishAt",
-    );
-
-    const effectivePublishAt =
-      publishAt === undefined ? current?.publishAt : publishAt;
-    const effectiveUnpublishAt =
-      unpublishAt === undefined ? current?.unpublishAt : unpublishAt;
-
-    if (
-      effectivePublishAt &&
-      effectiveUnpublishAt &&
-      effectiveUnpublishAt <= effectivePublishAt
-    ) {
-      throw new BadRequestException("unpublishAt must be after publishAt.");
-    }
-
-    return {
-      ...body,
-      ...(publishAt === undefined ? {} : { publishAt }),
-      ...(unpublishAt === undefined ? {} : { unpublishAt }),
-    };
-  }
-
-  private resolveWorkflowUpdate(
-    role: "editor" | "admin" | "superadmin",
-    currentStatus: WorkflowStatus | undefined,
-    currentPublished: boolean | undefined,
-    requestedStatus: WorkflowStatus | undefined,
-    requestedPublished: boolean | undefined,
-  ): { workflowStatus: WorkflowStatus; published: boolean } {
-    const baseStatus =
-      currentStatus ?? (currentPublished ? "published" : "draft");
-    const nextStatus =
-      requestedStatus ??
-      (requestedPublished === undefined
-        ? baseStatus
-        : requestedPublished
-          ? "published"
-          : "draft");
-
-    if (
-      role === "editor" &&
-      nextStatus !== "draft" &&
-      nextStatus !== "in_review"
-    ) {
-      throw new ForbiddenException(
-        "Access denied: editors can only save draft or submit for review.",
-      );
-    }
-
-    const published = nextStatus === "published";
-
-    return { workflowStatus: nextStatus, published };
-  }
-
   private async getCurrentUserId(req: Request): Promise<string | null> {
     const token = readAccessToken(req);
     if (!token) {
@@ -2176,36 +1700,6 @@ export class ContentController {
       return user.id;
     } catch {
       return null;
-    }
-  }
-
-  private ensureEditorCannotModifyRelationFields(
-    role: "editor" | "admin" | "superadmin",
-    fields: Array<ContentFieldDefinition>,
-    incomingData: Record<string, unknown>,
-    existingData: Record<string, unknown> | null,
-  ) {
-    if (role !== "editor") {
-      return;
-    }
-
-    const relationFields = fields.filter(
-      (field) =>
-        field.type === "relation" ||
-        field.type === "contentItem" ||
-        field.type === "page",
-    );
-
-    for (const field of relationFields) {
-      const incoming = incomingData[field.key];
-      const current = existingData ? existingData[field.key] : undefined;
-      if (
-        JSON.stringify(incoming ?? null) !== JSON.stringify(current ?? null)
-      ) {
-        throw new ForbiddenException(
-          "Access denied: editors cannot modify relation fields.",
-        );
-      }
     }
   }
 
@@ -2362,6 +1856,4 @@ export class ContentController {
       );
     }
   }
-
-
 }

@@ -18,6 +18,8 @@ import { LocalFileStorageProvider } from "./local-file-storage.provider";
 import { MediaController } from "./media.controller";
 import { MediaService } from "./media.service";
 import { MediaUsageService } from "./media-usage.service";
+import { ContentWorkflowService } from "./content-workflow.service";
+import { ContentValidationService } from "./content-validation.service";
 import { AuthModule } from "../auth/auth.module";
 import { AuditModule } from "../audit/audit.module";
 import {
@@ -91,6 +93,8 @@ import { resolveMediaStorageProvider } from "./media-storage-provider.config";
     },
     MediaService,
     MediaUsageService,
+    ContentWorkflowService,
+    ContentValidationService,
   ],
 })
 export class ContentModule {}
