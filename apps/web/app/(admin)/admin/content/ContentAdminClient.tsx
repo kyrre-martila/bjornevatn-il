@@ -1299,37 +1299,39 @@ function ContentItemEditor({
           guided fields first.
         </p>
       )}
-      <fieldset>
-        <legend>Revision history</legend>
-        {isLoadingRevisions && revisions.length === 0 ? (
-          <small>Loading revisions...</small>
-        ) : null}
-        {revisions.length === 0 ? <small>No revisions yet.</small> : null}
-        <ul>
-          {revisions.map((revision) => (
-            <li key={revision.id}>
-              {new Date(revision.createdAt).toLocaleString()}{" "}
-              {revision.revisionNote ?? "Snapshot"}
-              <button
-                type="button"
-                onClick={() => setPendingRestoreRevision(revision)}
-                disabled={isRestoringRevision}
-              >
-                {isRestoringRevision ? "Restoring..." : "Restore"}
-              </button>
-            </li>
-          ))}
-        </ul>
-        {hasMoreRevisions ? (
-          <button
-            type="button"
-            onClick={() => void loadMoreRevisions()}
-            disabled={isLoadingRevisions}
-          >
-            {isLoadingRevisions ? "Loading..." : "Load older revisions"}
-          </button>
-        ) : null}
-      </fieldset>
+      {canAccessAdvancedSettings ? (
+        <fieldset>
+          <legend>Revision history</legend>
+          {isLoadingRevisions && revisions.length === 0 ? (
+            <small>Loading revisions...</small>
+          ) : null}
+          {revisions.length === 0 ? <small>No revisions yet.</small> : null}
+          <ul>
+            {revisions.map((revision) => (
+              <li key={revision.id}>
+                {new Date(revision.createdAt).toLocaleString()}{" "}
+                {revision.revisionNote ?? "Snapshot"}
+                <button
+                  type="button"
+                  onClick={() => setPendingRestoreRevision(revision)}
+                  disabled={isRestoringRevision}
+                >
+                  {isRestoringRevision ? "Restoring..." : "Restore"}
+                </button>
+              </li>
+            ))}
+          </ul>
+          {hasMoreRevisions ? (
+            <button
+              type="button"
+              onClick={() => void loadMoreRevisions()}
+              disabled={isLoadingRevisions}
+            >
+              {isLoadingRevisions ? "Loading..." : "Load older revisions"}
+            </button>
+          ) : null}
+        </fieldset>
+      ) : null}
       {canAccessAdvancedSettings ? (
         WORKFLOW_ACTIONS.map((action) => (
           <button
@@ -1347,9 +1349,11 @@ function ContentItemEditor({
       ) : (
         <button type="submit">Save content</button>
       )}
-      <button type="button" onClick={() => void onDuplicate(item.id)}>
-        Duplicate item
-      </button>
+      {canAccessAdvancedSettings ? (
+        <button type="button" onClick={() => void onDuplicate(item.id)}>
+          Duplicate item
+        </button>
+      ) : null}
       {canDeleteItems ? (
         <button type="button" onClick={() => void onDelete(item.id)}>
           Delete
@@ -1357,7 +1361,7 @@ function ContentItemEditor({
       ) : null}
 
       <DestructiveConfirmModal
-        open={Boolean(pendingRestoreRevision)}
+        open={canAccessAdvancedSettings && Boolean(pendingRestoreRevision)}
         title="Restore content revision"
         description="This replaces the current entry fields, metadata, and workflow state with a previous snapshot. This action cannot be undone."
         confirmLabel="Restore revision"

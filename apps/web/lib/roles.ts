@@ -6,7 +6,7 @@ function isAdminOrSuperadmin(role: string | undefined | null): boolean {
 }
 
 export function canViewStagingStatus(role: string | undefined | null): boolean {
-  return isAdminOrSuperadmin(role);
+  return normalizeRole(role) === "super_admin";
 }
 
 export function canTriggerStagingActions(role: string | undefined | null): boolean {
@@ -30,5 +30,5 @@ export function canManageTaxonomies(role: string | undefined | null): boolean {
 }
 
 export function canAccessDeveloperTools(role: string | undefined | null): boolean {
-  return canViewStagingStatus(role);
+  return normalizeRole(role) === "super_admin";
 }
