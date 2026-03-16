@@ -1511,7 +1511,7 @@ export function PageEditorClient({
         {error && <p className="page-editor__error">{error}</p>}
         {status && <p className="page-editor__status">{status}</p>}
 
-        {initialPage ? (
+        {initialPage && canAccessAdvancedSettings ? (
           <fieldset>
             <legend>Revision history</legend>
             {isLoadingRevisions ? <p>Loading revisions...</p> : null}
@@ -1571,7 +1571,7 @@ export function PageEditorClient({
               {isSaving ? "Saving..." : "Save content"}
             </button>
           )}
-          {initialPage && (
+          {initialPage && canAccessAdvancedSettings && (
             <button
               type="button"
               onClick={duplicatePage}
@@ -1592,7 +1592,7 @@ export function PageEditorClient({
         </div>
       </form>
       <DestructiveConfirmModal
-        open={Boolean(pendingRestoreRevision)}
+        open={canAccessAdvancedSettings && Boolean(pendingRestoreRevision)}
         title="Restore page revision"
         description="This replaces current page content, metadata, and workflow state with an older revision. This action cannot be undone."
         confirmLabel="Restore revision"
