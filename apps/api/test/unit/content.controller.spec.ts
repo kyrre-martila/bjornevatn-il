@@ -117,6 +117,7 @@ describe("ContentController createContentItem validation batching", () => {
     const pages = {
       findManyByIds: jest.fn().mockResolvedValue([{ id: "page-1" }]),
       findById: jest.fn(),
+      findManyByUrls: jest.fn().mockResolvedValue([]),
     } as unknown as jest.Mocked<PagesRepository>;
 
     const contentTypes = {
@@ -174,11 +175,11 @@ describe("ContentController createContentItem validation batching", () => {
     const settings = {} as SiteSettingsRepository;
 
     const media = {
-      findMany: jest.fn().mockResolvedValue([]),
       findManyByIds: jest
         .fn()
         .mockResolvedValue([{ id: "media-1", alt: "Descriptive alt text" }]),
       findById: jest.fn(),
+      findManyByUrls: jest.fn().mockResolvedValue([]),
     } as unknown as jest.Mocked<MediaRepository>;
 
     const auth = {
@@ -234,6 +235,7 @@ describe("ContentController createContentItem validation batching", () => {
     expect(pages.findById).not.toHaveBeenCalled();
     expect(media.findById).not.toHaveBeenCalled();
     expect(contentItems.findById).not.toHaveBeenCalled();
+    expect(media.findManyByUrls).toHaveBeenCalledWith([]);
   });
 
   it("keeps validation behavior for unknown relation content types", async () => {
@@ -255,5 +257,178 @@ describe("ContentController createContentItem validation batching", () => {
         "Field relatedPosts references unknown content type slug: post.",
       ),
     );
+  });
+});
+
+
+describe("ContentController media URL validation uses targeted lookups", () => {
+  function makeTargetedSut() {
+    const pages = {
+      findManyByIds: jest.fn().mockResolvedValue([]),
+      findById: jest.fn(),
+      findBySlug: jest.fn().mockResolvedValue(null),
+      findBySlugOrRedirect: jest.fn(),
+      create: jest.fn().mockResolvedValue({ id: "page-1", slug: "page", title: "Page", published: false }),
+    } as unknown as jest.Mocked<PagesRepository>;
+
+    const contentTypes = {
+      findById: jest.fn().mockResolvedValue({
+        id: "type-gallery",
+        slug: "gallery",
+        name: "Gallery",
+        description: "",
+        fields: [
+          { key: "heroImage", type: "image", required: false },
+          { key: "galleryImage", type: "image", required: false },
+          { key: "heroMedia", type: "media", required: false, relation: { targetType: "media" } },
+        ],
+      }),
+      findManyBySlugs: jest.fn().mockResolvedValue([]),
+      findBySlug: jest.fn().mockResolvedValue(null),
+    } as unknown as jest.Mocked<ContentTypesRepository>;
+
+    const contentItems = {
+      countByContentTypeId: jest.fn(),
+      findManyByIds: jest.fn().mockResolvedValue([]),
+      findById: jest.fn(),
+      findBySlug: jest.fn().mockResolvedValue(null),
+      findBySlugOrRedirect: jest.fn(),
+      create: jest.fn().mockResolvedValue({ id: "created-item" }),
+    } as unknown as jest.Mocked<ContentItemsRepository>;
+
+    const navigation = {} as NavigationItemsRepository;
+    const settings = {} as SiteSettingsRepository;
+
+    const media = {
+      findManyByIds: jest.fn().mockResolvedValue([{ id: "media-1", alt: "good alt" }]),
+      findById: jest.fn(),
+      findManyByUrls: jest.fn().mockResolvedValue([]),
+      findMany: jest.fn(),
+    } as unknown as jest.Mocked<MediaRepository>;
+
+    const auth = {
+      validateUser: jest.fn().mockResolvedValue({ id: "editor-1", role: "super_admin" }),
+    } as unknown as jest.Mocked<AuthService>;
+
+    const audit = { log: jest.fn() } as unknown as jest.Mocked<AuditService>;
+
+    const mediaUsageService = {
+      isMediaUrlUsed: jest.fn(),
+      getUsedUrls: jest.fn(),
+    } as unknown as jest.Mocked<MediaUsageService>;
+
+    const controller = new ContentController(
+      pages,
+      contentTypes,
+      contentItems,
+      navigation,
+      settings,
+      media,
+      mediaUsageService,
+      auth,
+      audit,
+    );
+
+    return { controller, media };
+  }
+
+  it("small payload queries only referenced media URLs", async () => {
+    const { controller, media } = makeTargetedSut();
+    media.findManyByUrls = jest
+      .fn()
+      .mockResolvedValue([{ id: "img-1", url: "/uploads/small.jpg", alt: "Small image" }]);
+
+    await controller.createContentItem(makeRequest(), {
+      contentTypeId: "type-gallery",
+      slug: "small",
+      title: "Small",
+      data: {
+        heroImage: "/uploads/small.jpg",
+        heroMedia: "media-1",
+      },
+      published: false,
+    });
+
+    expect(media.findManyByUrls).toHaveBeenCalledWith(["/uploads/small.jpg"]);
+    expect(media.findMany).not.toHaveBeenCalled();
+  });
+
+  it("many references are deduplicated into one targeted lookup", async () => {
+    const { controller, media } = makeTargetedSut();
+    media.findManyByUrls = jest.fn().mockResolvedValue(
+      Array.from({ length: 50 }, (_, i) => ({
+        id: `img-${i}`,
+        url: `/uploads/image-${i}.jpg`,
+        alt: `Alt ${i}`,
+      })),
+    );
+
+    await controller.createContentItem(makeRequest(), {
+      contentTypeId: "type-gallery",
+      slug: "many",
+      title: "Many",
+      data: {
+        heroImage: "/uploads/image-1.jpg",
+        galleryImage: "/uploads/image-1.jpg",
+        heroMedia: "media-1",
+      },
+      published: false,
+    });
+
+    expect(media.findManyByUrls).toHaveBeenCalledWith(["/uploads/image-1.jpg"]);
+  });
+
+  it("allows nonexistent URL but rejects media without alt text", async () => {
+    const { controller, media } = makeTargetedSut();
+    media.findManyByUrls = jest
+      .fn()
+      .mockResolvedValue([{ id: "img-2", url: "/uploads/missing-alt.jpg", alt: "   " }]);
+
+    await expect(
+      controller.createContentItem(makeRequest(), {
+        contentTypeId: "type-gallery",
+        slug: "missing-alt",
+        title: "Missing alt",
+        data: {
+          heroImage: "/uploads/missing-alt.jpg",
+        },
+        published: false,
+      }),
+    ).rejects.toEqual(
+      new BadRequestException(
+        "Field heroImage references media without alt text. Update that media item before saving.",
+      ),
+    );
+  });
+
+  it("page block validation checks mixed valid/invalid referenced URLs only", async () => {
+    const { controller, media } = makeTargetedSut();
+    media.findManyByUrls = jest.fn().mockResolvedValue([
+      { id: "valid-1", url: "/uploads/ok.jpg", alt: "OK" },
+      { id: "bad-1", url: "/uploads/bad.jpg", alt: "" },
+    ]);
+
+    await expect(
+      controller.createPage(makeRequest(), {
+        slug: "mixed-page",
+        title: "Mixed page",
+        blocks: [
+          { type: "image", data: { src: "/uploads/ok.jpg" }, order: 0 },
+          { type: "hero", data: { imageUrl: "/uploads/bad.jpg" }, order: 1 },
+          { type: "hero", data: { imageUrl: "/uploads/not-found.jpg" }, order: 2 },
+        ],
+        published: false,
+      }),
+    ).rejects.toEqual(
+      new BadRequestException(
+        "Page block #2 (hero) references media without alt text. Update that media item's alt text before saving.",
+      ),
+    );
+
+    expect(media.findManyByUrls).toHaveBeenCalledWith([
+      "/uploads/ok.jpg",
+      "/uploads/bad.jpg",
+      "/uploads/not-found.jpg",
+    ]);
   });
 });

@@ -180,6 +180,7 @@ export interface MediaRepository {
   findMany(pagination?: PaginationParams): Promise<Media[]>;
   findById(id: string): Promise<Media | null>;
   findManyByIds(ids: string[]): Promise<Media[]>;
+  findManyByUrls(urls: string[]): Promise<Media[]>;
   create(data: Omit<Media, "id" | "createdAt">): Promise<Media>;
   update(
     id: string,

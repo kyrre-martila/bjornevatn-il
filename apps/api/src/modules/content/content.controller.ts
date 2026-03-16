@@ -1442,40 +1442,27 @@ export class ContentController {
     return [];
   }
 
-  private async getMediaByUrlMap(): Promise<
-    Map<string, { id: string; alt: string }>
-  > {
-    const mediaByUrl = new Map<string, { id: string; alt: string }>();
-    let cursor: string | undefined;
-
-    while (true) {
-      const mediaBatch = await this.media.findMany({
-        limit: MAX_LIST_LIMIT,
-        cursor,
-      });
-
-      if (mediaBatch.length === 0) {
-        break;
-      }
-
-      for (const item of mediaBatch) {
-        mediaByUrl.set(item.url, { id: item.id, alt: item.alt });
-      }
-
-      cursor = mediaBatch[mediaBatch.length - 1]?.id;
-      if (mediaBatch.length < MAX_LIST_LIMIT || !cursor) {
-        break;
-      }
-    }
-
-    return mediaByUrl;
+  private async getMediaByUrlMap(
+    urls: Iterable<string>,
+  ): Promise<Map<string, { id: string; alt: string }>> {
+    const normalizedUrls = [...new Set([...urls].map((url) => url.trim()).filter(Boolean))];
+    const media = await this.media.findManyByUrls(normalizedUrls);
+    return new Map(media.map((item) => [item.url, { id: item.id, alt: item.alt }]));
   }
 
   private async validatePageBlocksMediaAlt(
     pageTitle: string,
     blocks: Array<{ type: string; data: Record<string, unknown> }>,
   ): Promise<void> {
-    const mediaByUrl = await this.getMediaByUrlMap();
+    const referencedUrls = new Set<string>();
+
+    for (const block of blocks) {
+      for (const url of this.extractPageBlockMediaUrls(block)) {
+        referencedUrls.add(url);
+      }
+    }
+
+    const mediaByUrl = await this.getMediaByUrlMap(referencedUrls);
 
     for (const [index, block] of blocks.entries()) {
       const urls = this.extractPageBlockMediaUrls(block);
@@ -1586,8 +1573,6 @@ export class ContentController {
     fields: ContentFieldDefinition[],
     data: Record<string, unknown>,
   ) {
-    const mediaByUrl = await this.getMediaByUrlMap();
-
     const normalizeRelationIds = (
       field: ContentFieldDefinition,
       value: unknown,
@@ -1638,6 +1623,7 @@ export class ContentController {
     const pageIds = new Set<string>();
     const mediaIds = new Set<string>();
     const contentItemIds = new Set<string>();
+    const imageUrls = new Set<string>();
 
     const relationChecks: Array<{
       field: ContentFieldDefinition;
@@ -1679,11 +1665,8 @@ export class ContentController {
         }
 
         const normalized = value.trim();
-        const matchedMedia = mediaByUrl.get(normalized);
-        if (matchedMedia && !matchedMedia.alt.trim()) {
-          throw new BadRequestException(
-            `Field ${field.key} references media without alt text. Update that media item before saving.`,
-          );
+        if (normalized) {
+          imageUrls.add(normalized);
         }
         continue;
       }
@@ -1750,11 +1733,12 @@ export class ContentController {
       relationChecks.push({ field, relation, ids, resolvedTarget });
     }
 
-    const [pages, media, contentItems, targetContentTypes] = await Promise.all([
+    const [pages, media, contentItems, targetContentTypes, mediaByUrl] = await Promise.all([
       this.pages.findManyByIds([...pageIds]),
       this.media.findManyByIds([...mediaIds]),
       this.contentItems.findManyByIds([...contentItemIds]),
       this.contentTypes.findManyBySlugs([...contentTypeSlugs]),
+      this.getMediaByUrlMap(imageUrls),
     ]);
 
     const pageById = new Map(pages.map((page) => [page.id, page]));
@@ -1763,6 +1747,29 @@ export class ContentController {
     const contentTypeBySlug = new Map(
       targetContentTypes.map((contentType) => [contentType.slug, contentType]),
     );
+
+    for (const field of fields) {
+      if (field.type !== "image") {
+        continue;
+      }
+
+      const value = data[field.key];
+      if (value === undefined || value === null || value === "") {
+        continue;
+      }
+
+      const normalized = typeof value === "string" ? value.trim() : "";
+      if (!normalized) {
+        continue;
+      }
+
+      const matchedMedia = mediaByUrl.get(normalized);
+      if (matchedMedia && !matchedMedia.alt.trim()) {
+        throw new BadRequestException(
+          `Field ${field.key} references media without alt text. Update that media item before saving.`,
+        );
+      }
+    }
 
     for (const check of relationChecks) {
       const { field, relation, ids, resolvedTarget } = check;

@@ -2155,6 +2155,18 @@ export class MediaPrismaRepository implements MediaRepository {
     return media.map(mapMedia);
   }
 
+  async findManyByUrls(urls: string[]): Promise<Media[]> {
+    if (urls.length === 0) {
+      return [];
+    }
+
+    const media = await this.prisma.media.findMany({
+      where: { url: { in: urls } },
+    });
+
+    return media.map(mapMedia);
+  }
+
   async create(data: Omit<Media, "id" | "createdAt">): Promise<Media> {
     const media = await this.prisma.media.create({ data });
     return mapMedia(media);
