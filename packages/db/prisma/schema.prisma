@@ -46,25 +46,39 @@ enum ClubhouseBookingStatus {
   cancelled
 }
 
+enum TicketSaleStatus {
+  draft
+  active
+  sold_out
+  closed
+}
+
+enum TicketStatus {
+  reserved
+  confirmed
+  cancelled
+  used
+}
+
 model User {
-  id            String   @id @default(cuid())
-  email         String   @unique
-  phone         String?  @unique
-  name          String?
-  firstName     String   @default("")
-  lastName      String   @default("")
-  birthDate     DateTime?
-  passwordHash  String?         // null tillates fortsatt for magic-link-brukere
-  acceptedTerms Boolean  @default(false)
-  displayName   String?
-  role          UserRole @default(editor)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  createdBy     String?  @db.VarChar(255)
-  updatedBy     String?  @db.VarChar(255)
-  credentials   Credential[]
-  sessions      Session[]
-  auditLogs     AuditLog[]
+  id                  String                  @id @default(cuid())
+  email               String                  @unique
+  phone               String?                 @unique
+  name                String?
+  firstName           String                  @default("")
+  lastName            String                  @default("")
+  birthDate           DateTime?
+  passwordHash        String? // null tillates fortsatt for magic-link-brukere
+  acceptedTerms       Boolean                 @default(false)
+  displayName         String?
+  role                UserRole                @default(editor)
+  createdAt           DateTime                @default(now())
+  updatedAt           DateTime                @updatedAt
+  createdBy           String?                 @db.VarChar(255)
+  updatedBy           String?                 @db.VarChar(255)
+  credentials         Credential[]
+  sessions            Session[]
+  auditLogs           AuditLog[]
   environmentStatuses SiteEnvironmentStatus[]
 
   @@index([firstName, lastName])
@@ -88,65 +102,65 @@ model AuditLog {
 }
 
 model Credential {
-  id          String   @id @default(cuid())
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId      String
-  type        String
-  publicKey   Bytes
-  counter     Int      @default(0)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  createdBy   String?  @db.VarChar(255)
-  updatedBy   String?  @db.VarChar(255)
+  id        String   @id @default(cuid())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+  type      String
+  publicKey Bytes
+  counter   Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  createdBy String?  @db.VarChar(255)
+  updatedBy String?  @db.VarChar(255)
 }
 
 model Session {
-  id          String   @id @default(cuid())
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId      String
-  token       String   @unique
-  ip          String?
-  userAgent   String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  createdBy   String?  @db.VarChar(255)
-  updatedBy   String?  @db.VarChar(255)
-  expiresAt   DateTime
-  revokedAt   DateTime?
+  id        String    @id @default(cuid())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+  token     String    @unique
+  ip        String?
+  userAgent String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  createdBy String?   @db.VarChar(255)
+  updatedBy String?   @db.VarChar(255)
+  expiresAt DateTime
+  revokedAt DateTime?
 
   @@index([token])
 }
 
 model MagicLink {
-  id          String   @id @default(cuid())
-  email       String
-  token       String   @unique
-  usedAt      DateTime?
-  expiresAt   DateTime
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  createdBy   String?  @db.VarChar(255)
-  updatedBy   String?  @db.VarChar(255)
+  id        String    @id @default(cuid())
+  email     String
+  token     String    @unique
+  usedAt    DateTime?
+  expiresAt DateTime
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  createdBy String?   @db.VarChar(255)
+  updatedBy String?   @db.VarChar(255)
 
   @@index([email])
 }
 
 model Page {
-  id             String      @id @default(cuid())
-  slug           String      @unique
+  id             String             @id @default(cuid())
+  slug           String             @unique
   title          String
   seoTitle       String?
   seoDescription String?
   seoImage       String?
   canonicalUrl   String?
-  noIndex        Boolean     @default(false)
-  published      Boolean     @default(false)
-  workflowStatus WorkflowStatus @default(draft)
+  noIndex        Boolean            @default(false)
+  published      Boolean            @default(false)
+  workflowStatus WorkflowStatus     @default(draft)
   publishAt      DateTime?
   unpublishAt    DateTime?
   templateKey    String?
-  createdAt      DateTime    @default(now())
-  updatedAt      DateTime    @updatedAt
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
   blocks         PageBlock[]
   slugRedirects  PageSlugRedirect[]
   revisions      PageRevision[]
@@ -179,7 +193,7 @@ model PageSlugRedirect {
 
 model PageBlock {
   id        String   @id @default(cuid())
-  pageId     String
+  pageId    String
   page      Page     @relation(fields: [pageId], references: [id], onDelete: Cascade)
   type      String
   data      Json
@@ -192,52 +206,90 @@ model PageBlock {
 }
 
 model ContentType {
-  id          String        @id @default(cuid())
-  name        String
-  slug        String        @unique
-  description String
-  isPublic    Boolean       @default(true)
-  fields      Json          @default("[]")
-  templateKey String?
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
-  items       ContentItem[]
+  id            String                    @id @default(cuid())
+  name          String
+  slug          String                    @unique
+  description   String
+  isPublic      Boolean                   @default(true)
+  fields        Json                      @default("[]")
+  templateKey   String?
+  createdAt     DateTime                  @default(now())
+  updatedAt     DateTime                  @updatedAt
+  items         ContentItem[]
   slugRedirects ContentItemSlugRedirect[]
 
   @@index([slug])
 }
 
 model ContentItem {
-  id             String      @id @default(cuid())
+  id             String                    @id @default(cuid())
   contentTypeId  String
-  contentType    ContentType @relation(fields: [contentTypeId], references: [id], onDelete: Cascade)
+  contentType    ContentType               @relation(fields: [contentTypeId], references: [id], onDelete: Cascade)
   parentId       String?
-  parent         ContentItem? @relation("ContentItemTree", fields: [parentId], references: [id], onDelete: SetNull)
-  children       ContentItem[] @relation("ContentItemTree")
-  sortOrder      Int         @default(0)
+  parent         ContentItem?              @relation("ContentItemTree", fields: [parentId], references: [id], onDelete: SetNull)
+  children       ContentItem[]             @relation("ContentItemTree")
+  sortOrder      Int                       @default(0)
   slug           String
   title          String
   seoTitle       String?
   seoDescription String?
   seoImage       String?
   canonicalUrl   String?
-  noIndex        Boolean     @default(false)
+  noIndex        Boolean                   @default(false)
   data           Json
-  published      Boolean     @default(false)
-  workflowStatus WorkflowStatus @default(draft)
+  published      Boolean                   @default(false)
+  workflowStatus WorkflowStatus            @default(draft)
   publishAt      DateTime?
   unpublishAt    DateTime?
-  createdAt      DateTime    @default(now())
-  updatedAt      DateTime    @updatedAt
+  createdAt      DateTime                  @default(now())
+  updatedAt      DateTime                  @updatedAt
   slugRedirects  ContentItemSlugRedirect[]
   terms          ContentItemTerm[]
   revisions      ContentItemRevision[]
+  ticketSale     TicketSale?
 
   @@unique([contentTypeId, slug])
   @@index([contentTypeId])
   @@index([parentId])
   @@index([contentTypeId, parentId, sortOrder])
   @@index([published])
+}
+
+model TicketSale {
+  id          String           @id @default(cuid())
+  matchId     String           @unique
+  match       ContentItem      @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  title       String
+  description String?
+  ticketTypes Json
+  saleStartAt DateTime
+  saleEndAt   DateTime
+  maxTickets  Int
+  status      TicketSaleStatus @default(draft)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  tickets     Ticket[]
+
+  @@index([status, saleStartAt, saleEndAt])
+}
+
+model Ticket {
+  id             String       @id @default(cuid())
+  ticketSaleId   String
+  ticketSale     TicketSale   @relation(fields: [ticketSaleId], references: [id], onDelete: Cascade)
+  ticketType     String
+  buyerName      String
+  buyerEmail     String
+  buyerPhone     String
+  quantity       Int
+  status         TicketStatus @default(reserved)
+  orderReference String
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@index([ticketSaleId, ticketType])
+  @@index([orderReference])
+  @@index([status])
 }
 
 model ContentItemRevision {
@@ -266,48 +318,47 @@ model ContentItemSlugRedirect {
 }
 
 model ClubhouseBooking {
-  id             String                @id @default(cuid())
-  bookedByName   String
-  bookedByEmail  String
-  bookedByPhone  String
-  organization   String?
-  purpose        String
-  attendeeCount  Int?
-  startAt        DateTime
-  endAt          DateTime
-  status         ClubhouseBookingStatus @default(pending)
-  adminNotes     String?
-  createdAt      DateTime              @default(now())
-  updatedAt      DateTime              @updatedAt
+  id            String                 @id @default(cuid())
+  bookedByName  String
+  bookedByEmail String
+  bookedByPhone String
+  organization  String?
+  purpose       String
+  attendeeCount Int?
+  startAt       DateTime
+  endAt         DateTime
+  status        ClubhouseBookingStatus @default(pending)
+  adminNotes    String?
+  createdAt     DateTime               @default(now())
+  updatedAt     DateTime               @updatedAt
 
   @@index([startAt, endAt])
   @@index([status, startAt, endAt])
 }
 
 model ClubhouseBlockedPeriod {
-  id         String   @id @default(cuid())
-  startAt    DateTime
-  endAt      DateTime
-  reason     String
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  id        String   @id @default(cuid())
+  startAt   DateTime
+  endAt     DateTime
+  reason    String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([startAt, endAt])
 }
 
 model NavigationItem {
-  id       String          @id @default(cuid())
+  id       String           @id @default(cuid())
   label    String
   url      String
   order    Int
   parentId String?
-  parent   NavigationItem? @relation("NavigationTree", fields: [parentId], references: [id], onDelete: SetNull)
+  parent   NavigationItem?  @relation("NavigationTree", fields: [parentId], references: [id], onDelete: SetNull)
   children NavigationItem[] @relation("NavigationTree")
 
   @@index([order])
   @@index([parentId])
 }
-
 
 model RedirectRule {
   id         String   @id @default(cuid())
@@ -326,16 +377,16 @@ model SiteSetting {
 }
 
 model SiteEnvironmentStatus {
-  environment    SiteEnvironmentName       @id
-  state          SiteEnvironmentState      @default(active)
-  lastSyncedAt   DateTime?
-  lastPushedAt   DateTime?
-  lastResetAt    DateTime?
-  lockStatus     SiteEnvironmentLockStatus @default(idle)
+  environment     SiteEnvironmentName       @id
+  state           SiteEnvironmentState      @default(active)
+  lastSyncedAt    DateTime?
+  lastPushedAt    DateTime?
+  lastResetAt     DateTime?
+  lockStatus      SiteEnvironmentLockStatus @default(idle)
   lastActorUserId String?
-  lastActorUser  User?                     @relation(fields: [lastActorUserId], references: [id], onDelete: SetNull)
-  createdAt      DateTime                  @default(now())
-  updatedAt      DateTime                  @updatedAt
+  lastActorUser   User?                     @relation(fields: [lastActorUserId], references: [id], onDelete: SetNull)
+  createdAt       DateTime                  @default(now())
+  updatedAt       DateTime                  @updatedAt
 
   @@index([lastActorUserId])
   @@index([lockStatus])
@@ -354,11 +405,10 @@ model Media {
   createdAt        DateTime @default(now())
 }
 
-
 model Taxonomy {
-  id          String @id @default(cuid())
+  id          String   @id @default(cuid())
   name        String
-  slug        String @unique
+  slug        String   @unique
   description String
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -368,16 +418,16 @@ model Taxonomy {
 }
 
 model Term {
-  id          String @id @default(cuid())
-  taxonomyId  String
-  taxonomy    Taxonomy @relation(fields: [taxonomyId], references: [id], onDelete: Cascade)
-  name        String
-  slug        String
-  description String
-  parentId    String?
-  parent      Term? @relation("TermTree", fields: [parentId], references: [id], onDelete: SetNull)
-  children    Term[] @relation("TermTree")
-  createdAt   DateTime @default(now())
+  id           String            @id @default(cuid())
+  taxonomyId   String
+  taxonomy     Taxonomy          @relation(fields: [taxonomyId], references: [id], onDelete: Cascade)
+  name         String
+  slug         String
+  description  String
+  parentId     String?
+  parent       Term?             @relation("TermTree", fields: [parentId], references: [id], onDelete: SetNull)
+  children     Term[]            @relation("TermTree")
+  createdAt    DateTime          @default(now())
   contentItems ContentItemTerm[]
 
   @@unique([taxonomyId, slug])
@@ -389,7 +439,7 @@ model ContentItemTerm {
   contentItemId String
   contentItem   ContentItem @relation(fields: [contentItemId], references: [id], onDelete: Cascade)
   termId        String
-  term          Term @relation(fields: [termId], references: [id], onDelete: Cascade)
+  term          Term        @relation(fields: [termId], references: [id], onDelete: Cascade)
 
   @@id([contentItemId, termId])
   @@index([termId])

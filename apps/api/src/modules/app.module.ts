@@ -12,6 +12,7 @@ import { AuditModule } from "./audit/audit.module";
 import { AuditAdminModule } from "./audit/audit-admin.module";
 import { StagingModule } from "./staging/staging.module";
 import { ClubhouseModule } from "./clubhouse/clubhouse.module";
+import { TicketsModule } from "./tickets/tickets.module";
 
 @Module({
   imports: [
@@ -28,6 +29,7 @@ import { ClubhouseModule } from "./clubhouse/clubhouse.module";
     AuditAdminModule,
     StagingModule,
     ClubhouseModule,
+    TicketsModule,
   ],
 })
 export class AppModule {}

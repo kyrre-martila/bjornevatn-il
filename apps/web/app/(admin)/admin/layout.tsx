@@ -26,8 +26,26 @@ const adminNavItems = [
     visible: canManageTaxonomies,
   },
   { href: "/admin/users", label: "Users", visible: canManageUsers },
-  { href: "/admin/clubhouse-bookings", label: "Clubhouse bookings", visible: canManageUsers },
-  { href: "/admin/clubhouse-blocked", label: "Clubhouse blocked periods", visible: canManageUsers },
+  {
+    href: "/admin/clubhouse-bookings",
+    label: "Clubhouse bookings",
+    visible: canManageUsers,
+  },
+  {
+    href: "/admin/clubhouse-blocked",
+    label: "Clubhouse blocked periods",
+    visible: canManageUsers,
+  },
+  {
+    href: "/admin/ticket-sales",
+    label: "Ticket sales",
+    visible: canManageUsers,
+  },
+  {
+    href: "/admin/ticket-orders",
+    label: "Ticket orders",
+    visible: canManageUsers,
+  },
   { href: "/admin/audit", label: "Audit log", visible: canManageUsers },
   { href: "/admin/settings", label: "Site settings", visible: canManageUsers },
   { href: "/admin/content", label: "Content models", visible: canAccessSchema },
