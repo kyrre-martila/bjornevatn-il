@@ -42,6 +42,16 @@ const adminNavItems = [
     visible: canManageUsers,
   },
   {
+    href: "/admin/matches",
+    label: "Matches",
+    visible: canManageUsers,
+  },
+  {
+    href: "/admin/matches/sync",
+    label: "Match sync",
+    visible: canManageUsers,
+  },
+  {
     href: "/admin/ticket-sales",
     label: "Ticket sales",
     visible: canManageUsers,

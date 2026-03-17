@@ -334,8 +334,16 @@ export type MatchItem = {
   homeTeam: string;
   awayTeam: string;
   matchDate: string;
+  league: string;
   venue: string;
   isHomeMatch: boolean;
+  externalSource: "manual" | "fotball-no";
+  externalId: string;
+  externalTeamId: string;
+  status: "scheduled" | "postponed" | "cancelled" | "finished";
+  sourceUrl: string;
+  lastSyncedAt: string;
+  syncHash: string;
 };
 
 export type FundingGrantItem = {
@@ -377,7 +385,9 @@ type ApiSitemapPayload = {
 };
 
 const getCachedSitemapPayload = cache(async (): Promise<ApiSitemapPayload> => {
-  const payload = await fetchContent<ApiSitemapPayload>("/public/content/sitemap");
+  const payload = await fetchContent<ApiSitemapPayload>(
+    "/public/content/sitemap",
+  );
   return payload ?? {};
 });
 
@@ -528,7 +538,6 @@ async function fetchAllContentItemsByTypeSlug(
 
   return items;
 }
-
 
 function mapApiPageBlock(block: ApiPageBlock): ContentBlock | null {
   if (!isContentBlockType(block.type)) {
@@ -1364,7 +1373,10 @@ function mapSocialLinks(value: unknown): SocialLink[] {
 }
 
 export async function getTeams(): Promise<TeamItem[]> {
-  const items = await fetchAllContentItemsByTypeSlug("team", DEFAULT_ARCHIVE_PAGE_SIZE);
+  const items = await fetchAllContentItemsByTypeSlug(
+    "team",
+    DEFAULT_ARCHIVE_PAGE_SIZE,
+  );
 
   return items.map((item) => {
     const data = asRecord(item.data);
@@ -1415,7 +1427,10 @@ export async function getTeamBySlug(slug: string): Promise<TeamItem | null> {
 }
 
 export async function getPersonRoles(): Promise<PersonRoleItem[]> {
-  const items = await fetchAllContentItemsByTypeSlug("person-role", DEFAULT_ARCHIVE_PAGE_SIZE);
+  const items = await fetchAllContentItemsByTypeSlug(
+    "person-role",
+    DEFAULT_ARCHIVE_PAGE_SIZE,
+  );
 
   return items.map((item) => {
     const data = asRecord(item.data);
@@ -1442,7 +1457,10 @@ export async function getPersonRoles(): Promise<PersonRoleItem[]> {
 }
 
 export async function getSponsors(): Promise<SponsorItem[]> {
-  const items = await fetchAllContentItemsByTypeSlug("sponsor", DEFAULT_ARCHIVE_PAGE_SIZE);
+  const items = await fetchAllContentItemsByTypeSlug(
+    "sponsor",
+    DEFAULT_ARCHIVE_PAGE_SIZE,
+  );
 
   return items.map((item) => {
     const data = asRecord(item.data);
@@ -1465,7 +1483,10 @@ export async function getSponsors(): Promise<SponsorItem[]> {
 }
 
 export async function getClubNews(): Promise<ClubNewsItem[]> {
-  const items = await fetchAllContentItemsByTypeSlug("news", DEFAULT_ARCHIVE_PAGE_SIZE);
+  const items = await fetchAllContentItemsByTypeSlug(
+    "news",
+    DEFAULT_ARCHIVE_PAGE_SIZE,
+  );
 
   return items.map((item) => {
     const data = asRecord(item.data);
@@ -1483,7 +1504,9 @@ export async function getClubNews(): Promise<ClubNewsItem[]> {
   });
 }
 
-export async function getClubNewsBySlug(slug: string): Promise<ClubNewsItem | null> {
+export async function getClubNewsBySlug(
+  slug: string,
+): Promise<ClubNewsItem | null> {
   const items = await getClubNews();
   return items.find((item) => item.slug === slug) ?? null;
 }
@@ -1543,7 +1566,10 @@ export async function getHomepageSettings(): Promise<HomepageSettings | null> {
 }
 
 export async function getMatches(): Promise<MatchItem[]> {
-  const items = await fetchAllContentItemsByTypeSlug("match", DEFAULT_ARCHIVE_PAGE_SIZE);
+  const items = await fetchAllContentItemsByTypeSlug(
+    "match",
+    DEFAULT_ARCHIVE_PAGE_SIZE,
+  );
 
   return items.map((item) => {
     const data = asRecord(item.data);
@@ -1553,14 +1579,30 @@ export async function getMatches(): Promise<MatchItem[]> {
       homeTeam: asText(data.homeTeam),
       awayTeam: asText(data.awayTeam),
       matchDate: asText(data.matchDate),
+      league: asText(data.league),
       venue: asText(data.venue),
       isHomeMatch: asBoolean(data.isHomeMatch),
+      externalSource:
+        asText(data.externalSource) === "fotball-no" ? "fotball-no" : "manual",
+      externalId: asText(data.externalId),
+      externalTeamId: asText(data.externalTeamId),
+      status: (["scheduled", "postponed", "cancelled", "finished"].includes(
+        asText(data.status),
+      )
+        ? asText(data.status)
+        : "scheduled") as MatchItem["status"],
+      sourceUrl: asText(data.sourceUrl),
+      lastSyncedAt: asText(data.lastSyncedAt),
+      syncHash: asText(data.syncHash),
     };
   });
 }
 
 export async function getFundingGrants(): Promise<FundingGrantItem[]> {
-  const items = await fetchAllContentItemsByTypeSlug("funding-grant", DEFAULT_ARCHIVE_PAGE_SIZE);
+  const items = await fetchAllContentItemsByTypeSlug(
+    "funding-grant",
+    DEFAULT_ARCHIVE_PAGE_SIZE,
+  );
 
   return items.map((item) => {
     const data = asRecord(item.data);

@@ -14,6 +14,7 @@ import { StagingModule } from "./staging/staging.module";
 import { ClubhouseModule } from "./clubhouse/clubhouse.module";
 import { TicketsModule } from "./tickets/tickets.module";
 import { MembershipModule } from "./membership/membership.module";
+import { MatchesSyncModule } from "./matches-sync/matches-sync.module";
 
 @Module({
   imports: [
@@ -32,6 +33,7 @@ import { MembershipModule } from "./membership/membership.module";
     ClubhouseModule,
     TicketsModule,
     MembershipModule,
+    MatchesSyncModule,
   ],
 })
 export class AppModule {}
