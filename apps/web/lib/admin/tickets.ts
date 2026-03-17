@@ -18,6 +18,12 @@ export type AdminTicketOrder = {
   quantity: number;
   createdAt: string;
   status: "reserved" | "confirmed" | "cancelled" | "used";
+  validationStatus: "valid" | "used" | "cancelled" | "revoked";
+  scanCount: number;
+  firstScannedAt: string | null;
+  lastScannedAt: string | null;
+  lastScannedBy: string | null;
+  qrCodePreview: string;
 };
 
 function getApiBase() {

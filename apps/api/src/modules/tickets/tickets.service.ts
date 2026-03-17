@@ -3,8 +3,14 @@ import {
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
-import { Prisma, TicketSaleStatus, TicketStatus } from "@prisma/client";
+import {
+  Prisma,
+  TicketSaleStatus,
+  TicketStatus,
+  TicketValidationStatus,
+} from "@prisma/client";
 import { PrismaService } from "../../prisma/prisma.service";
+import { TicketQrService } from "./ticket-qr.service";
 import {
   RequestedTicketSelection,
   TicketAvailabilityService,
@@ -41,6 +47,7 @@ export class TicketsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly availability: TicketAvailabilityService,
+    private readonly qrService: TicketQrService,
   ) {}
 
   private async getSoldByType(
@@ -181,6 +188,7 @@ export class TicketsService {
 
     const orderReference = `BIL-${Date.now()}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
 
+    const qrIssuedAt = new Date();
     const createdTickets = await this.prisma.$transaction(
       input.selections
         .filter((selection) => selection.quantity > 0)
@@ -195,6 +203,9 @@ export class TicketsService {
               quantity: selection.quantity,
               orderReference,
               status: TicketStatus.reserved,
+              validationStatus: TicketValidationStatus.valid,
+              qrCodeValue: this.qrService.generatePayload(),
+              qrIssuedAt,
             },
           }),
         ),
@@ -205,6 +216,34 @@ export class TicketsService {
       tickets: createdTickets,
       ticketSale,
       match: ticketSale.match,
+    };
+  }
+
+  async getPublicOrderByReference(orderReference: string) {
+    const tickets = await this.prisma.ticket.findMany({
+      where: { orderReference },
+      include: { ticketSale: { include: { match: true } } },
+      orderBy: { createdAt: "asc" },
+    });
+
+    if (tickets.length === 0) {
+      throw new NotFoundException("Order not found.");
+    }
+
+    const first = tickets[0];
+    return {
+      orderReference,
+      buyerName: first.buyerName,
+      buyerEmail: first.buyerEmail,
+      status: first.status,
+      tickets: tickets.map((ticket) => ({
+        id: ticket.id,
+        ticketType: ticket.ticketType,
+        quantity: ticket.quantity,
+        qrCodeValue: ticket.qrCodeValue,
+        validationStatus: ticket.validationStatus,
+      })),
+      match: first.ticketSale.match,
     };
   }
 
@@ -240,6 +279,25 @@ export class TicketsService {
           ),
           createdAt: first.createdAt,
           status: first.status,
+          validationStatus: first.validationStatus,
+          scanCount: orderTickets.reduce(
+            (total, ticket) => total + ticket.scanCount,
+            0,
+          ),
+          firstScannedAt: orderTickets
+            .map((ticket) => ticket.firstScannedAt)
+            .find((value) => Boolean(value)),
+          lastScannedAt: orderTickets
+            .map((ticket) => ticket.lastScannedAt)
+            .filter((value): value is Date => Boolean(value))
+            .sort((a, b) => b.getTime() - a.getTime())[0] ?? null,
+          lastScannedBy: orderTickets
+            .map((ticket) => ticket.lastScannedBy)
+            .find((value) => Boolean(value)) ?? null,
+          qrCodePreview:
+            first.qrCodeValue.length > 14
+              ? `${first.qrCodeValue.slice(0, 7)}...${first.qrCodeValue.slice(-7)}`
+              : first.qrCodeValue,
         };
       },
     );
@@ -255,7 +313,15 @@ export class TicketsService {
 
     await this.prisma.ticket.updateMany({
       where: { orderReference },
-      data: { status },
+      data: {
+        status,
+        validationStatus:
+          status === TicketStatus.cancelled
+            ? TicketValidationStatus.cancelled
+            : status === TicketStatus.used
+              ? TicketValidationStatus.used
+              : TicketValidationStatus.valid,
+      },
     });
 
     return { orderReference, status };

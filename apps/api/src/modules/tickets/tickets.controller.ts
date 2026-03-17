@@ -1,9 +1,10 @@
 import { Body, Controller, Get, Param, Patch, Post, Req } from "@nestjs/common";
-import { ApiProperty, ApiTags } from "@nestjs/swagger";
+import { ApiTags } from "@nestjs/swagger";
 import { TicketSaleStatus, TicketStatus } from "@prisma/client";
 import {
   ArrayMinSize,
   IsArray,
+  IsBoolean,
   IsDate,
   IsEmail,
   IsIn,
@@ -17,6 +18,7 @@ import { Type } from "class-transformer";
 import type { Request } from "express";
 import { requireMinimumRole } from "../../common/auth/admin-access";
 import { AuthService } from "../auth/auth.service";
+import { TicketScanService } from "./ticket-scan.service";
 import { TicketTypeConfig } from "./ticket-availability.service";
 import { TicketsService } from "./tickets.service";
 
@@ -116,11 +118,27 @@ class UpdateOrderStatusDto {
   status!: TicketStatus;
 }
 
+class ValidateQrDto {
+  @IsString()
+  qrCodeValue!: string;
+
+  @IsOptional()
+  @IsBoolean()
+  allowOverride?: boolean;
+}
+
+class ConfirmScanDto extends ValidateQrDto {
+  @IsOptional()
+  @IsString()
+  notes?: string;
+}
+
 @ApiTags("tickets")
 @Controller("tickets")
 export class TicketsController {
   constructor(
     private readonly ticketsService: TicketsService,
+    private readonly ticketScanService: TicketScanService,
     private readonly auth: AuthService,
   ) {}
 
@@ -137,6 +155,32 @@ export class TicketsController {
   @Post("orders")
   createOrder(@Body() body: CreateTicketOrderDto) {
     return this.ticketsService.createTicketOrder(body);
+  }
+
+  @Get("orders/:orderReference")
+  getOrder(@Param("orderReference") orderReference: string) {
+    return this.ticketsService.getPublicOrderByReference(orderReference);
+  }
+
+  @Post("scanner/validate")
+  async validateScan(@Req() req: Request, @Body() body: ValidateQrDto) {
+    const role = await requireMinimumRole(req, this.auth, "editor");
+    return this.ticketScanService.validateScan({
+      qrCodeValue: body.qrCodeValue,
+      allowOverride: role === "admin" || role === "superadmin" ? body.allowOverride : false,
+      scannedBy: undefined,
+    });
+  }
+
+  @Post("scanner/confirm")
+  async confirmScan(@Req() req: Request, @Body() body: ConfirmScanDto) {
+    const role = await requireMinimumRole(req, this.auth, "editor");
+    return this.ticketScanService.confirmEntry({
+      qrCodeValue: body.qrCodeValue,
+      allowOverride: role === "admin" || role === "superadmin" ? body.allowOverride : false,
+      scannedBy: undefined,
+      notes: body.notes,
+    });
   }
 
   @Get("admin/sales")

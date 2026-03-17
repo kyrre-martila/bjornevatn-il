@@ -45,3 +45,35 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
+
+.tickets-page__summary-list {
+  list-style: none;
+  display: grid;
+  gap: var(--site-space-3, var(--space-m));
+}
+
+.tickets-page__summary-item {
+  border: 1px solid var(--site-color-border, var(--color-border-subtle));
+  border-radius: var(--radius-m);
+  padding: var(--site-space-3, var(--space-m));
+  display: grid;
+  gap: var(--site-space-2, var(--space-s));
+}
+
+.tickets-page__qr-placeholder {
+  display: grid;
+  gap: var(--space-3xs, 2px);
+  font-size: var(--text-s);
+}
+
+.tickets-page__qr-placeholder code {
+  word-break: break-all;
+  background: var(--site-color-surface, var(--color-neutral-soft));
+  border-radius: var(--radius-s);
+  padding: var(--space-2xs) var(--space-xs);
+}
+
+.tickets-page__summary-status {
+  font-size: var(--text-s);
+  color: var(--site-color-text-muted, var(--color-text-muted));
+}
