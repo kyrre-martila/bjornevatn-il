@@ -1,5 +1,8 @@
 import { notFound } from "next/navigation";
-import { getPublicTicketSale } from "../../../../lib/tickets";
+import {
+  getPublicTicketSale,
+  getTicketOrderSummary,
+} from "../../../../lib/tickets";
 import { submitTicketOrder } from "./actions";
 import TicketPurchaseForm from "./TicketPurchaseForm";
 import "../tickets.css";
@@ -26,6 +29,8 @@ export default async function TicketPurchasePage({
   const venue = asText(sale.match.data.venue);
 
   if (searchParams?.orderReference) {
+    const order = await getTicketOrderSummary(searchParams.orderReference);
+
     return (
       <section className="tickets-page section">
         <div className="container stack stack--sm">
@@ -39,9 +44,23 @@ export default async function TicketPurchasePage({
           <p>
             {new Date(matchDate).toLocaleString("no-NO")} · {venue}
           </p>
-          <ul>
-            {sale.ticketTypes.map((ticketType) => (
-              <li key={ticketType.name}>{ticketType.name}</li>
+          <p className="tickets-page__intro">
+            Ticket status: {order?.status ?? "reserved"}
+          </p>
+          <ul className="tickets-page__summary-list">
+            {(order?.tickets ?? []).map((ticket) => (
+              <li key={ticket.id} className="tickets-page__summary-item">
+                <div>
+                  <strong>{ticket.ticketType}</strong> · {ticket.quantity} stk
+                </div>
+                <div className="tickets-page__qr-placeholder">
+                  <span>QR payload</span>
+                  <code>{ticket.qrCodeValue}</code>
+                </div>
+                <div className="tickets-page__summary-status">
+                  Validation: {ticket.validationStatus}
+                </div>
+              </li>
             ))}
           </ul>
         </div>

@@ -60,6 +60,28 @@ enum TicketStatus {
   used
 }
 
+enum TicketValidationStatus {
+  valid
+  used
+  cancelled
+  revoked
+}
+
+enum TicketScanAction {
+  validate
+  confirm_entry
+  override_entry
+}
+
+enum TicketScanResult {
+  success
+  already_used
+  cancelled
+  revoked
+  not_found
+  invalid
+}
+
 enum MembershipApplicationStatus {
   new
   contacted
@@ -292,22 +314,46 @@ model TicketSale {
 }
 
 model Ticket {
-  id             String       @id @default(cuid())
-  ticketSaleId   String
-  ticketSale     TicketSale   @relation(fields: [ticketSaleId], references: [id], onDelete: Cascade)
-  ticketType     String
-  buyerName      String
-  buyerEmail     String
-  buyerPhone     String
-  quantity       Int
-  status         TicketStatus @default(reserved)
-  orderReference String
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
+  id               String                 @id @default(cuid())
+  ticketSaleId     String
+  ticketSale       TicketSale             @relation(fields: [ticketSaleId], references: [id], onDelete: Cascade)
+  ticketType       String
+  buyerName        String
+  buyerEmail       String
+  buyerPhone       String
+  quantity         Int
+  status           TicketStatus           @default(reserved)
+  orderReference   String
+  qrCodeValue      String                 @unique
+  qrIssuedAt       DateTime
+  scanCount        Int                    @default(0)
+  firstScannedAt   DateTime?
+  lastScannedAt    DateTime?
+  lastScannedBy    String?
+  validationStatus TicketValidationStatus @default(valid)
+  isRevoked        Boolean                @default(false)
+  createdAt        DateTime               @default(now())
+  updatedAt        DateTime               @updatedAt
+  scanLogs         TicketScanLog[]
 
   @@index([ticketSaleId, ticketType])
   @@index([orderReference])
   @@index([status])
+  @@index([validationStatus])
+}
+
+model TicketScanLog {
+  id        String           @id @default(cuid())
+  ticketId  String?
+  ticket    Ticket?          @relation(fields: [ticketId], references: [id], onDelete: SetNull)
+  scannedAt DateTime         @default(now())
+  scannedBy String?
+  action    TicketScanAction
+  result    TicketScanResult
+  notes     String?
+
+  @@index([ticketId, scannedAt])
+  @@index([scannedAt])
 }
 
 model ContentItemRevision {
