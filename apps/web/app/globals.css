@@ -1809,3 +1809,124 @@ button:focus-visible {
 .staging-banner__spacer {
   height: 3rem;
 }
+
+.homepage {
+  width: 100%;
+}
+
+.homepage-hero {
+  border: 1px solid var(--site-color-border, var(--color-border-subtle));
+  border-radius: var(--radius-l);
+  overflow: hidden;
+  background: var(--site-color-surface, var(--color-neutral-soft));
+}
+
+.homepage-hero__image {
+  width: 100%;
+  max-height: 320px;
+  object-fit: cover;
+}
+
+.homepage-hero__content {
+  padding: var(--site-space-4, var(--space-l));
+}
+
+.homepage-hero__eyebrow {
+  font-size: var(--text-xs);
+  color: var(--color-muted, var(--color-neutral-500));
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.homepage-hero__title {
+  font-size: var(--text-2xl);
+  line-height: 1.2;
+}
+
+.homepage-hero__text {
+  color: var(--color-muted, var(--color-neutral-600));
+}
+
+.homepage-hero__meta {
+  display: grid;
+  gap: var(--site-space-3, var(--space-m));
+}
+
+.homepage-hero__meta dt {
+  font-size: var(--text-xs);
+  color: var(--color-muted, var(--color-neutral-500));
+}
+
+.homepage-hero__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--site-space-3, var(--space-m));
+}
+
+.homepage-weather__grid,
+.homepage-news__grid,
+.homepage-funding__grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--site-space-4, var(--space-l));
+}
+
+.homepage-weather__item,
+.homepage-news__card,
+.homepage-funding__card,
+.homepage-grasrot__widget {
+  padding: var(--site-space-4, var(--space-l));
+  border: 1px solid var(--site-color-border, var(--color-border-subtle));
+  border-radius: var(--radius-m);
+  background: var(--color-surface, var(--color-neutral-0));
+}
+
+.homepage-news__image,
+.homepage-funding__image {
+  width: 100%;
+  border-radius: var(--radius-s);
+}
+
+.homepage-news__category,
+.homepage-news__date,
+.homepage-weather__updated {
+  font-size: var(--text-s);
+  color: var(--color-muted, var(--color-neutral-600));
+}
+
+.homepage-grasrot__columns {
+  display: grid;
+  gap: var(--site-space-4, var(--space-l));
+}
+
+.homepage-sponsors__logos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--site-space-4, var(--space-l));
+}
+
+.homepage-sponsors__logo {
+  height: 64px;
+  width: auto;
+  object-fit: contain;
+}
+
+@media (min-width: 768px) {
+  .homepage-weather__grid,
+  .homepage-news__grid,
+  .homepage-funding__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .homepage-grasrot__columns {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+  }
+}
+
+@media (min-width: 1024px) {
+  .homepage-news__grid,
+  .homepage-funding__grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}

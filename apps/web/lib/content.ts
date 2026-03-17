@@ -293,6 +293,58 @@ export type ClubNewsItem = {
   content: string;
 };
 
+export type ClubProfile = {
+  id: string;
+  name: string;
+  description: string;
+  logo: string | null;
+  heroImage: string | null;
+  latitude: string;
+  longitude: string;
+  grasrotEnabled: boolean;
+  grasrotOrganizationNumber: string;
+};
+
+export type HomepageSettings = {
+  heroTitle: string;
+  heroText: string;
+  heroImage: string | null;
+  showNextMatchHero: boolean;
+  showWeatherSection: boolean;
+  showNewsSection: boolean;
+  showGrasrotSection: boolean;
+  showFundingSection: boolean;
+  showSponsorsSection: boolean;
+  newsSectionTitle: string;
+  sponsorsSectionTitle: string;
+  fundingSectionTitle: string;
+  grasrotInstructionsTitle: string;
+  grasrotInstructionsText: string;
+  grasrotButtonLabel: string;
+  grasrotButtonUrl: string;
+};
+
+export type MatchItem = {
+  id: string;
+  homeTeam: string;
+  awayTeam: string;
+  matchDate: string;
+  venue: string;
+  isHomeMatch: boolean;
+};
+
+export type FundingGrantItem = {
+  id: string;
+  title: string;
+  image: string | null;
+  year: string;
+  amount: string;
+  description: string;
+  category: string;
+  isFeaturedOnHomepage: boolean;
+  sortOrder: number;
+};
+
 type ApiSiteSetting = {
   key: string;
   value: string;
@@ -1268,6 +1320,14 @@ function asText(value: unknown): string {
   return typeof value === "string" ? value : "";
 }
 
+function asBoolean(value: unknown): boolean {
+  if (typeof value === "boolean") {
+    return value;
+  }
+
+  return value === "true";
+}
+
 function asJsonArray(value: unknown): Array<Record<string, unknown>> {
   if (typeof value !== "string" || !value.trim()) {
     return [];
@@ -1421,4 +1481,90 @@ export async function getClubNews(): Promise<ClubNewsItem[]> {
 export async function getClubNewsBySlug(slug: string): Promise<ClubNewsItem | null> {
   const items = await getClubNews();
   return items.find((item) => item.slug === slug) ?? null;
+}
+
+export async function getClubProfile(): Promise<ClubProfile | null> {
+  const [item] = await fetchAllContentItemsByTypeSlug("club", 1);
+
+  if (!item) {
+    return null;
+  }
+
+  const data = asRecord(item.data);
+  return {
+    id: item.id,
+    name: asText(data.name) || item.title,
+    description: asText(data.description) || item.summary,
+    logo: asText(data.logo) || null,
+    heroImage: asText(data.heroImage) || null,
+    latitude: asText(data.latitude),
+    longitude: asText(data.longitude),
+    grasrotEnabled: asBoolean(data.grasrotEnabled),
+    grasrotOrganizationNumber: asText(data.grasrotOrganizationNumber),
+  };
+}
+
+export async function getHomepageSettings(): Promise<HomepageSettings | null> {
+  const [item] = await fetchAllContentItemsByTypeSlug("homepage-settings", 1);
+
+  if (!item) {
+    return null;
+  }
+
+  const data = asRecord(item.data);
+  return {
+    heroTitle: asText(data.heroTitle),
+    heroText: asText(data.heroText),
+    heroImage: asText(data.heroImage) || null,
+    showNextMatchHero: asBoolean(data.showNextMatchHero),
+    showWeatherSection: asBoolean(data.showWeatherSection),
+    showNewsSection: asBoolean(data.showNewsSection),
+    showGrasrotSection: asBoolean(data.showGrasrotSection),
+    showFundingSection: asBoolean(data.showFundingSection),
+    showSponsorsSection: asBoolean(data.showSponsorsSection),
+    newsSectionTitle: asText(data.newsSectionTitle),
+    sponsorsSectionTitle: asText(data.sponsorsSectionTitle),
+    fundingSectionTitle: asText(data.fundingSectionTitle),
+    grasrotInstructionsTitle: asText(data.grasrotInstructionsTitle),
+    grasrotInstructionsText: asText(data.grasrotInstructionsText),
+    grasrotButtonLabel: asText(data.grasrotButtonLabel),
+    grasrotButtonUrl: asText(data.grasrotButtonUrl),
+  };
+}
+
+export async function getMatches(): Promise<MatchItem[]> {
+  const items = await fetchAllContentItemsByTypeSlug("match", DEFAULT_ARCHIVE_PAGE_SIZE);
+
+  return items.map((item) => {
+    const data = asRecord(item.data);
+
+    return {
+      id: item.id,
+      homeTeam: asText(data.homeTeam),
+      awayTeam: asText(data.awayTeam),
+      matchDate: asText(data.matchDate),
+      venue: asText(data.venue),
+      isHomeMatch: asBoolean(data.isHomeMatch),
+    };
+  });
+}
+
+export async function getFundingGrants(): Promise<FundingGrantItem[]> {
+  const items = await fetchAllContentItemsByTypeSlug("funding-grant", DEFAULT_ARCHIVE_PAGE_SIZE);
+
+  return items.map((item) => {
+    const data = asRecord(item.data);
+
+    return {
+      id: item.id,
+      title: asText(data.title) || item.title,
+      image: asText(data.image) || null,
+      year: asText(data.year),
+      amount: asText(data.amount),
+      description: asText(data.description),
+      category: asText(data.category),
+      isFeaturedOnHomepage: asBoolean(data.isFeaturedOnHomepage),
+      sortOrder: asNumber(data.sortOrder) ?? 0,
+    };
+  });
 }
