@@ -39,6 +39,13 @@ enum SiteEnvironmentLockStatus {
   deleting
 }
 
+enum ClubhouseBookingStatus {
+  pending
+  approved
+  rejected
+  cancelled
+}
+
 model User {
   id            String   @id @default(cuid())
   email         String   @unique
@@ -256,6 +263,36 @@ model ContentItemSlugRedirect {
 
   @@unique([contentTypeId, sourceSlug])
   @@index([contentItemId])
+}
+
+model ClubhouseBooking {
+  id             String                @id @default(cuid())
+  bookedByName   String
+  bookedByEmail  String
+  bookedByPhone  String
+  organization   String?
+  purpose        String
+  attendeeCount  Int?
+  startAt        DateTime
+  endAt          DateTime
+  status         ClubhouseBookingStatus @default(pending)
+  adminNotes     String?
+  createdAt      DateTime              @default(now())
+  updatedAt      DateTime              @updatedAt
+
+  @@index([startAt, endAt])
+  @@index([status, startAt, endAt])
+}
+
+model ClubhouseBlockedPeriod {
+  id         String   @id @default(cuid())
+  startAt    DateTime
+  endAt      DateTime
+  reason     String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([startAt, endAt])
 }
 
 model NavigationItem {
