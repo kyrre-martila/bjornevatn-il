@@ -60,6 +60,14 @@ enum TicketStatus {
   used
 }
 
+enum MembershipApplicationStatus {
+  new
+  contacted
+  approved
+  rejected
+  archived
+}
+
 model User {
   id                  String                  @id @default(cuid())
   email               String                  @unique
@@ -345,6 +353,64 @@ model ClubhouseBlockedPeriod {
   updatedAt DateTime @updatedAt
 
   @@index([startAt, endAt])
+}
+
+model MembershipSettings {
+  id                   String   @id @default("membership-settings")
+  pageTitle            String
+  introText            String
+  benefitsTitle        String
+  benefits             Json
+  categoriesTitle      String
+  applicationTitle     String
+  confirmationTitle    String?
+  confirmationText     String?
+  contactEmail         String?
+  showBenefitsSection  Boolean  @default(true)
+  showCategoriesSection Boolean @default(true)
+  showApplicationForm  Boolean  @default(true)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+}
+
+model MembershipCategory {
+  id           String                  @id @default(cuid())
+  name         String
+  slug         String                  @unique
+  description  String
+  priceLabel   String
+  ageGroup     String
+  sortOrder    Int                     @default(0)
+  isActive     Boolean                 @default(true)
+  createdAt    DateTime                @default(now())
+  updatedAt    DateTime                @updatedAt
+  applications MembershipApplication[]
+
+  @@index([isActive, sortOrder])
+}
+
+model MembershipApplication {
+  id                   String                      @id @default(cuid())
+  fullName             String
+  email                String
+  phone                String?
+  dateOfBirth          DateTime?
+  addressLine          String?
+  postalCode           String?
+  city                 String?
+  guardianName         String?
+  guardianPhone        String?
+  guardianEmail        String?
+  membershipCategoryId String
+  membershipCategory   MembershipCategory          @relation(fields: [membershipCategoryId], references: [id], onDelete: Restrict)
+  notes                String?
+  status               MembershipApplicationStatus @default(new)
+  adminNotes           String?
+  createdAt            DateTime                    @default(now())
+  updatedAt            DateTime                    @updatedAt
+
+  @@index([membershipCategoryId])
+  @@index([status, createdAt])
 }
 
 model NavigationItem {

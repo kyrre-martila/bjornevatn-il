@@ -2087,3 +2087,127 @@ button:focus-visible {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
+
+.membership-page__intro {
+  color: var(--color-text-muted);
+}
+
+.membership-page__benefits {
+  list-style: disc;
+  padding-left: var(--space-l);
+  display: grid;
+  gap: var(--space-2xs);
+}
+
+.membership-page__categories {
+  display: grid;
+  gap: var(--site-space-3, var(--space-m));
+}
+
+.membership-page__category-card {
+  border: 1px solid var(--color-border);
+  background: var(--color-surface-muted);
+  border-radius: var(--radius-md);
+  padding: var(--site-space-3, var(--space-m));
+  display: grid;
+  gap: var(--space-2xs);
+}
+
+.membership-page__form {
+  display: grid;
+  gap: var(--site-space-3, var(--space-m));
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface-muted);
+  padding: var(--site-space-4, var(--space-l));
+}
+
+.membership-page__field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2xs);
+}
+
+.membership-page__field input,
+.membership-page__field textarea,
+.membership-page__field select,
+.admin-memberships__filters select,
+.admin-membership-detail__editor select,
+.admin-membership-detail__editor textarea {
+  width: 100%;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-xs) var(--space-s);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
+}
+
+.membership-page__field small,
+.membership-page__error,
+.admin-membership-detail__error {
+  color: var(--color-danger, #c53030);
+}
+
+.membership-page__confirmation,
+.admin-membership-detail__state {
+  color: var(--color-success, #2f855a);
+}
+
+.admin-memberships,
+.admin-membership-detail {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.admin-memberships__filters,
+.admin-membership-detail__editor {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.admin-memberships__table-wrap {
+  overflow-x: auto;
+}
+
+.admin-memberships__table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.admin-memberships__table th,
+.admin-memberships__table td {
+  border-bottom: 1px solid var(--color-border);
+  text-align: left;
+  padding: var(--space-2xs) var(--space-xs);
+}
+
+.admin-membership-detail__info {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-1) var(--space-3);
+}
+
+.admin-membership-detail__info dt {
+  font-weight: 600;
+}
+
+@media (min-width: 768px) {
+  .membership-page__categories {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .membership-page__form,
+  .admin-memberships__filters,
+  .admin-membership-detail__editor,
+  .admin-membership-detail__info {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .membership-page__field--full,
+  .membership-page__submit,
+  .membership-page__error,
+  .admin-membership-detail__editor button {
+    grid-column: 1 / -1;
+  }
+}

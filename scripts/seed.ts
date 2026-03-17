@@ -1710,6 +1710,65 @@ async function seedClubWebsiteModels() {
   }
 }
 
+
+async function seedMembership() {
+  await prisma.membershipSettings.upsert({
+    where: { id: "membership-settings" },
+    update: {
+      pageTitle: "Bli medlem i Bjørnevatn IL",
+      introText: "Velkommen som medlem! Vi har et inkluderende tilbud for barn, ungdom og voksne.",
+      benefitsTitle: "Fordeler med medlemskap",
+      benefits: [
+        "Trygt og inkluderende idrettsmiljø",
+        "Tilgang til treninger og klubbaktiviteter",
+        "Fellesskap og sosialt miljø for hele familien",
+      ],
+      categoriesTitle: "Velg medlemskategori",
+      applicationTitle: "Søk medlemskap",
+      confirmationTitle: "Takk for søknaden!",
+      confirmationText: "Vi har mottatt søknaden din og tar kontakt så snart som mulig.",
+      contactEmail: "post@bjornevatnil.no",
+      showBenefitsSection: true,
+      showCategoriesSection: true,
+      showApplicationForm: true,
+    },
+    create: {
+      id: "membership-settings",
+      pageTitle: "Bli medlem i Bjørnevatn IL",
+      introText: "Velkommen som medlem! Vi har et inkluderende tilbud for barn, ungdom og voksne.",
+      benefitsTitle: "Fordeler med medlemskap",
+      benefits: [
+        "Trygt og inkluderende idrettsmiljø",
+        "Tilgang til treninger og klubbaktiviteter",
+        "Fellesskap og sosialt miljø for hele familien",
+      ],
+      categoriesTitle: "Velg medlemskategori",
+      applicationTitle: "Søk medlemskap",
+      confirmationTitle: "Takk for søknaden!",
+      confirmationText: "Vi har mottatt søknaden din og tar kontakt så snart som mulig.",
+      contactEmail: "post@bjornevatnil.no",
+      showBenefitsSection: true,
+      showCategoriesSection: true,
+      showApplicationForm: true,
+    },
+  });
+
+  const categories = [
+    { slug: "child-membership", name: "Child membership", description: "For children in introductory and youth teams.", priceLabel: "NOK 900/year", ageGroup: "6-12 years", sortOrder: 1 },
+    { slug: "youth-membership", name: "Youth membership", description: "For youth players and active teens.", priceLabel: "NOK 1,100/year", ageGroup: "13-17 years", sortOrder: 2 },
+    { slug: "adult-membership", name: "Adult membership", description: "For adult players and training groups.", priceLabel: "NOK 1,400/year", ageGroup: "18+ years", sortOrder: 3 },
+    { slug: "family-membership", name: "Family membership", description: "A shared membership plan for household members.", priceLabel: "NOK 2,800/year", ageGroup: "Family", sortOrder: 4 },
+    { slug: "supporter-membership", name: "Supporter membership", description: "Support Bjørnevatn IL as a non-playing member.", priceLabel: "NOK 500/year", ageGroup: "All ages", sortOrder: 5 },
+  ] as const;
+
+  for (const category of categories) {
+    await prisma.membershipCategory.upsert({
+      where: { slug: category.slug },
+      update: { ...category, isActive: true },
+      create: { ...category, isActive: true },
+    });
+  }
+}
 async function main() {
   if (process.env.NODE_ENV !== "development") {
     console.log("Seeding is only allowed in development mode.");
@@ -1726,6 +1785,7 @@ async function main() {
   await seedFundingGrants();
   await seedServices();
   await seedClubWebsiteModels();
+  await seedMembership();
 
   console.log("Seed completed.");
 }
