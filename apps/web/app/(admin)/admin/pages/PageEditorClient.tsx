@@ -55,7 +55,7 @@ function workflowLabel(status: WorkflowStatus): string {
 type AdminMedia = {
   id: string;
   url: string;
-  alt: string;
+  altText: string | null;
   width: number | null;
   height: number | null;
 };
@@ -712,7 +712,7 @@ export function PageEditorClient({
 
       if (blocks[index]?.type === "image") {
         nextData.src = selected.url;
-        nextData.alt = selected.alt;
+        nextData.alt = selected.altText ?? "";
         if (selected.width) {
           nextData.width = selected.width;
         }
@@ -1494,7 +1494,7 @@ export function PageEditorClient({
                       <option value="">Choose from media library</option>
                       {media.map((item) => (
                         <option key={item.id} value={item.id}>
-                          {item.alt || item.url}
+                          {item.altText || item.url}
                         </option>
                       ))}
                     </select>

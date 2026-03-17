@@ -1,3 +1,4 @@
+import { ImageAsset } from "../media/ImageAsset";
 import Link from "next/link";
 
 type HeroSectionProps = {
@@ -20,7 +21,7 @@ export default function HeroSection({
   return (
     <section className="homepage-hero stack" aria-labelledby="homepage-hero-title">
       {image ? (
-        <img className="homepage-hero__image" src={image} alt={title} />
+        <ImageAsset className="homepage-hero__image" imageClassName="homepage-hero__image" src={image} alt={title} loading="eager" />
       ) : null}
       <div className="homepage-hero__content stack stack--sm">
         <p className="homepage-hero__eyebrow">Kommende kamp</p>

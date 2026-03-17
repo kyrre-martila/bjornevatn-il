@@ -1362,6 +1362,22 @@ function asJsonArray(value: unknown): Array<Record<string, unknown>> {
   }
 }
 
+
+function asMediaUrl(value: unknown): string | null {
+  if (typeof value === "string" && value.trim()) {
+    return value.trim();
+  }
+
+  if (value && typeof value === "object" && !Array.isArray(value)) {
+    const candidate = (value as { url?: unknown }).url;
+    if (typeof candidate === "string" && candidate.trim()) {
+      return candidate.trim();
+    }
+  }
+
+  return null;
+}
+
 function mapSocialLinks(value: unknown): SocialLink[] {
   return asJsonArray(value)
     .map((entry) => ({
@@ -1393,7 +1409,7 @@ export async function getTeams(): Promise<TeamItem[]> {
           : "",
       age: asNumber(data.age),
       sortOrder: asNumber(data.sortOrder) ?? 0,
-      teamImage: asText(data.teamImage) || null,
+      teamImage: asMediaUrl(data.teamImage),
       spondUrl: asText(data.spondUrl),
       fotballNoUrl: asText(data.fotballNoUrl),
       coaches: asJsonArray(data.coaches)
@@ -1475,7 +1491,7 @@ export async function getSponsors(): Promise<SponsorItem[]> {
         data.type === "samarbeidspartner"
           ? data.type
           : "",
-      logo: asText(data.logo) || null,
+      logo: asMediaUrl(data.logo),
       websiteUrl: asText(data.websiteUrl),
       sortOrder: asNumber(data.sortOrder) ?? 0,
     };
@@ -1497,7 +1513,7 @@ export async function getClubNews(): Promise<ClubNewsItem[]> {
       excerpt: asText(data.excerpt) || item.summary,
       category: asText(data.category),
       publishedAt: new Date(item.publishedAt).toISOString().slice(0, 10),
-      image: asText(data.featuredImage) || null,
+      image: asMediaUrl(data.featuredImage),
       authorName: asText(data.authorName),
       content: asText(data.body),
     };
@@ -1523,8 +1539,8 @@ export async function getClubProfile(): Promise<ClubProfile | null> {
     id: item.id,
     name: asText(data.name) || item.title,
     description: asText(data.description) || item.summary,
-    logo: asText(data.logo) || null,
-    heroImage: asText(data.heroImage) || null,
+    logo: asMediaUrl(data.logo),
+    heroImage: asMediaUrl(data.heroImage),
     clubhouseName: asText(data.clubhouseName),
     clubhouseDescription: asText(data.clubhouseDescription),
     clubhouseAddress: asText(data.clubhouseAddress),
@@ -1548,7 +1564,7 @@ export async function getHomepageSettings(): Promise<HomepageSettings | null> {
   return {
     heroTitle: asText(data.heroTitle),
     heroText: asText(data.heroText),
-    heroImage: asText(data.heroImage) || null,
+    heroImage: asMediaUrl(data.heroImage),
     showNextMatchHero: asBoolean(data.showNextMatchHero),
     showWeatherSection: asBoolean(data.showWeatherSection),
     showNewsSection: asBoolean(data.showNewsSection),

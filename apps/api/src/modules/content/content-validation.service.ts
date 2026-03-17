@@ -85,13 +85,13 @@ export class ContentValidationService {
 
   private async getMediaByUrlMap(
     urls: Iterable<string>,
-  ): Promise<Map<string, { id: string; alt: string }>> {
+  ): Promise<Map<string, { id: string; altText: string | null }>> {
     const normalizedUrls = [
       ...new Set([...urls].map((url) => url.trim()).filter(Boolean)),
     ];
     const media = await this.media.findManyByUrls(normalizedUrls);
     return new Map(
-      media.map((item) => [item.url, { id: item.id, alt: item.alt }]),
+      media.map((item) => [item.url, { id: item.id, altText: item.altText }]),
     );
   }
 
@@ -112,7 +112,7 @@ export class ContentValidationService {
       const urls = this.extractPageBlockMediaUrls(block);
       for (const url of urls) {
         const matched = mediaByUrl.get(url);
-        if (matched && !matched.alt.trim()) {
+        if (matched && !(matched.altText ?? "").trim()) {
           throw new BadRequestException(
             `Page block #${index + 1} (${block.type}) references media without alt text. Update that media item's alt text before saving.`,
           );
@@ -375,7 +375,7 @@ export class ContentValidationService {
       }
 
       const matchedMedia = mediaByUrl.get(normalized);
-      if (matchedMedia && !matchedMedia.alt.trim()) {
+      if (matchedMedia && !(matchedMedia.altText ?? "").trim()) {
         throw new BadRequestException(
           `Field ${field.key} references media without alt text. Update that media item before saving.`,
         );
@@ -402,7 +402,7 @@ export class ContentValidationService {
               `Field ${field.key} references missing media.`,
             );
           }
-          if (!matchedMedia.alt.trim()) {
+          if (!(matchedMedia.altText ?? "").trim()) {
             throw new BadRequestException(
               `Field ${field.key} references media without alt text. Update that media item before saving.`,
             );

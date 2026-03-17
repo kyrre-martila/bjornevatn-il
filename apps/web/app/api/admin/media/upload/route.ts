@@ -10,15 +10,19 @@ export async function POST(request: Request) {
 
   const incoming = await request.formData();
   const file = incoming.get("file");
-  const alt = incoming.get("alt");
+  const altText = incoming.get("altText");
+  const caption = incoming.get("caption");
 
-  if (!(file instanceof File) || typeof alt !== "string") {
-    return NextResponse.json({ error: "file and alt are required" }, { status: 400 });
+  if (!(file instanceof File) || typeof altText !== "string") {
+    return NextResponse.json({ error: "file and altText are required" }, { status: 400 });
   }
 
   const outbound = new FormData();
   outbound.set("file", file, file.name);
-  outbound.set("alt", alt);
+  outbound.set("altText", altText);
+  if (typeof caption === "string" && caption.trim()) {
+    outbound.set("caption", caption.trim());
+  }
 
   const headers = buildForwardHeaders();
   delete headers["content-type"];
