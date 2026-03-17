@@ -62,6 +62,7 @@ const MATCH_ITEMS = [
     slug: "bil-vs-kirkenes-if-2026-05-12",
     title: "Bjørnevatn IL vs Kirkenes IF",
     data: {
+      externalSource: "manual",
       externalId: "match-import-2026-05-12-bil-kif",
       homeTeam: "Bjørnevatn IL",
       awayTeam: "Kirkenes IF",
@@ -70,6 +71,10 @@ const MATCH_ITEMS = [
       venue: "Bjørnevatn stadion",
       isHomeMatch: true,
       isFeatured: true,
+      status: "scheduled",
+      sourceUrl: "",
+      lastSyncedAt: "",
+      syncHash: "",
       ticketSalesEnabled: false,
     },
   },
@@ -78,6 +83,7 @@ const MATCH_ITEMS = [
     slug: "hammerfest-sk-vs-bil-2026-05-20",
     title: "Hammerfest SK vs Bjørnevatn IL",
     data: {
+      externalSource: "manual",
       externalId: "match-import-2026-05-20-hsk-bil",
       homeTeam: "Hammerfest SK",
       awayTeam: "Bjørnevatn IL",
@@ -86,6 +92,10 @@ const MATCH_ITEMS = [
       venue: "Hammerfest kunstgress",
       isHomeMatch: false,
       isFeatured: false,
+      status: "scheduled",
+      sourceUrl: "",
+      lastSyncedAt: "",
+      syncHash: "",
       ticketSalesEnabled: false,
     },
   },
@@ -377,13 +387,29 @@ async function seedNews() {
 
 async function seedMatches() {
   const matchTypeFields = [
+    {
+      key: "externalSource",
+      type: "select",
+      required: false,
+      options: ["manual", "fotball-no"],
+    },
     { key: "externalId", type: "text", required: false },
+    { key: "externalTeamId", type: "text", required: false },
     { key: "homeTeam", type: "text", required: false },
     { key: "awayTeam", type: "text", required: false },
     { key: "matchDate", type: "date", required: true },
     { key: "league", type: "text", required: false },
     { key: "venue", type: "text", required: false },
     { key: "isHomeMatch", type: "boolean", required: false },
+    {
+      key: "status",
+      type: "select",
+      required: false,
+      options: ["scheduled", "postponed", "cancelled", "finished"],
+    },
+    { key: "sourceUrl", type: "text", required: false },
+    { key: "lastSyncedAt", type: "date", required: false },
+    { key: "syncHash", type: "text", required: false },
     { key: "isFeatured", type: "boolean", required: false },
     { key: "ticketSalesEnabled", type: "boolean", required: false },
   ] as const;
@@ -1710,13 +1736,13 @@ async function seedClubWebsiteModels() {
   }
 }
 
-
 async function seedMembership() {
   await prisma.membershipSettings.upsert({
     where: { id: "membership-settings" },
     update: {
       pageTitle: "Bli medlem i Bjørnevatn IL",
-      introText: "Velkommen som medlem! Vi har et inkluderende tilbud for barn, ungdom og voksne.",
+      introText:
+        "Velkommen som medlem! Vi har et inkluderende tilbud for barn, ungdom og voksne.",
       benefitsTitle: "Fordeler med medlemskap",
       benefits: [
         "Trygt og inkluderende idrettsmiljø",
@@ -1726,7 +1752,8 @@ async function seedMembership() {
       categoriesTitle: "Velg medlemskategori",
       applicationTitle: "Søk medlemskap",
       confirmationTitle: "Takk for søknaden!",
-      confirmationText: "Vi har mottatt søknaden din og tar kontakt så snart som mulig.",
+      confirmationText:
+        "Vi har mottatt søknaden din og tar kontakt så snart som mulig.",
       contactEmail: "post@bjornevatnil.no",
       showBenefitsSection: true,
       showCategoriesSection: true,
@@ -1735,7 +1762,8 @@ async function seedMembership() {
     create: {
       id: "membership-settings",
       pageTitle: "Bli medlem i Bjørnevatn IL",
-      introText: "Velkommen som medlem! Vi har et inkluderende tilbud for barn, ungdom og voksne.",
+      introText:
+        "Velkommen som medlem! Vi har et inkluderende tilbud for barn, ungdom og voksne.",
       benefitsTitle: "Fordeler med medlemskap",
       benefits: [
         "Trygt og inkluderende idrettsmiljø",
@@ -1745,7 +1773,8 @@ async function seedMembership() {
       categoriesTitle: "Velg medlemskategori",
       applicationTitle: "Søk medlemskap",
       confirmationTitle: "Takk for søknaden!",
-      confirmationText: "Vi har mottatt søknaden din og tar kontakt så snart som mulig.",
+      confirmationText:
+        "Vi har mottatt søknaden din og tar kontakt så snart som mulig.",
       contactEmail: "post@bjornevatnil.no",
       showBenefitsSection: true,
       showCategoriesSection: true,
@@ -1754,11 +1783,46 @@ async function seedMembership() {
   });
 
   const categories = [
-    { slug: "child-membership", name: "Child membership", description: "For children in introductory and youth teams.", priceLabel: "NOK 900/year", ageGroup: "6-12 years", sortOrder: 1 },
-    { slug: "youth-membership", name: "Youth membership", description: "For youth players and active teens.", priceLabel: "NOK 1,100/year", ageGroup: "13-17 years", sortOrder: 2 },
-    { slug: "adult-membership", name: "Adult membership", description: "For adult players and training groups.", priceLabel: "NOK 1,400/year", ageGroup: "18+ years", sortOrder: 3 },
-    { slug: "family-membership", name: "Family membership", description: "A shared membership plan for household members.", priceLabel: "NOK 2,800/year", ageGroup: "Family", sortOrder: 4 },
-    { slug: "supporter-membership", name: "Supporter membership", description: "Support Bjørnevatn IL as a non-playing member.", priceLabel: "NOK 500/year", ageGroup: "All ages", sortOrder: 5 },
+    {
+      slug: "child-membership",
+      name: "Child membership",
+      description: "For children in introductory and youth teams.",
+      priceLabel: "NOK 900/year",
+      ageGroup: "6-12 years",
+      sortOrder: 1,
+    },
+    {
+      slug: "youth-membership",
+      name: "Youth membership",
+      description: "For youth players and active teens.",
+      priceLabel: "NOK 1,100/year",
+      ageGroup: "13-17 years",
+      sortOrder: 2,
+    },
+    {
+      slug: "adult-membership",
+      name: "Adult membership",
+      description: "For adult players and training groups.",
+      priceLabel: "NOK 1,400/year",
+      ageGroup: "18+ years",
+      sortOrder: 3,
+    },
+    {
+      slug: "family-membership",
+      name: "Family membership",
+      description: "A shared membership plan for household members.",
+      priceLabel: "NOK 2,800/year",
+      ageGroup: "Family",
+      sortOrder: 4,
+    },
+    {
+      slug: "supporter-membership",
+      name: "Supporter membership",
+      description: "Support Bjørnevatn IL as a non-playing member.",
+      priceLabel: "NOK 500/year",
+      ageGroup: "All ages",
+      sortOrder: 5,
+    },
   ] as const;
 
   for (const category of categories) {
@@ -1769,6 +1833,26 @@ async function seedMembership() {
     });
   }
 }
+async function seedFotballNoSettings() {
+  await prisma.fotballNoSettings.upsert({
+    where: { id: "fotball-no-settings" },
+    update: {},
+    create: {
+      id: "fotball-no-settings",
+      enabled: false,
+      clubName: "Bjørnevatn IL",
+      clubId: "https://example.com/bjornevatn.ics",
+      teamIds: ["https://example.com/a-lag.ics"],
+      sourceType: "ical",
+      importMode: "create_and_update",
+      autoSyncEnabled: false,
+      syncIntervalMinutes: 60,
+      lastSyncStatus: "idle",
+      lastSyncMessage: "Seeded placeholder settings",
+    },
+  });
+}
+
 async function main() {
   if (process.env.NODE_ENV !== "development") {
     console.log("Seeding is only allowed in development mode.");
@@ -1786,6 +1870,7 @@ async function main() {
   await seedServices();
   await seedClubWebsiteModels();
   await seedMembership();
+  await seedFotballNoSettings();
 
   console.log("Seed completed.");
 }

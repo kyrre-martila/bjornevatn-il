@@ -1233,7 +1233,9 @@ button:focus-visible {
   font-size: var(--site-font-size-sm, var(--text-s));
   font-weight: 600;
   line-height: 1.25;
-  transition: background-color 0.2s ease, border-color 0.2s ease,
+  transition:
+    background-color 0.2s ease,
+    border-color 0.2s ease,
     color 0.2s ease;
   cursor: pointer;
 }
@@ -1370,7 +1372,6 @@ button:focus-visible {
   outline-offset: 1px;
   border-color: var(--site-color-primary, var(--color-primary));
 }
-
 
 .page-editor__card {
   border: 1px solid var(--site-color-border, var(--color-border-subtle));
@@ -2061,10 +2062,16 @@ button:focus-visible {
   background: var(--color-surface-muted);
 }
 
-.admin-bookings__status--approved { color: var(--color-primary); }
-.admin-bookings__status--pending { color: var(--color-base); }
+.admin-bookings__status--approved {
+  color: var(--color-primary);
+}
+.admin-bookings__status--pending {
+  color: var(--color-base);
+}
 .admin-bookings__status--rejected,
-.admin-bookings__status--cancelled { color: var(--color-text-muted); }
+.admin-bookings__status--cancelled {
+  color: var(--color-text-muted);
+}
 
 .admin-booking-detail__info {
   display: grid;
@@ -2072,7 +2079,9 @@ button:focus-visible {
   gap: var(--space-1) var(--space-3);
 }
 
-.admin-booking-detail__info dt { font-weight: 600; }
+.admin-booking-detail__info dt {
+  font-weight: 600;
+}
 
 .admin-booking-detail__actions,
 .admin-booking-detail__status-actions {
@@ -2209,5 +2218,57 @@ button:focus-visible {
   .membership-page__error,
   .admin-membership-detail__editor button {
     grid-column: 1 / -1;
+  }
+}
+
+.admin-match-sync,
+.admin-matches {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.admin-match-sync__form,
+.admin-matches__filters {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.admin-match-sync__field,
+.admin-matches__field {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.admin-match-sync__status {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
+  background: var(--color-surface-muted);
+  display: grid;
+  gap: var(--space-1);
+}
+
+.admin-matches__table-wrap {
+  overflow-x: auto;
+}
+
+.admin-matches__table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--color-surface);
+}
+
+.admin-matches__table th,
+.admin-matches__table td {
+  text-align: left;
+  padding: var(--space-2);
+  border-bottom: 1px solid var(--color-border);
+  font-size: var(--font-size-sm);
+}
+
+@media (min-width: 768px) {
+  .admin-match-sync__form,
+  .admin-matches__filters {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }

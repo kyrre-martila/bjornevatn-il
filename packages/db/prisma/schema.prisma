@@ -68,6 +68,16 @@ enum MembershipApplicationStatus {
   archived
 }
 
+enum MatchSyncSourceType {
+  fotball_no
+  ical
+}
+
+enum MatchSyncImportMode {
+  create_only
+  create_and_update
+}
+
 model User {
   id                  String                  @id @default(cuid())
   email               String                  @unique
@@ -440,6 +450,23 @@ model RedirectRule {
 model SiteSetting {
   key   String @id
   value String
+}
+
+model FotballNoSettings {
+  id                  String              @id @default("fotball-no-settings")
+  enabled             Boolean             @default(false)
+  clubName            String?
+  clubId              String?
+  teamIds             Json?
+  sourceType          MatchSyncSourceType @default(ical)
+  importMode          MatchSyncImportMode @default(create_and_update)
+  autoSyncEnabled     Boolean             @default(false)
+  syncIntervalMinutes Int                 @default(60)
+  lastSyncAt          DateTime?
+  lastSyncStatus      String?
+  lastSyncMessage     String?
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
 }
 
 model SiteEnvironmentStatus {
