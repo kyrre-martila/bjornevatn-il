@@ -155,6 +155,7 @@ type ApiContentItemArchive = {
   canonicalUrl: string | null;
   noIndex: boolean;
   updatedAt: string;
+  data?: Record<string, unknown>;
   parentId?: string | null;
 };
 
@@ -210,6 +211,86 @@ export type GenericContentDetailItem = {
   canonicalUrl: string | null;
   noIndex: boolean;
   publishedAt: string;
+};
+
+export type TeamCoach = {
+  name: string;
+  role: string;
+  phone: string;
+  email: string;
+  image: string;
+  sortOrder: number;
+};
+
+export type TeamTrainingSession = {
+  dayOfWeek: string;
+  startTime: string;
+  endTime: string;
+  location: string;
+  notes: string;
+  sortOrder: number;
+};
+
+export type SocialLink = {
+  platform: string;
+  url: string;
+  sortOrder: number;
+};
+
+export type TeamItem = {
+  id: string;
+  slug: string;
+  name: string;
+  shortDescription: string;
+  description: string;
+  mainCategory: "aldersbestemt" | "senior" | "";
+  age: number | null;
+  sortOrder: number;
+  teamImage: string | null;
+  spondUrl: string;
+  fotballNoUrl: string;
+  coaches: TeamCoach[];
+  trainingSessions: TeamTrainingSession[];
+  socialLinks: SocialLink[];
+};
+
+export type PersonRoleItem = {
+  id: string;
+  fullName: string;
+  roleTitle: string;
+  category: "styret" | "trenere" | "andre-roller" | "utvalg" | "";
+  email: string;
+  phone: string;
+  description: string;
+  termPeriod: string;
+  image: string | null;
+  sortOrder: number;
+};
+
+export type SponsorItem = {
+  id: string;
+  name: string;
+  type:
+    | "generalsponsor"
+    | "hovedsponsor"
+    | "sponsor"
+    | "samarbeidspartner"
+    | "";
+  logo: string | null;
+  websiteUrl: string;
+  sortOrder: number;
+};
+
+export type ClubNewsItem = {
+  id: string;
+  slug: string;
+  title: string;
+  excerpt: string;
+  category: string;
+  publishedAt: string;
+  image: string | null;
+  authorName: string;
+  content: string;
 };
 
 type ApiSiteSetting = {
@@ -1168,4 +1249,176 @@ export async function getPublicNavigationTree(): Promise<NavigationTreeItem[]> {
   }
 
   return buildNavigationTree(mappedItems);
+}
+
+function asNumber(value: unknown): number | null {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value;
+  }
+
+  if (typeof value === "string" && value.trim()) {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+
+  return null;
+}
+
+function asText(value: unknown): string {
+  return typeof value === "string" ? value : "";
+}
+
+function asJsonArray(value: unknown): Array<Record<string, unknown>> {
+  if (typeof value !== "string" || !value.trim()) {
+    return [];
+  }
+
+  try {
+    const parsed = JSON.parse(value);
+    if (!Array.isArray(parsed)) {
+      return [];
+    }
+
+    return parsed.filter(
+      (entry): entry is Record<string, unknown> =>
+        Boolean(entry) && typeof entry === "object" && !Array.isArray(entry),
+    );
+  } catch {
+    return [];
+  }
+}
+
+function mapSocialLinks(value: unknown): SocialLink[] {
+  return asJsonArray(value)
+    .map((entry) => ({
+      platform: asText(entry.platform),
+      url: asText(entry.url),
+      sortOrder: asNumber(entry.sortOrder) ?? 0,
+    }))
+    .sort((a, b) => a.sortOrder - b.sortOrder);
+}
+
+export async function getTeams(): Promise<TeamItem[]> {
+  const items = await fetchAllContentItemsByTypeSlug("team", DEFAULT_ARCHIVE_PAGE_SIZE);
+
+  return items.map((item) => {
+    const data = asRecord(item.data);
+
+    return {
+      id: item.id,
+      slug: item.slug,
+      name: item.title,
+      shortDescription: asText(data.shortDescription),
+      description: asText(data.description),
+      mainCategory:
+        data.mainCategory === "aldersbestemt" || data.mainCategory === "senior"
+          ? data.mainCategory
+          : "",
+      age: asNumber(data.age),
+      sortOrder: asNumber(data.sortOrder) ?? 0,
+      teamImage: asText(data.teamImage) || null,
+      spondUrl: asText(data.spondUrl),
+      fotballNoUrl: asText(data.fotballNoUrl),
+      coaches: asJsonArray(data.coaches)
+        .map((coach) => ({
+          name: asText(coach.name),
+          role: asText(coach.role),
+          phone: asText(coach.phone),
+          email: asText(coach.email),
+          image: asText(coach.image),
+          sortOrder: asNumber(coach.sortOrder) ?? 0,
+        }))
+        .sort((a, b) => a.sortOrder - b.sortOrder),
+      trainingSessions: asJsonArray(data.trainingSessions)
+        .map((session) => ({
+          dayOfWeek: asText(session.dayOfWeek),
+          startTime: asText(session.startTime),
+          endTime: asText(session.endTime),
+          location: asText(session.location),
+          notes: asText(session.notes),
+          sortOrder: asNumber(session.sortOrder) ?? 0,
+        }))
+        .sort((a, b) => a.sortOrder - b.sortOrder),
+      socialLinks: mapSocialLinks(data.socialLinks),
+    };
+  });
+}
+
+export async function getTeamBySlug(slug: string): Promise<TeamItem | null> {
+  const teams = await getTeams();
+  return teams.find((team) => team.slug === slug) ?? null;
+}
+
+export async function getPersonRoles(): Promise<PersonRoleItem[]> {
+  const items = await fetchAllContentItemsByTypeSlug("person-role", DEFAULT_ARCHIVE_PAGE_SIZE);
+
+  return items.map((item) => {
+    const data = asRecord(item.data);
+
+    return {
+      id: item.id,
+      fullName: item.title,
+      roleTitle: asText(data.roleTitle),
+      category:
+        data.category === "styret" ||
+        data.category === "trenere" ||
+        data.category === "andre-roller" ||
+        data.category === "utvalg"
+          ? data.category
+          : "",
+      email: asText(data.email),
+      phone: asText(data.phone),
+      description: asText(data.description),
+      termPeriod: asText(data.termPeriod),
+      image: asText(data.image) || null,
+      sortOrder: asNumber(data.sortOrder) ?? 0,
+    };
+  });
+}
+
+export async function getSponsors(): Promise<SponsorItem[]> {
+  const items = await fetchAllContentItemsByTypeSlug("sponsor", DEFAULT_ARCHIVE_PAGE_SIZE);
+
+  return items.map((item) => {
+    const data = asRecord(item.data);
+
+    return {
+      id: item.id,
+      name: item.title,
+      type:
+        data.type === "generalsponsor" ||
+        data.type === "hovedsponsor" ||
+        data.type === "sponsor" ||
+        data.type === "samarbeidspartner"
+          ? data.type
+          : "",
+      logo: asText(data.logo) || null,
+      websiteUrl: asText(data.websiteUrl),
+      sortOrder: asNumber(data.sortOrder) ?? 0,
+    };
+  });
+}
+
+export async function getClubNews(): Promise<ClubNewsItem[]> {
+  const items = await fetchAllContentItemsByTypeSlug("news", DEFAULT_ARCHIVE_PAGE_SIZE);
+
+  return items.map((item) => {
+    const data = asRecord(item.data);
+    return {
+      id: item.id,
+      slug: item.slug,
+      title: item.title,
+      excerpt: asText(data.excerpt) || item.summary,
+      category: asText(data.category),
+      publishedAt: new Date(item.publishedAt).toISOString().slice(0, 10),
+      image: asText(data.featuredImage) || null,
+      authorName: asText(data.authorName),
+      content: asText(data.body),
+    };
+  });
+}
+
+export async function getClubNewsBySlug(slug: string): Promise<ClubNewsItem | null> {
+  const items = await getClubNews();
+  return items.find((item) => item.slug === slug) ?? null;
 }

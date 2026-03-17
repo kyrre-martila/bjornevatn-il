@@ -82,6 +82,7 @@ type PublicContentItemArchiveDto = {
   canonicalUrl: string | null;
   noIndex: boolean;
   updatedAt: Date;
+  data: Record<string, unknown>;
   parentId?: string;
 };
 
@@ -828,6 +829,7 @@ export class PublicContentController {
       canonicalUrl: item.canonicalUrl,
       noIndex: item.noIndex,
       updatedAt: item.updatedAt,
+      data,
       ...(item.parentId ? { parentId: item.parentId } : {}),
     };
   }
