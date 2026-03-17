@@ -561,17 +561,24 @@ function mapContentItemTerm(entry: {
 
 function mapMedia(media: {
   id: string;
-  url: string;
-  alt: string;
+  fileName: string;
+  originalName: string;
+  mimeType: string | null;
+  fileSize: number | null;
   width: number | null;
   height: number | null;
-  mimeType: string | null;
-  sizeBytes: number | null;
-  originalFilename: string | null;
+  url: string;
   storageKey: string | null;
+  altText: string | null;
+  caption: string | null;
+  uploadedBy: string | null;
   createdAt: Date;
+  updatedAt: Date;
 }): Media {
-  return media;
+  return {
+    ...media,
+    variants: {},
+  };
 }
 
 export class PagesPrismaRepository implements PagesRepository {
@@ -2167,14 +2174,14 @@ export class MediaPrismaRepository implements MediaRepository {
     return media.map(mapMedia);
   }
 
-  async create(data: Omit<Media, "id" | "createdAt">): Promise<Media> {
+  async create(data: Omit<Media, "id" | "createdAt" | "updatedAt">): Promise<Media> {
     const media = await this.prisma.media.create({ data });
     return mapMedia(media);
   }
 
   async update(
     id: string,
-    data: Partial<Omit<Media, "id" | "createdAt">>,
+    data: Partial<Omit<Media, "id" | "createdAt" | "updatedAt">>,
   ): Promise<Media> {
     const media = await this.prisma.media.update({ where: { id }, data });
     return mapMedia(media);

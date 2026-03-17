@@ -5,15 +5,21 @@ export type MediaUploadFile = {
 };
 
 export type MediaUploadMetadata = {
-  alt: string;
+  altText?: string;
+  caption?: string;
+  uploadedBy?: string;
 };
 
 export type UploadedMedia = {
-  id: string;
+  storageKey: string;
+  fileName: string;
 };
 
-export interface MediaStorageProvider {
-  upload(file: MediaUploadFile, metadata: MediaUploadMetadata): Promise<UploadedMedia>;
-  delete(id: string): Promise<void>;
-  getUrl(id: string): string;
+export interface StorageProvider {
+  uploadFile(file: MediaUploadFile, metadata?: MediaUploadMetadata): Promise<UploadedMedia>;
+  deleteFile(storageKey: string): Promise<void>;
+  getPublicUrl(storageKey: string): string;
 }
+
+// Backwards-compatible alias used by existing content module wiring.
+export type MediaStorageProvider = StorageProvider;

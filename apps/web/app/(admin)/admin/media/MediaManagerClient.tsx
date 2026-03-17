@@ -3,6 +3,7 @@
 import * as React from "react";
 import type { AdminMedia } from "../../../../lib/admin/media";
 import { DestructiveConfirmModal } from "../components/DestructiveConfirmModal";
+import { ImageAsset } from "../../../../components/media/ImageAsset";
 
 export function MediaManagerClient({
   initialMedia,
@@ -21,20 +22,24 @@ export function MediaManagerClient({
   const [hasNext, setHasNext] = React.useState(initialHasNext);
   const [uploading, setUploading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
-  const [pendingDelete, setPendingDelete] = React.useState<AdminMedia | null>(
-    null,
-  );
+  const [pendingDelete, setPendingDelete] = React.useState<AdminMedia | null>(null);
   const [isDeleting, setIsDeleting] = React.useState(false);
+  const [mimeTypeFilter, setMimeTypeFilter] = React.useState<string>("");
+  const [uploadedAfter, setUploadedAfter] = React.useState<string>("");
 
   async function loadPage(nextOffset: number) {
     setLoadingPage(true);
     setError(null);
 
     try {
-      const res = await fetch(
-        `/api/admin/media?offset=${nextOffset}&limit=${pageSize + 1}`,
-        { cache: "no-store" },
-      );
+      const query = new URLSearchParams({
+        offset: String(nextOffset),
+        limit: String(pageSize + 1),
+      });
+      if (mimeTypeFilter) query.set("mimeType", mimeTypeFilter);
+      if (uploadedAfter) query.set("uploadedAfter", uploadedAfter);
+
+      const res = await fetch(`/api/admin/media?${query.toString()}`, { cache: "no-store" });
 
       if (!res.ok) {
         throw new Error("Failed to load media page");
@@ -62,17 +67,15 @@ export function MediaManagerClient({
     const form = event.currentTarget;
     const formData = new FormData(form);
     const file = formData.get("file");
-    const alt = formData.get("alt");
+    const altText = formData.get("altText");
 
     if (!(file instanceof File) || !file.name) {
       setError("Please choose a file before uploading.");
       return;
     }
 
-    if (typeof alt !== "string" || !alt.trim()) {
-      setError(
-        "Please add alt text so clients using screen readers can understand the image.",
-      );
+    if (typeof altText !== "string" || !altText.trim()) {
+      setError("Please add alt text for the uploaded image.");
       return;
     }
 
@@ -85,9 +88,7 @@ export function MediaManagerClient({
 
       if (!res.ok) {
         const data = await res.json().catch(() => null);
-        setError(
-          (data && (data.message || data.error)) || "Unable to upload media.",
-        );
+        setError((data && (data.message || data.error)) || "Unable to upload media.");
         return;
       }
 
@@ -120,45 +121,51 @@ export function MediaManagerClient({
     await loadPage(offset);
   }
 
-  async function onUpdateAlt(id: string, alt: string) {
-    if (!alt.trim()) {
-      setError(
-        "Alt text cannot be empty. Please describe the image in plain language.",
-      );
-      return;
-    }
-
+  async function onUpdateAsset(id: string, values: { altText?: string; caption?: string }) {
     const res = await fetch(`/api/admin/media/${id}`, {
       method: "PATCH",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ alt }),
+      body: JSON.stringify(values),
     });
 
     if (!res.ok) {
       const data = await res.json().catch(() => null);
-      setError(
-        (data && (data.message || data.error)) || "Unable to update alt text.",
-      );
+      setError((data && (data.message || data.error)) || "Unable to update media metadata.");
       return;
     }
 
     const updated = (await res.json()) as AdminMedia;
-    setMedia((current) =>
-      current.map((item) => (item.id === id ? updated : item)),
-    );
+    setMedia((current) => current.map((item) => (item.id === id ? updated : item)));
   }
 
   return (
-    <section className="media-manager">
+    <section className="media-manager stack">
       <h1>Media library</h1>
 
       <form onSubmit={onUpload} className="media-manager__upload">
-        <input name="file" type="file" required />
-        <input name="alt" placeholder="Alt text" required />
+        <input name="file" type="file" accept="image/png,image/jpeg" required />
+        <input name="altText" placeholder="Alt text" required />
+        <input name="caption" placeholder="Caption (optional)" />
         <button type="submit" disabled={uploading}>
           {uploading ? "Uploading..." : "Upload"}
         </button>
       </form>
+
+      <div className="media-manager__filters">
+        <label>
+          Image type
+          <select value={mimeTypeFilter} onChange={(e) => setMimeTypeFilter(e.target.value)}>
+            <option value="">All</option>
+            <option value="image/jpeg">JPEG</option>
+            <option value="image/png">PNG</option>
+          </select>
+        </label>
+        <label>
+          Upload date (from)
+          <input type="date" value={uploadedAfter} onChange={(e) => setUploadedAfter(e.target.value)} />
+        </label>
+        <button type="button" onClick={() => void loadPage(0)} disabled={loadingPage}>Apply filters</button>
+      </div>
 
       {error ? <p className="page-editor__error">{error}</p> : null}
 
@@ -168,32 +175,34 @@ export function MediaManagerClient({
 
       <div className="media-manager__grid">
         {media.map((item) => (
-          <article key={item.id} className="media-manager__item">
-            <div className="media-manager__preview">
-              <img
-                src={item.url}
-                alt={item.alt || "Image"}
-                loading="lazy"
-                width={item.width ?? undefined}
-                height={item.height ?? undefined}
-              />
-            </div>
+          <article key={item.id} className="media-manager__item stack stack--sm">
+            <ImageAsset asset={item} className="media-manager__preview" imageClassName="media-manager__image" />
+            <p>{item.fileName}</p>
             <p className="media-manager__date">
-              Uploaded: {new Date(item.createdAt).toLocaleString()}
+              {item.mimeType || "unknown type"} • {item.width ?? "?"}×{item.height ?? "?"} • {item.fileSize ?? 0} bytes
             </p>
-            <p className="media-manager__date">
-              {item.mimeType || "unknown type"} • {item.width ?? "?"}×
-              {item.height ?? "?"} • {item.sizeBytes ?? 0} bytes
-            </p>
+            <p className="media-manager__date">Uploaded: {new Date(item.createdAt).toLocaleString()}</p>
+            <button type="button" onClick={() => void navigator.clipboard.writeText(item.url)}>Copy image URL</button>
             <label>
-              Alt text {item.isUsed ? "*" : ""}
+              Alt text
               <input
-                defaultValue={item.alt}
-                required={item.isUsed}
+                defaultValue={item.altText ?? ""}
                 onBlur={(e) => {
-                  const nextAlt = e.target.value.trim();
-                  if (nextAlt !== item.alt) {
-                    void onUpdateAlt(item.id, nextAlt);
+                  const nextAltText = e.target.value.trim();
+                  if (nextAltText !== (item.altText ?? "")) {
+                    void onUpdateAsset(item.id, { altText: nextAltText });
+                  }
+                }}
+              />
+            </label>
+            <label>
+              Caption
+              <input
+                defaultValue={item.caption ?? ""}
+                onBlur={(e) => {
+                  const nextCaption = e.target.value.trim();
+                  if (nextCaption !== (item.caption ?? "")) {
+                    void onUpdateAsset(item.id, { caption: nextCaption });
                   }
                 }}
               />
@@ -235,14 +244,8 @@ export function MediaManagerClient({
         details={
           pendingDelete
             ? [
-                { label: "Alt text", value: pendingDelete.alt || "(none)" },
+                { label: "Alt text", value: pendingDelete.altText || "(none)" },
                 { label: "Media URL", value: pendingDelete.url },
-                {
-                  label: "Publication impact",
-                  value: pendingDelete.isUsed
-                    ? "This media is currently used in published content."
-                    : "No active usage detected.",
-                },
               ]
             : []
         }

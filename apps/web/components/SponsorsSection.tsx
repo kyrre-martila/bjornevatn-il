@@ -1,3 +1,4 @@
+import { ImageAsset } from "./media/ImageAsset";
 import { getSponsors } from "../lib/content";
 
 const sponsorTypes = [
@@ -32,10 +33,11 @@ export default async function SponsorsSection({ title = "Sponsors" }: SponsorsSe
             <div className="homepage-sponsors__logos">
               {entries.map((sponsor) => {
                 const logo = sponsor.logo ? (
-                  <img
+                  <ImageAsset
                     src={sponsor.logo}
                     alt={sponsor.name}
                     className="homepage-sponsors__logo"
+                    imageClassName="homepage-sponsors__logo"
                   />
                 ) : (
                   <span>{sponsor.name}</span>

@@ -8,7 +8,9 @@ export type UploadMediaInput = {
   fileBuffer: Buffer;
   fileName: string;
   mimeType: string;
-  alt: string;
+  altText: string;
+  caption?: string;
+  uploadedBy?: string;
 };
 
 type ImageMetadata = {
@@ -43,26 +45,31 @@ export class MediaService {
       mimeType: detectedMimeType,
     });
 
-    const stored = await this.mediaStorageProvider.upload(
+    const stored = await this.mediaStorageProvider.uploadFile(
       {
         buffer: input.fileBuffer,
         originalName: input.fileName,
         mimeType: detectedMimeType,
       },
       {
-        alt: input.alt,
+        altText: input.altText,
+        caption: input.caption,
+        uploadedBy: input.uploadedBy,
       },
     );
 
     return this.mediaRepository.create({
-      url: this.mediaStorageProvider.getUrl(stored.id),
-      alt: input.alt,
+      fileName: stored.fileName,
+      originalName: input.fileName,
+      mimeType: imageMetadata.mimeType,
+      fileSize: input.fileBuffer.byteLength,
       width: imageMetadata.width,
       height: imageMetadata.height,
-      mimeType: imageMetadata.mimeType,
-      sizeBytes: input.fileBuffer.byteLength,
-      originalFilename: input.fileName,
-      storageKey: stored.id,
+      url: this.mediaStorageProvider.getPublicUrl(stored.storageKey),
+      storageKey: stored.storageKey,
+      altText: input.altText,
+      caption: input.caption ?? null,
+      uploadedBy: input.uploadedBy ?? null,
     });
   }
 
@@ -118,7 +125,7 @@ export class MediaService {
     return this.mediaRepository.findById(mediaId);
   }
 
-  async update(mediaId: string, data: { alt?: string }): Promise<Media> {
+  async update(mediaId: string, data: { altText?: string; caption?: string }): Promise<Media> {
     return this.mediaRepository.update(mediaId, data);
   }
 
@@ -129,11 +136,16 @@ export class MediaService {
     }
 
     const storedFileId = media.storageKey ?? this.extractStoredFileId(media.url);
-    await this.mediaStorageProvider.delete(storedFileId);
+    await this.mediaStorageProvider.deleteFile(storedFileId);
     await this.mediaRepository.delete(mediaId);
   }
 
   private extractStoredFileId(url: string): string {
+    const marker = "/uploads/media/";
+    if (url.includes(marker)) {
+      return url.split(marker)[1] ?? url;
+    }
+
     const segments = url.split("/").filter(Boolean);
     return segments.at(-1) ?? url;
   }

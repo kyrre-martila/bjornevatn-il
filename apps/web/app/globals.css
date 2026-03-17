@@ -2272,3 +2272,61 @@ button:focus-visible {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
+
+.media-manager__filters {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--site-space-3, var(--space-m));
+}
+
+.media-manager__image {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.image-asset {
+  display: grid;
+  gap: var(--space-2xs);
+}
+
+.image-asset--missing {
+  border-radius: var(--radius-md);
+  padding: var(--space-s);
+  background: var(--color-surface-muted);
+  color: var(--color-text-muted);
+}
+
+.image-asset__image {
+  width: 100%;
+  height: auto;
+  border-radius: var(--radius-sm);
+}
+
+.image-asset__caption {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
+
+.media-picker {
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-md);
+  padding: var(--site-space-3, var(--space-m));
+}
+
+.media-picker__field,
+.media-picker__upload {
+  display: grid;
+  gap: var(--space-2xs);
+}
+
+.media-picker__preview {
+  max-width: 20rem;
+}
+
+@media (min-width: 48rem) {
+  .media-manager__filters {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    align-items: end;
+  }
+}

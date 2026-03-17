@@ -181,10 +181,10 @@ export interface MediaRepository {
   findById(id: string): Promise<Media | null>;
   findManyByIds(ids: string[]): Promise<Media[]>;
   findManyByUrls(urls: string[]): Promise<Media[]>;
-  create(data: Omit<Media, "id" | "createdAt">): Promise<Media>;
+  create(data: Omit<Media, "id" | "createdAt" | "updatedAt">): Promise<Media>;
   update(
     id: string,
-    data: Partial<Omit<Media, "id" | "createdAt">>,
+    data: Partial<Omit<Media, "id" | "createdAt" | "updatedAt">>,
   ): Promise<Media>;
   delete(id: string): Promise<void>;
 }

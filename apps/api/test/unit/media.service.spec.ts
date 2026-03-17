@@ -15,9 +15,9 @@ type MediaRepositoryMock = {
 };
 
 type MediaStorageProviderMock = {
-  upload: jest.Mock;
-  delete: jest.Mock;
-  getUrl: jest.Mock;
+  uploadFile: jest.Mock;
+  deleteFile: jest.Mock;
+  getPublicUrl: jest.Mock;
 };
 
 type MediaUploadScannerMock = {
@@ -34,9 +34,9 @@ const createService = () => {
   };
 
   const mediaStorageProvider: MediaStorageProviderMock = {
-    upload: jest.fn().mockResolvedValue({ id: "stored-file-1" }),
-    delete: jest.fn(),
-    getUrl: jest.fn().mockReturnValue("/uploads/stored-file-1"),
+    uploadFile: jest.fn().mockResolvedValue({ storageKey: "2026/03/17/stored-file-1.jpg", fileName: "stored-file-1.jpg" }),
+    deleteFile: jest.fn(),
+    getPublicUrl: jest.fn().mockReturnValue("/uploads/media/2026/03/17/stored-file-1.jpg"),
   };
 
   const mediaUploadScanner: MediaUploadScannerMock = {
@@ -65,15 +65,15 @@ describe("MediaService", () => {
       fileBuffer: Buffer.from(tinyPngBase64, "base64"),
       fileName: "tiny.png",
       mimeType: "image/png",
-      alt: "Tiny",
+      altText: "Tiny",
     });
 
-    expect(mediaStorageProvider.upload).toHaveBeenCalledWith(
+    expect(mediaStorageProvider.uploadFile).toHaveBeenCalledWith(
       expect.objectContaining({ mimeType: "image/png" }),
       expect.any(Object),
     );
     expect(mediaRepository.create).toHaveBeenCalledWith(
-      expect.objectContaining({ mimeType: "image/png", width: 1, height: 1 }),
+      expect.objectContaining({ mimeType: "image/png", width: 1, height: 1, fileName: "stored-file-1.jpg" }),
     );
     expect(result.mimeType).toBe("image/png");
   });
@@ -85,14 +85,14 @@ describe("MediaService", () => {
       fileBuffer: Buffer.from(tinyPngBase64, "base64"),
       fileName: "tiny.png",
       mimeType: "image/png",
-      alt: "Tiny",
+      altText: "Tiny",
     });
 
     expect(mediaUploadScanner.scan).toHaveBeenCalledWith(
       expect.objectContaining({ fileName: "tiny.png", mimeType: "image/png" }),
     );
     expect(mediaUploadScanner.scan.mock.invocationCallOrder[0]).toBeLessThan(
-      mediaStorageProvider.upload.mock.invocationCallOrder[0],
+      mediaStorageProvider.uploadFile.mock.invocationCallOrder[0],
     );
   });
 
@@ -104,7 +104,7 @@ describe("MediaService", () => {
         fileBuffer: Buffer.from(tinyPngBase64, "base64"),
         fileName: "fake.jpg",
         mimeType: "image/jpeg",
-        alt: "Mismatch",
+        altText: "Mismatch",
       }),
     ).rejects.toThrow(BadRequestException);
   });
@@ -117,7 +117,7 @@ describe("MediaService", () => {
         fileBuffer: Buffer.alloc((10 * 1024 * 1024) + 1),
         fileName: "too-large.png",
         mimeType: "image/png",
-        alt: "Too large",
+        altText: "Too large",
       }),
     ).rejects.toThrow("too large");
   });
@@ -130,7 +130,7 @@ describe("MediaService", () => {
         fileBuffer: Buffer.from(tinyGifBase64, "base64"),
         fileName: "tiny.gif",
         mimeType: "image/gif",
-        alt: "Gif",
+        altText: "Gif",
       }),
     ).rejects.toThrow("Unsupported media type");
   });
@@ -147,7 +147,7 @@ describe("MediaService", () => {
         fileBuffer: malformedPng,
         fileName: "broken.png",
         mimeType: "image/png",
-        alt: "Broken",
+        altText: "Broken",
       }),
     ).rejects.toThrow("malformed");
   });
@@ -160,7 +160,7 @@ describe("MediaService", () => {
         fileBuffer: Buffer.from(tinyPngBase64, "base64"),
         fileName: "tiny.png",
         mimeType: "image/png",
-        alt: "Tiny png",
+        altText: "Tiny png",
       }),
     ).resolves.toEqual(expect.objectContaining({ mimeType: "image/png" }));
   });

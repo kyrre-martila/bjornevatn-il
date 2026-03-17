@@ -2,15 +2,19 @@ import { cookies } from "next/headers";
 
 export type AdminMedia = {
   id: string;
-  url: string;
-  alt: string;
+  fileName: string;
+  originalName: string;
+  mimeType: string | null;
+  fileSize: number | null;
   width: number | null;
   height: number | null;
-  mimeType: string | null;
-  sizeBytes: number | null;
-  originalFilename: string | null;
+  url: string;
   storageKey: string | null;
+  altText: string | null;
+  caption: string | null;
+  uploadedBy: string | null;
   createdAt: string;
+  updatedAt: string;
   isUsed?: boolean;
 };
 
@@ -37,6 +41,9 @@ function buildHeaders() {
 export async function listAdminMedia(pagination?: {
   limit?: number;
   offset?: number;
+  mimeType?: string;
+  uploadedAfter?: string;
+  uploadedBefore?: string;
 }): Promise<AdminMedia[]> {
   const query = new URLSearchParams();
   if (typeof pagination?.limit === "number") {
@@ -44,6 +51,15 @@ export async function listAdminMedia(pagination?: {
   }
   if (typeof pagination?.offset === "number") {
     query.set("offset", String(pagination.offset));
+  }
+  if (pagination?.mimeType) {
+    query.set("mimeType", pagination.mimeType);
+  }
+  if (pagination?.uploadedAfter) {
+    query.set("uploadedAfter", pagination.uploadedAfter);
+  }
+  if (pagination?.uploadedBefore) {
+    query.set("uploadedBefore", pagination.uploadedBefore);
   }
 
   const queryString = query.size > 0 ? `?${query.toString()}` : "";

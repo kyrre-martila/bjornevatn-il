@@ -30,7 +30,12 @@ const MEDIA_UPLOAD_LIMITS = {
 class UploadMediaDto {
   @ApiProperty()
   @IsString()
-  alt!: string;
+  altText!: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  caption?: string;
 }
 
 class ListMediaQueryDto {
@@ -48,13 +53,33 @@ class ListMediaQueryDto {
   @Min(1)
   @Max(200)
   limit?: number;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  mimeType?: string;
+
+  @ApiProperty({ required: false, description: "ISO date filter from" })
+  @IsOptional()
+  @IsString()
+  uploadedAfter?: string;
+
+  @ApiProperty({ required: false, description: "ISO date filter to" })
+  @IsOptional()
+  @IsString()
+  uploadedBefore?: string;
 }
 
 class UpdateMediaDto {
   @ApiProperty({ required: false })
   @IsOptional()
   @IsString()
-  alt?: string;
+  altText?: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  caption?: string;
 }
 
 @ApiTags("admin-media")
@@ -73,11 +98,25 @@ export class MediaController {
       offset: query.offset,
       limit: query.limit,
     });
+
+    const filtered = media.filter((item) => {
+      if (query.mimeType && item.mimeType !== query.mimeType) {
+        return false;
+      }
+      if (query.uploadedAfter && item.createdAt < new Date(query.uploadedAfter)) {
+        return false;
+      }
+      if (query.uploadedBefore && item.createdAt > new Date(query.uploadedBefore)) {
+        return false;
+      }
+      return true;
+    });
+
     const usedUrls = await this.mediaUsageService.getUsedUrls(
-      media.map((item) => item.url),
+      filtered.map((item) => item.url),
     );
 
-    return media.map((item) => ({
+    return filtered.map((item) => ({
       ...item,
       isUsed: usedUrls.has(item.url),
     }));
@@ -98,9 +137,10 @@ export class MediaController {
       type: "object",
       properties: {
         file: { type: "string", format: "binary" },
-        alt: { type: "string" },
+        altText: { type: "string" },
+        caption: { type: "string" },
       },
-      required: ["file", "alt"],
+      required: ["file", "altText"],
     },
   })
   async uploadMedia(
@@ -117,17 +157,34 @@ export class MediaController {
       throw new BadRequestException("File is required");
     }
 
-    const alt = body.alt.trim();
-    if (!alt) {
+    const altText = body.altText.trim();
+    if (!altText) {
       throw new BadRequestException("Alt text is required.");
     }
 
-    return this.mediaService.upload({
+    const asset = await this.mediaService.upload({
       fileBuffer: file.buffer,
       fileName: file.originalname,
       mimeType: file.mimetype,
-      alt,
+      altText,
+      caption: body.caption?.trim() || undefined,
+      uploadedBy: undefined,
     });
+
+    return {
+      ...asset,
+      metadata: {
+        fileName: asset.fileName,
+        originalName: asset.originalName,
+        mimeType: asset.mimeType,
+        fileSize: asset.fileSize,
+        width: asset.width,
+        height: asset.height,
+        altText: asset.altText,
+        caption: asset.caption,
+        uploadedBy: asset.uploadedBy,
+      },
+    };
   }
 
   @Delete(":id")
@@ -144,9 +201,9 @@ export class MediaController {
     @Body() body: UpdateMediaDto,
   ) {
     await requireMinimumRole(req, this.auth, "editor");
-    const nextAlt = body.alt === undefined ? undefined : body.alt.trim();
+    const nextAltText = body.altText === undefined ? undefined : body.altText.trim();
 
-    if (nextAlt !== undefined && !nextAlt) {
+    if (nextAltText !== undefined && !nextAltText) {
       const existing = await this.mediaService.findById(id);
       if (!existing) {
         throw new BadRequestException("Media item not found.");
@@ -159,7 +216,9 @@ export class MediaController {
       }
     }
 
-    return this.mediaService.update(id, { alt: nextAlt });
+    return this.mediaService.update(id, {
+      altText: nextAltText,
+      caption: body.caption?.trim(),
+    });
   }
-
 }

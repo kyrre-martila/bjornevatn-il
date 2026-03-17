@@ -105,7 +105,7 @@ type AdminPageOption = {
 
 type AdminMediaOption = {
   id: string;
-  alt?: string | null;
+  altText?: string | null;
   url: string;
 };
 
@@ -1551,12 +1551,12 @@ export function ContentAdminClient({
     if (field.type === "media") {
       return media.map((item) => ({
         id: item.id,
-        label: item.alt?.trim() || item.url,
+        label: item.altText?.trim() || item.url,
         hint: item.url,
         typeLabel: "Media",
         previewUrl: item.url,
         filename: item.url.split("/").pop() ?? item.url,
-        altText: item.alt ?? null,
+        altText: item.altText ?? null,
       }));
     }
 

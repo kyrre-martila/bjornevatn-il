@@ -1,3 +1,4 @@
+import { ImageAsset } from "../media/ImageAsset";
 import Link from "next/link";
 
 import type { ClubNewsItem } from "../../lib/content";
@@ -15,7 +16,7 @@ export default function LatestNewsSection({ title, items }: LatestNewsSectionPro
         {items.map((item) => (
           <article key={item.id} className="homepage-news__card stack stack--sm">
             {item.image ? (
-              <img className="homepage-news__image" src={item.image} alt={item.title} />
+              <ImageAsset className="homepage-news__image" imageClassName="homepage-news__image" src={item.image} alt={item.title} />
             ) : null}
             <p className="homepage-news__category">{item.category}</p>
             <h3>{item.title}</h3>

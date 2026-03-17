@@ -218,15 +218,20 @@ export type SiteSetting = {
 
 export type Media = {
   id: string;
-  url: string;
-  alt: string;
+  fileName: string;
+  originalName: string;
+  mimeType: string | null;
+  fileSize: number | null;
   width: number | null;
   height: number | null;
-  mimeType: string | null;
-  sizeBytes: number | null;
-  originalFilename: string | null;
+  url: string;
   storageKey: string | null;
+  altText: string | null;
+  caption: string | null;
+  uploadedBy: string | null;
   createdAt: Date;
+  updatedAt: Date;
+  variants?: Record<string, { url: string; width?: number; height?: number }>;
 };
 
 export type ContentItemRevision = {

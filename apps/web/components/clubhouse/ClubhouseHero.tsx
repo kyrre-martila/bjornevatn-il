@@ -1,3 +1,4 @@
+import { ImageAsset } from "../media/ImageAsset";
 import type { ClubProfile } from "../../lib/content";
 
 type ClubhouseHeroProps = {
@@ -16,7 +17,7 @@ export default function ClubhouseHero({ club }: ClubhouseHeroProps) {
 
   return (
     <section className="clubhouse-hero stack" aria-labelledby="clubhouse-title">
-      {image ? <img className="clubhouse-hero__image" src={image} alt={name} /> : null}
+      {image ? <ImageAsset className="clubhouse-hero__image" imageClassName="clubhouse-hero__image" src={image} alt={name} /> : null}
       <div className="clubhouse-hero__content stack stack--sm">
         <h1 id="clubhouse-title" className="clubhouse-hero__title">
           {title}
