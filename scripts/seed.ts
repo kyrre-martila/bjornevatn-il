@@ -132,6 +132,24 @@ const SERVICE_ITEMS = [
   },
 ] as const;
 
+const TEAM_MAIN_CATEGORIES = ["aldersbestemt", "senior"] as const;
+const TEAM_GENDERS = ["gutter", "jenter", "herrer", "kvinner"] as const;
+const TEAM_LEVELS = ["rekrutt", "a-lag"] as const;
+const TEAM_STATUSES = ["active", "inactive", "archived"] as const;
+const PERSON_ROLE_CATEGORIES = [
+  "styret",
+  "trenere",
+  "andre-roller",
+  "utvalg",
+] as const;
+const SPONSOR_TYPES = [
+  "generalsponsor",
+  "hovedsponsor",
+  "sponsor",
+  "samarbeidspartner",
+] as const;
+const SPONSOR_STATUSES = ["active", "inactive"] as const;
+
 async function seedUsers() {
   const adminUser = await prisma.user.upsert({
     where: { email: "admin@example.com" },
@@ -548,6 +566,864 @@ async function seedServices() {
   }
 }
 
+async function seedClubWebsiteModels() {
+  const clubType = await prisma.contentType.upsert({
+    where: { slug: "club" },
+    update: {
+      name: "Club",
+      description: "Global club settings and key contact/location details.",
+      templateKey: "club",
+      isPublic: true,
+      fields: [
+        { key: "name", label: "Name", type: "text", required: true },
+        {
+          key: "shortName",
+          label: "Short name",
+          type: "text",
+          required: true,
+        },
+        {
+          key: "organizationNumber",
+          label: "Organization number",
+          type: "text",
+          required: true,
+        },
+        { key: "email", label: "Email", type: "text", required: true },
+        { key: "phone", label: "Phone", type: "text", required: false },
+        {
+          key: "addressLine",
+          label: "Address line",
+          type: "text",
+          required: false,
+        },
+        {
+          key: "postalCode",
+          label: "Postal code",
+          type: "text",
+          required: false,
+        },
+        { key: "city", label: "City", type: "text", required: false },
+        {
+          key: "country",
+          label: "Country",
+          type: "text",
+          required: false,
+        },
+        {
+          key: "mapUrl",
+          label: "Map URL",
+          type: "text",
+          required: false,
+        },
+        {
+          key: "homeFieldName",
+          label: "Home field name",
+          type: "text",
+          required: false,
+        },
+        {
+          key: "homeFieldAddress",
+          label: "Home field address",
+          type: "text",
+          required: false,
+        },
+        {
+          key: "homeFieldMapUrl",
+          label: "Home field map URL",
+          type: "text",
+          required: false,
+        },
+        {
+          key: "latitude",
+          label: "Latitude",
+          type: "text",
+          required: false,
+        },
+        {
+          key: "longitude",
+          label: "Longitude",
+          type: "text",
+          required: false,
+        },
+        { key: "logo", label: "Logo", type: "image", required: false },
+        {
+          key: "heroImage",
+          label: "Hero image",
+          type: "image",
+          required: false,
+        },
+        {
+          key: "clubhouseName",
+          label: "Clubhouse name",
+          type: "text",
+          required: false,
+        },
+        {
+          key: "clubhouseDescription",
+          label: "Clubhouse description",
+          type: "textarea",
+          required: false,
+        },
+        {
+          key: "clubhouseAddress",
+          label: "Clubhouse address",
+          type: "text",
+          required: false,
+        },
+        {
+          key: "clubhouseRentalPrice",
+          label: "Clubhouse rental price",
+          type: "text",
+          required: false,
+        },
+        {
+          key: "clubhouseRentalRules",
+          label: "Clubhouse rental rules",
+          type: "textarea",
+          required: false,
+        },
+        {
+          key: "grasrotEnabled",
+          label: "Grasrot enabled",
+          type: "boolean",
+          required: true,
+        },
+        {
+          key: "grasrotOrganizationNumber",
+          label: "Grasrot organization number",
+          type: "text",
+          required: false,
+        },
+        {
+          key: "socialLinks",
+          label: "Social links",
+          type: "textarea",
+          required: false,
+          helpText:
+            "JSON array of { platform, url, sortOrder } objects for the club profile.",
+        },
+      ],
+    },
+    create: {
+      id: "seed-content-type-club",
+      name: "Club",
+      slug: "club",
+      description: "Global club settings and key contact/location details.",
+      templateKey: "club",
+      isPublic: true,
+      fields: [
+        { key: "name", label: "Name", type: "text", required: true },
+        {
+          key: "shortName",
+          label: "Short name",
+          type: "text",
+          required: true,
+        },
+        {
+          key: "organizationNumber",
+          label: "Organization number",
+          type: "text",
+          required: true,
+        },
+        { key: "email", label: "Email", type: "text", required: true },
+        { key: "phone", label: "Phone", type: "text", required: false },
+        {
+          key: "addressLine",
+          label: "Address line",
+          type: "text",
+          required: false,
+        },
+        {
+          key: "postalCode",
+          label: "Postal code",
+          type: "text",
+          required: false,
+        },
+        { key: "city", label: "City", type: "text", required: false },
+        {
+          key: "country",
+          label: "Country",
+          type: "text",
+          required: false,
+        },
+        {
+          key: "mapUrl",
+          label: "Map URL",
+          type: "text",
+          required: false,
+        },
+        {
+          key: "homeFieldName",
+          label: "Home field name",
+          type: "text",
+          required: false,
+        },
+        {
+          key: "homeFieldAddress",
+          label: "Home field address",
+          type: "text",
+          required: false,
+        },
+        {
+          key: "homeFieldMapUrl",
+          label: "Home field map URL",
+          type: "text",
+          required: false,
+        },
+        {
+          key: "latitude",
+          label: "Latitude",
+          type: "text",
+          required: false,
+        },
+        {
+          key: "longitude",
+          label: "Longitude",
+          type: "text",
+          required: false,
+        },
+        { key: "logo", label: "Logo", type: "image", required: false },
+        {
+          key: "heroImage",
+          label: "Hero image",
+          type: "image",
+          required: false,
+        },
+        {
+          key: "clubhouseName",
+          label: "Clubhouse name",
+          type: "text",
+          required: false,
+        },
+        {
+          key: "clubhouseDescription",
+          label: "Clubhouse description",
+          type: "textarea",
+          required: false,
+        },
+        {
+          key: "clubhouseAddress",
+          label: "Clubhouse address",
+          type: "text",
+          required: false,
+        },
+        {
+          key: "clubhouseRentalPrice",
+          label: "Clubhouse rental price",
+          type: "text",
+          required: false,
+        },
+        {
+          key: "clubhouseRentalRules",
+          label: "Clubhouse rental rules",
+          type: "textarea",
+          required: false,
+        },
+        {
+          key: "grasrotEnabled",
+          label: "Grasrot enabled",
+          type: "boolean",
+          required: true,
+        },
+        {
+          key: "grasrotOrganizationNumber",
+          label: "Grasrot organization number",
+          type: "text",
+          required: false,
+        },
+        {
+          key: "socialLinks",
+          label: "Social links",
+          type: "textarea",
+          required: false,
+          helpText:
+            "JSON array of { platform, url, sortOrder } objects for the club profile.",
+        },
+      ],
+    },
+  });
+
+  await prisma.contentItem.upsert({
+    where: {
+      contentTypeId_slug: { contentTypeId: clubType.id, slug: "club" },
+    },
+    update: {
+      title: "Bjørnevatn IL",
+      published: true,
+      data: {
+        name: "Bjørnevatn IL",
+        shortName: "BIL",
+        organizationNumber: "971512233",
+        email: "post@bjornevatn-il.no",
+        phone: "+47 78 99 00 11",
+        addressLine: "Bjørnevatnveien 12",
+        postalCode: "9910",
+        city: "Bjørnevatn",
+        country: "Norge",
+        mapUrl: "https://maps.google.com/?q=Bj%C3%B8rnevatn",
+        homeFieldName: "Bjørnevatn Stadion",
+        homeFieldAddress: "Stadionveien 4, 9910 Bjørnevatn",
+        homeFieldMapUrl: "https://maps.google.com/?q=Bj%C3%B8rnevatn+Stadion",
+        latitude: "69.6678",
+        longitude: "29.9871",
+        logo: "https://picsum.photos/seed/bjornevatn-logo/512/512",
+        heroImage: "https://picsum.photos/seed/bjornevatn-hero/1600/900",
+        clubhouseName: "Bjørnevatn klubbhus",
+        clubhouseDescription:
+          "Klubbhuset brukes til møter, arrangementer og utleie for lokale aktiviteter.",
+        clubhouseAddress: "Klubbhusveien 2, 9910 Bjørnevatn",
+        clubhouseRentalPrice: "2500 NOK per dag",
+        clubhouseRentalRules:
+          "Utleie krever skriftlig avtale. Leietaker er ansvarlig for rydding og nøkkellevering.",
+        grasrotEnabled: true,
+        grasrotOrganizationNumber: "971512233",
+        socialLinks: JSON.stringify([
+          {
+            platform: "facebook",
+            url: "https://www.facebook.com/bjornevatnil",
+            sortOrder: 1,
+          },
+          {
+            platform: "instagram",
+            url: "https://www.instagram.com/bjornevatnil",
+            sortOrder: 2,
+          },
+        ]),
+      },
+    },
+    create: {
+      id: "seed-club-item",
+      contentTypeId: clubType.id,
+      slug: "club",
+      title: "Bjørnevatn IL",
+      published: true,
+      data: {
+        name: "Bjørnevatn IL",
+        shortName: "BIL",
+        organizationNumber: "971512233",
+        email: "post@bjornevatn-il.no",
+        phone: "+47 78 99 00 11",
+        addressLine: "Bjørnevatnveien 12",
+        postalCode: "9910",
+        city: "Bjørnevatn",
+        country: "Norge",
+        mapUrl: "https://maps.google.com/?q=Bj%C3%B8rnevatn",
+        homeFieldName: "Bjørnevatn Stadion",
+        homeFieldAddress: "Stadionveien 4, 9910 Bjørnevatn",
+        homeFieldMapUrl: "https://maps.google.com/?q=Bj%C3%B8rnevatn+Stadion",
+        latitude: "69.6678",
+        longitude: "29.9871",
+        logo: "https://picsum.photos/seed/bjornevatn-logo/512/512",
+        heroImage: "https://picsum.photos/seed/bjornevatn-hero/1600/900",
+        clubhouseName: "Bjørnevatn klubbhus",
+        clubhouseDescription:
+          "Klubbhuset brukes til møter, arrangementer og utleie for lokale aktiviteter.",
+        clubhouseAddress: "Klubbhusveien 2, 9910 Bjørnevatn",
+        clubhouseRentalPrice: "2500 NOK per dag",
+        clubhouseRentalRules:
+          "Utleie krever skriftlig avtale. Leietaker er ansvarlig for rydding og nøkkellevering.",
+        grasrotEnabled: true,
+        grasrotOrganizationNumber: "971512233",
+        socialLinks: JSON.stringify([
+          {
+            platform: "facebook",
+            url: "https://www.facebook.com/bjornevatnil",
+            sortOrder: 1,
+          },
+          {
+            platform: "instagram",
+            url: "https://www.instagram.com/bjornevatnil",
+            sortOrder: 2,
+          },
+        ]),
+      },
+    },
+  });
+
+  const teamType = await prisma.contentType.upsert({
+    where: { slug: "team" },
+    update: {
+      name: "Team",
+      description: "Football teams with coaching and training information.",
+      templateKey: "team",
+      isPublic: true,
+      fields: [
+        {
+          key: "mainCategory",
+          type: "text",
+          required: true,
+          helpText: `Allowed: ${TEAM_MAIN_CATEGORIES.join(", ")}`,
+        },
+        {
+          key: "gender",
+          type: "text",
+          required: true,
+          helpText: `Allowed: ${TEAM_GENDERS.join(", ")}`,
+        },
+        {
+          key: "teamLevel",
+          type: "text",
+          required: false,
+          helpText: `Allowed: ${TEAM_LEVELS.join(", ")} (or empty)`,
+        },
+        { key: "age", type: "text", required: false },
+        { key: "description", type: "textarea", required: false },
+        { key: "teamImage", type: "image", required: false },
+        {
+          key: "status",
+          type: "text",
+          required: true,
+          helpText: `Allowed: ${TEAM_STATUSES.join(", ")}`,
+        },
+        { key: "sortOrder", type: "text", required: false },
+        { key: "spondCode", type: "text", required: false },
+        { key: "spondLink", type: "text", required: false },
+        { key: "fotballNoUrl", type: "text", required: false },
+        {
+          key: "coaches",
+          type: "textarea",
+          required: false,
+          helpText:
+            "JSON array of { name, role, phone, email, image, sortOrder }.",
+        },
+        {
+          key: "trainingSessions",
+          type: "textarea",
+          required: false,
+          helpText:
+            "JSON array of { dayOfWeek, startTime, endTime, location, notes, sortOrder }.",
+        },
+        {
+          key: "socialLinks",
+          type: "textarea",
+          required: false,
+          helpText: "JSON array of { platform, url, sortOrder }.",
+        },
+      ],
+    },
+    create: {
+      id: "seed-content-type-team",
+      name: "Team",
+      slug: "team",
+      description: "Football teams with coaching and training information.",
+      templateKey: "team",
+      isPublic: true,
+      fields: [
+        {
+          key: "mainCategory",
+          type: "text",
+          required: true,
+          helpText: `Allowed: ${TEAM_MAIN_CATEGORIES.join(", ")}`,
+        },
+        {
+          key: "gender",
+          type: "text",
+          required: true,
+          helpText: `Allowed: ${TEAM_GENDERS.join(", ")}`,
+        },
+        {
+          key: "teamLevel",
+          type: "text",
+          required: false,
+          helpText: `Allowed: ${TEAM_LEVELS.join(", ")} (or empty)`,
+        },
+        { key: "age", type: "text", required: false },
+        { key: "description", type: "textarea", required: false },
+        { key: "teamImage", type: "image", required: false },
+        {
+          key: "status",
+          type: "text",
+          required: true,
+          helpText: `Allowed: ${TEAM_STATUSES.join(", ")}`,
+        },
+        { key: "sortOrder", type: "text", required: false },
+        { key: "spondCode", type: "text", required: false },
+        { key: "spondLink", type: "text", required: false },
+        { key: "fotballNoUrl", type: "text", required: false },
+        {
+          key: "coaches",
+          type: "textarea",
+          required: false,
+          helpText:
+            "JSON array of { name, role, phone, email, image, sortOrder }.",
+        },
+        {
+          key: "trainingSessions",
+          type: "textarea",
+          required: false,
+          helpText:
+            "JSON array of { dayOfWeek, startTime, endTime, location, notes, sortOrder }.",
+        },
+        {
+          key: "socialLinks",
+          type: "textarea",
+          required: false,
+          helpText: "JSON array of { platform, url, sortOrder }.",
+        },
+      ],
+    },
+  });
+
+  const teamSeeds = [
+    {
+      id: "seed-team-g13",
+      slug: "g13",
+      title: "G13",
+      data: {
+        mainCategory: "aldersbestemt",
+        gender: "gutter",
+        teamLevel: "",
+        age: "13",
+        description: "G13-laget for spillere født i relevant årsklasse.",
+        teamImage: "https://picsum.photos/seed/team-g13/1200/800",
+        status: "active",
+        sortOrder: "1",
+        spondCode: "G13BIL",
+        spondLink: "https://group.spond.com/G13BIL",
+        fotballNoUrl: "https://www.fotball.no/lag/g13-bjornevatn-il",
+        coaches: JSON.stringify([
+          {
+            name: "Ola Nordmann",
+            role: "Hovedtrener",
+            phone: "+47 900 00 001",
+            email: "ola@example.com",
+            image: "https://picsum.photos/seed/coach-ola/400/400",
+            sortOrder: 1,
+          },
+        ]),
+        trainingSessions: JSON.stringify([
+          {
+            dayOfWeek: "mandag",
+            startTime: "17:00",
+            endTime: "18:30",
+            location: "Bjørnevatn Stadion",
+            notes: "Utendørs trening",
+            sortOrder: 1,
+          },
+        ]),
+        socialLinks: JSON.stringify([]),
+      },
+    },
+    {
+      id: "seed-team-j15",
+      slug: "j15",
+      title: "J15",
+      data: {
+        mainCategory: "aldersbestemt",
+        gender: "jenter",
+        teamLevel: "",
+        age: "15",
+        description: "J15-laget med fokus på utvikling og trivsel.",
+        teamImage: "https://picsum.photos/seed/team-j15/1200/800",
+        status: "active",
+        sortOrder: "2",
+        spondCode: "J15BIL",
+        spondLink: "https://group.spond.com/J15BIL",
+        fotballNoUrl: "https://www.fotball.no/lag/j15-bjornevatn-il",
+        coaches: JSON.stringify([
+          {
+            name: "Kari Hansen",
+            role: "Trener",
+            phone: "+47 900 00 002",
+            email: "kari@example.com",
+            image: "https://picsum.photos/seed/coach-kari/400/400",
+            sortOrder: 1,
+          },
+        ]),
+        trainingSessions: JSON.stringify([
+          {
+            dayOfWeek: "onsdag",
+            startTime: "18:00",
+            endTime: "19:30",
+            location: "Bjørnevatn Stadion",
+            notes: "Teknisk økt",
+            sortOrder: 1,
+          },
+        ]),
+        socialLinks: JSON.stringify([]),
+      },
+    },
+    {
+      id: "seed-team-a-lag-herrer",
+      slug: "a-lag-herrer",
+      title: "A-lag Herrer",
+      data: {
+        mainCategory: "senior",
+        gender: "herrer",
+        teamLevel: "a-lag",
+        age: "Senior",
+        description: "Seniorlag herrer som spiller i regional serie.",
+        teamImage: "https://picsum.photos/seed/team-a-lag-herrer/1200/800",
+        status: "active",
+        sortOrder: "10",
+        spondCode: "ALAGBIL",
+        spondLink: "https://group.spond.com/ALAGBIL",
+        fotballNoUrl: "https://www.fotball.no/lag/a-lag-herrer-bjornevatn-il",
+        coaches: JSON.stringify([
+          {
+            name: "Per Olsen",
+            role: "Hovedtrener",
+            phone: "+47 900 00 003",
+            email: "per@example.com",
+            image: "https://picsum.photos/seed/coach-per/400/400",
+            sortOrder: 1,
+          },
+        ]),
+        trainingSessions: JSON.stringify([
+          {
+            dayOfWeek: "tirsdag",
+            startTime: "19:00",
+            endTime: "20:30",
+            location: "Bjørnevatn Stadion",
+            notes: "Kampforberedende økt",
+            sortOrder: 1,
+          },
+        ]),
+        socialLinks: JSON.stringify([
+          {
+            platform: "instagram",
+            url: "https://www.instagram.com/bjornevatnil_herrer",
+            sortOrder: 1,
+          },
+        ]),
+      },
+    },
+  ] as const;
+
+  for (const team of teamSeeds) {
+    await prisma.contentItem.upsert({
+      where: {
+        contentTypeId_slug: { contentTypeId: teamType.id, slug: team.slug },
+      },
+      update: { title: team.title, data: team.data, published: true },
+      create: {
+        id: team.id,
+        contentTypeId: teamType.id,
+        slug: team.slug,
+        title: team.title,
+        data: team.data,
+        published: true,
+      },
+    });
+  }
+
+  const personRoleType = await prisma.contentType.upsert({
+    where: { slug: "person-role" },
+    update: {
+      name: "PersonRole",
+      description: "Board and role listing entries.",
+      templateKey: "person-role",
+      isPublic: true,
+      fields: [
+        { key: "fullName", type: "text", required: true },
+        { key: "roleTitle", type: "text", required: true },
+        {
+          key: "category",
+          type: "text",
+          required: true,
+          helpText: `Allowed: ${PERSON_ROLE_CATEGORIES.join(", ")}`,
+        },
+        { key: "image", type: "image", required: false },
+        { key: "email", type: "text", required: false },
+        { key: "phone", type: "text", required: false },
+        { key: "description", type: "textarea", required: false },
+        { key: "termPeriod", type: "text", required: false },
+        { key: "sortOrder", type: "text", required: false },
+        { key: "isActive", type: "boolean", required: true },
+      ],
+    },
+    create: {
+      id: "seed-content-type-person-role",
+      name: "PersonRole",
+      slug: "person-role",
+      description: "Board and role listing entries.",
+      templateKey: "person-role",
+      isPublic: true,
+      fields: [
+        { key: "fullName", type: "text", required: true },
+        { key: "roleTitle", type: "text", required: true },
+        {
+          key: "category",
+          type: "text",
+          required: true,
+          helpText: `Allowed: ${PERSON_ROLE_CATEGORIES.join(", ")}`,
+        },
+        { key: "image", type: "image", required: false },
+        { key: "email", type: "text", required: false },
+        { key: "phone", type: "text", required: false },
+        { key: "description", type: "textarea", required: false },
+        { key: "termPeriod", type: "text", required: false },
+        { key: "sortOrder", type: "text", required: false },
+        { key: "isActive", type: "boolean", required: true },
+      ],
+    },
+  });
+
+  const personRoleSeeds = [
+    {
+      id: "seed-person-role-chair",
+      slug: "styreleder-anne-hansen",
+      title: "Anne Hansen",
+      data: {
+        fullName: "Anne Hansen",
+        roleTitle: "Styreleder",
+        category: "styret",
+        image: "https://picsum.photos/seed/person-anne/500/500",
+        email: "anne@example.com",
+        phone: "+47 900 10 001",
+        description: "Leder styrets arbeid og klubbens strategiske retning.",
+        termPeriod: "2024-2026",
+        sortOrder: "1",
+        isActive: true,
+      },
+    },
+    {
+      id: "seed-person-role-board-member",
+      slug: "styremedlem-tom-jensen",
+      title: "Tom Jensen",
+      data: {
+        fullName: "Tom Jensen",
+        roleTitle: "Styremedlem",
+        category: "styret",
+        image: "https://picsum.photos/seed/person-tom/500/500",
+        email: "tom@example.com",
+        phone: "+47 900 10 002",
+        description: "Ansvarlig for anlegg og frivillighetskoordinering.",
+        termPeriod: "2024-2026",
+        sortOrder: "2",
+        isActive: true,
+      },
+    },
+  ] as const;
+
+  for (const role of personRoleSeeds) {
+    await prisma.contentItem.upsert({
+      where: {
+        contentTypeId_slug: {
+          contentTypeId: personRoleType.id,
+          slug: role.slug,
+        },
+      },
+      update: { title: role.title, data: role.data, published: true },
+      create: {
+        id: role.id,
+        contentTypeId: personRoleType.id,
+        slug: role.slug,
+        title: role.title,
+        data: role.data,
+        published: true,
+      },
+    });
+  }
+
+  const sponsorType = await prisma.contentType.upsert({
+    where: { slug: "sponsor" },
+    update: {
+      name: "Sponsor",
+      description: "Sponsor and partner entries.",
+      templateKey: "sponsor",
+      isPublic: true,
+      fields: [
+        {
+          key: "type",
+          type: "text",
+          required: true,
+          helpText: `Allowed: ${SPONSOR_TYPES.join(", ")}`,
+        },
+        { key: "logo", type: "image", required: true },
+        { key: "logoDark", type: "image", required: false },
+        { key: "websiteUrl", type: "text", required: false },
+        { key: "description", type: "textarea", required: false },
+        { key: "sortOrder", type: "text", required: false },
+        {
+          key: "status",
+          type: "text",
+          required: true,
+          helpText: `Allowed: ${SPONSOR_STATUSES.join(", ")}`,
+        },
+      ],
+    },
+    create: {
+      id: "seed-content-type-sponsor",
+      name: "Sponsor",
+      slug: "sponsor",
+      description: "Sponsor and partner entries.",
+      templateKey: "sponsor",
+      isPublic: true,
+      fields: [
+        {
+          key: "type",
+          type: "text",
+          required: true,
+          helpText: `Allowed: ${SPONSOR_TYPES.join(", ")}`,
+        },
+        { key: "logo", type: "image", required: true },
+        { key: "logoDark", type: "image", required: false },
+        { key: "websiteUrl", type: "text", required: false },
+        { key: "description", type: "textarea", required: false },
+        { key: "sortOrder", type: "text", required: false },
+        {
+          key: "status",
+          type: "text",
+          required: true,
+          helpText: `Allowed: ${SPONSOR_STATUSES.join(", ")}`,
+        },
+      ],
+    },
+  });
+
+  const sponsorSeeds = [
+    {
+      id: "seed-sponsor-general",
+      slug: "kirkenes-elektro",
+      title: "Kirkenes Elektro",
+      data: {
+        type: "generalsponsor",
+        logo: "https://picsum.photos/seed/sponsor-general/600/300",
+        logoDark: "https://picsum.photos/seed/sponsor-general-dark/600/300",
+        websiteUrl: "https://example.com/kirkenes-elektro",
+        description: "Generalsponsor for bredde og barnefotball.",
+        sortOrder: "1",
+        status: "active",
+      },
+    },
+    {
+      id: "seed-sponsor-local",
+      slug: "nordic-maskin",
+      title: "Nordic Maskin",
+      data: {
+        type: "sponsor",
+        logo: "https://picsum.photos/seed/sponsor-local/600/300",
+        logoDark: "https://picsum.photos/seed/sponsor-local-dark/600/300",
+        websiteUrl: "https://example.com/nordic-maskin",
+        description: "Lokal samarbeidspartner som støtter ungdomsavdelingen.",
+        sortOrder: "2",
+        status: "active",
+      },
+    },
+  ] as const;
+
+  for (const sponsor of sponsorSeeds) {
+    await prisma.contentItem.upsert({
+      where: {
+        contentTypeId_slug: {
+          contentTypeId: sponsorType.id,
+          slug: sponsor.slug,
+        },
+      },
+      update: { title: sponsor.title, data: sponsor.data, published: true },
+      create: {
+        id: sponsor.id,
+        contentTypeId: sponsorType.id,
+        slug: sponsor.slug,
+        title: sponsor.title,
+        data: sponsor.data,
+        published: true,
+      },
+    });
+  }
+}
+
 async function main() {
   if (process.env.NODE_ENV !== "development") {
     console.log("Seeding is only allowed in development mode.");
@@ -560,6 +1436,7 @@ async function main() {
   await seedNavigation();
   await seedNews();
   await seedServices();
+  await seedClubWebsiteModels();
 
   console.log("Seed completed.");
 }

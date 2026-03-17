@@ -21,6 +21,24 @@ type RelationConfig = {
   multiple?: boolean;
 };
 
+const TEAM_MAIN_CATEGORIES = new Set(["aldersbestemt", "senior"]);
+const TEAM_GENDERS = new Set(["gutter", "jenter", "herrer", "kvinner"]);
+const TEAM_LEVELS = new Set(["rekrutt", "a-lag"]);
+const TEAM_STATUSES = new Set(["active", "inactive", "archived"]);
+const PERSON_ROLE_CATEGORIES = new Set([
+  "styret",
+  "trenere",
+  "andre-roller",
+  "utvalg",
+]);
+const SPONSOR_TYPES = new Set([
+  "generalsponsor",
+  "hovedsponsor",
+  "sponsor",
+  "samarbeidspartner",
+]);
+const SPONSOR_STATUSES = new Set(["active", "inactive"]);
+
 @Injectable()
 export class ContentValidationService {
   constructor(
@@ -172,6 +190,7 @@ export class ContentValidationService {
   async validateContentItemData(
     fields: ContentFieldDefinition[],
     data: Record<string, unknown>,
+    contentTypeSlug?: string,
   ): Promise<void> {
     const normalizeRelationIds = (
       field: ContentFieldDefinition,
@@ -400,6 +419,223 @@ export class ContentValidationService {
           }
         }
       }
+    }
+
+    this.validateBlueprintSpecificData(contentTypeSlug, data);
+  }
+
+  private ensureEnumValue(params: {
+    contentTypeSlug: string;
+    fieldKey: string;
+    value: unknown;
+    allowedValues: Set<string>;
+    optional?: boolean;
+  }) {
+    const { contentTypeSlug, fieldKey, value, allowedValues, optional } =
+      params;
+
+    if (value === undefined || value === null || value === "") {
+      if (optional) {
+        return;
+      }
+
+      throw new BadRequestException(`Missing required field: ${fieldKey}`);
+    }
+
+    if (typeof value !== "string") {
+      throw new BadRequestException(
+        `Field ${fieldKey} must be a string for content type ${contentTypeSlug}.`,
+      );
+    }
+
+    const normalizedValue = value.trim();
+    if (!allowedValues.has(normalizedValue)) {
+      throw new BadRequestException(
+        `Field ${fieldKey} has invalid value "${normalizedValue}". Allowed values: ${[...allowedValues].join(", ")}.`,
+      );
+    }
+  }
+
+  private ensureJsonArrayField(
+    data: Record<string, unknown>,
+    fieldKey: string,
+  ): Array<Record<string, unknown>> {
+    const value = data[fieldKey];
+    if (value === undefined || value === null || value === "") {
+      return [];
+    }
+
+    if (typeof value !== "string") {
+      throw new BadRequestException(`Field ${fieldKey} must be a JSON string.`);
+    }
+
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(value);
+    } catch {
+      throw new BadRequestException(
+        `Field ${fieldKey} must be valid JSON array text.`,
+      );
+    }
+
+    if (!Array.isArray(parsed)) {
+      throw new BadRequestException(`Field ${fieldKey} must be a JSON array.`);
+    }
+
+    const records = parsed.filter(
+      (entry): entry is Record<string, unknown> =>
+        Boolean(entry) && typeof entry === "object" && !Array.isArray(entry),
+    );
+
+    if (records.length !== parsed.length) {
+      throw new BadRequestException(
+        `Field ${fieldKey} must contain only objects in the JSON array.`,
+      );
+    }
+
+    return records;
+  }
+
+  private ensureStringProperty(
+    entry: Record<string, unknown>,
+    fieldKey: string,
+    propertyKey: string,
+    required = true,
+  ) {
+    const value = entry[propertyKey];
+    if (value === undefined || value === null || value === "") {
+      if (!required) {
+        return;
+      }
+      throw new BadRequestException(
+        `Field ${fieldKey} entries require property ${propertyKey}.`,
+      );
+    }
+
+    if (typeof value !== "string") {
+      throw new BadRequestException(
+        `Field ${fieldKey}.${propertyKey} must be a string.`,
+      );
+    }
+  }
+
+  private ensureSortOrderProperty(
+    entry: Record<string, unknown>,
+    fieldKey: string,
+  ) {
+    const sortOrder = entry.sortOrder;
+    if (sortOrder === undefined || sortOrder === null || sortOrder === "") {
+      return;
+    }
+
+    if (typeof sortOrder !== "number" && typeof sortOrder !== "string") {
+      throw new BadRequestException(
+        `Field ${fieldKey}.sortOrder must be a number or numeric string.`,
+      );
+    }
+  }
+
+  private validateBlueprintSpecificData(
+    contentTypeSlug: string | undefined,
+    data: Record<string, unknown>,
+  ) {
+    if (!contentTypeSlug) {
+      return;
+    }
+
+    if (contentTypeSlug === "team") {
+      this.ensureEnumValue({
+        contentTypeSlug,
+        fieldKey: "mainCategory",
+        value: data.mainCategory,
+        allowedValues: TEAM_MAIN_CATEGORIES,
+      });
+      this.ensureEnumValue({
+        contentTypeSlug,
+        fieldKey: "gender",
+        value: data.gender,
+        allowedValues: TEAM_GENDERS,
+      });
+      this.ensureEnumValue({
+        contentTypeSlug,
+        fieldKey: "teamLevel",
+        value: data.teamLevel,
+        allowedValues: TEAM_LEVELS,
+        optional: true,
+      });
+      this.ensureEnumValue({
+        contentTypeSlug,
+        fieldKey: "status",
+        value: data.status,
+        allowedValues: TEAM_STATUSES,
+      });
+
+      for (const fieldKey of ["coaches", "trainingSessions", "socialLinks"]) {
+        const entries = this.ensureJsonArrayField(data, fieldKey);
+
+        if (fieldKey === "coaches") {
+          for (const entry of entries) {
+            this.ensureStringProperty(entry, fieldKey, "name");
+            this.ensureStringProperty(entry, fieldKey, "role");
+            this.ensureStringProperty(entry, fieldKey, "phone", false);
+            this.ensureStringProperty(entry, fieldKey, "email", false);
+            this.ensureStringProperty(entry, fieldKey, "image", false);
+            this.ensureSortOrderProperty(entry, fieldKey);
+          }
+        }
+
+        if (fieldKey === "trainingSessions") {
+          for (const entry of entries) {
+            this.ensureStringProperty(entry, fieldKey, "dayOfWeek");
+            this.ensureStringProperty(entry, fieldKey, "startTime");
+            this.ensureStringProperty(entry, fieldKey, "endTime");
+            this.ensureStringProperty(entry, fieldKey, "location", false);
+            this.ensureStringProperty(entry, fieldKey, "notes", false);
+            this.ensureSortOrderProperty(entry, fieldKey);
+          }
+        }
+
+        if (fieldKey === "socialLinks") {
+          for (const entry of entries) {
+            this.ensureStringProperty(entry, fieldKey, "platform");
+            this.ensureStringProperty(entry, fieldKey, "url");
+            this.ensureSortOrderProperty(entry, fieldKey);
+          }
+        }
+      }
+    }
+
+    if (contentTypeSlug === "club") {
+      const socialLinks = this.ensureJsonArrayField(data, "socialLinks");
+      for (const entry of socialLinks) {
+        this.ensureStringProperty(entry, "socialLinks", "platform");
+        this.ensureStringProperty(entry, "socialLinks", "url");
+        this.ensureSortOrderProperty(entry, "socialLinks");
+      }
+    }
+
+    if (contentTypeSlug === "person-role") {
+      this.ensureEnumValue({
+        contentTypeSlug,
+        fieldKey: "category",
+        value: data.category,
+        allowedValues: PERSON_ROLE_CATEGORIES,
+      });
+    }
+
+    if (contentTypeSlug === "sponsor") {
+      this.ensureEnumValue({
+        contentTypeSlug,
+        fieldKey: "type",
+        value: data.type,
+        allowedValues: SPONSOR_TYPES,
+      });
+      this.ensureEnumValue({
+        contentTypeSlug,
+        fieldKey: "status",
+        value: data.status,
+        allowedValues: SPONSOR_STATUSES,
+      });
     }
   }
 
