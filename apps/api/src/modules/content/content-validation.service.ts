@@ -38,6 +38,19 @@ const SPONSOR_TYPES = new Set([
   "samarbeidspartner",
 ]);
 const SPONSOR_STATUSES = new Set(["active", "inactive"]);
+const NEWS_CATEGORIES = new Set([
+  "club-news",
+  "match-report",
+  "events",
+  "youth",
+  "announcements",
+]);
+const FUNDING_GRANT_CATEGORIES = new Set([
+  "tippemidler",
+  "other-support",
+  "facility-upgrade",
+  "community-support",
+]);
 
 @Injectable()
 export class ContentValidationService {
@@ -191,6 +204,7 @@ export class ContentValidationService {
     fields: ContentFieldDefinition[],
     data: Record<string, unknown>,
     contentTypeSlug?: string,
+    contentItemId?: string,
   ): Promise<void> {
     const normalizeRelationIds = (
       field: ContentFieldDefinition,
@@ -421,7 +435,55 @@ export class ContentValidationService {
       }
     }
 
-    this.validateBlueprintSpecificData(contentTypeSlug, data);
+    await this.validateBlueprintSpecificData(
+      contentTypeSlug,
+      data,
+      contentItemId,
+    );
+  }
+
+  private async ensureOptionalUniqueFieldValue(params: {
+    contentTypeSlug: string;
+    fieldKey: string;
+    data: Record<string, unknown>;
+    currentContentItemId?: string;
+  }) {
+    const { contentTypeSlug, fieldKey, data, currentContentItemId } = params;
+    const value = data[fieldKey];
+
+    if (value === undefined || value === null || value === "") {
+      return;
+    }
+
+    if (typeof value !== "string") {
+      throw new BadRequestException(`Field ${fieldKey} must be a string.`);
+    }
+
+    const normalizedValue = value.trim();
+    if (!normalizedValue) {
+      return;
+    }
+
+    const existingItems =
+      await this.contentItems.findManyByContentTypeSlug(contentTypeSlug);
+
+    const duplicate = existingItems.find((item) => {
+      if (currentContentItemId && item.id === currentContentItemId) {
+        return false;
+      }
+
+      const itemData =
+        item.data && typeof item.data === "object"
+          ? (item.data as Record<string, unknown>)
+          : {};
+      return itemData[fieldKey] === normalizedValue;
+    });
+
+    if (duplicate) {
+      throw new BadRequestException(
+        `Field ${fieldKey} must be unique within content type ${contentTypeSlug}.`,
+      );
+    }
   }
 
   private ensureEnumValue(params: {
@@ -535,9 +597,10 @@ export class ContentValidationService {
     }
   }
 
-  private validateBlueprintSpecificData(
+  private async validateBlueprintSpecificData(
     contentTypeSlug: string | undefined,
     data: Record<string, unknown>,
+    contentItemId?: string,
   ) {
     if (!contentTypeSlug) {
       return;
@@ -635,6 +698,33 @@ export class ContentValidationService {
         fieldKey: "status",
         value: data.status,
         allowedValues: SPONSOR_STATUSES,
+      });
+    }
+
+    if (contentTypeSlug === "news") {
+      this.ensureEnumValue({
+        contentTypeSlug,
+        fieldKey: "category",
+        value: data.category,
+        allowedValues: NEWS_CATEGORIES,
+      });
+    }
+
+    if (contentTypeSlug === "funding-grant") {
+      this.ensureEnumValue({
+        contentTypeSlug,
+        fieldKey: "category",
+        value: data.category,
+        allowedValues: FUNDING_GRANT_CATEGORIES,
+      });
+    }
+
+    if (contentTypeSlug === "match") {
+      await this.ensureOptionalUniqueFieldValue({
+        contentTypeSlug,
+        fieldKey: "externalId",
+        data,
+        currentContentItemId: contentItemId,
       });
     }
   }

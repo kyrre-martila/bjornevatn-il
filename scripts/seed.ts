@@ -24,46 +24,114 @@ const NAVIGATION_SEEDS = [
 const NEWS_ITEMS = [
   {
     id: "seed-news-item-1",
-    slug: "launching-our-demo-newsroom",
-    title: "Launching Our Demo Newsroom",
+    slug: "sesongstart-pa-bjornevatn-stadion",
+    title: "Sesongstart på Bjørnevatn stadion",
     data: {
       excerpt:
-        "Moren ipsum dolor sit amet, consectetur adipiscing elit. Integer posuere erat a ante venenatis dapibus.",
-      body: "Moren ipsum dolor sit amet, consectetur adipiscing elit. Praesent commodo cursus magna, vel scelerisque nisl consectetur et. Moren ipsum faucibus dolor auctor, dapibus tellus ac cursus commodo.",
-      image: "https://picsum.photos/seed/news-1/1200/800",
+        "Vi markerer seriestart med aktiviteter for barn og ungdom før kampstart.",
+      content:
+        "Bjørnevatn IL inviterer hele lokalmiljøet til sesongåpning på hjemmebane med kiosksalg, frivilligpresentasjon og åpen aktivitetssone.",
+      image: "https://picsum.photos/seed/news-season-start/1200/800",
+      category: "club-news",
+      publishedAt: "2026-04-10T12:00:00.000Z",
+      authorName: "Bjørnevatn IL",
+      isFeatured: true,
     },
   },
   {
     id: "seed-news-item-2",
-    slug: "new-service-highlights",
-    title: "New Service Highlights",
+    slug: "sterk-borteseier-i-treningskamp",
+    title: "Sterk borteseier i treningskamp",
     data: {
       excerpt:
-        "Moren ipsum dolor sit amet, consectetur adipiscing elit. Donec ullamcorper nulla non metus auctor fringilla.",
-      body: "Moren ipsum dolor sit amet, consectetur adipiscing elit. Maecenas sed diam eget risus varius blandit sit amet non magna. Moren ipsum lacinia bibendum nulla sed consectetur.",
-      image: "https://picsum.photos/seed/news-2/1200/800",
+        "A-laget leverte en solid kamp og tok med seg en fortjent seier.",
+      content:
+        "Etter en jevn første omgang tok Bjørnevatn IL kontroll etter pause og avgjorde kampen med to raske mål i sluttminuttene.",
+      image: "https://picsum.photos/seed/news-match-report/1200/800",
+      category: "match-report",
+      publishedAt: "2026-03-30T18:30:00.000Z",
+      authorName: "Sportslig utvalg",
+      isFeatured: false,
+    },
+  },
+] as const;
+
+const MATCH_ITEMS = [
+  {
+    id: "seed-match-home-upcoming",
+    slug: "bil-vs-kirkenes-if-2026-05-12",
+    title: "Bjørnevatn IL vs Kirkenes IF",
+    data: {
+      externalId: "match-import-2026-05-12-bil-kif",
+      homeTeam: "Bjørnevatn IL",
+      awayTeam: "Kirkenes IF",
+      matchDate: "2026-05-12T18:00:00.000Z",
+      league: "4. divisjon Finnmark",
+      venue: "Bjørnevatn stadion",
+      isHomeMatch: true,
+      isFeatured: true,
+      ticketSalesEnabled: false,
     },
   },
   {
-    id: "seed-news-item-3",
-    slug: "community-spotlight",
-    title: "Community Spotlight",
+    id: "seed-match-away-upcoming",
+    slug: "hammerfest-sk-vs-bil-2026-05-20",
+    title: "Hammerfest SK vs Bjørnevatn IL",
     data: {
-      excerpt:
-        "Moren ipsum dolor sit amet, consectetur adipiscing elit. Cras mattis consectetur purus sit amet fermentum.",
-      body: "Moren ipsum dolor sit amet, consectetur adipiscing elit. Aenean eu leo quam. Pellentesque ornare sem lacinia quam venenatis vestibulum. Moren ipsum donec id elit non mi porta gravida at eget metus.",
-      image: "https://picsum.photos/seed/news-3/1200/800",
+      externalId: "match-import-2026-05-20-hsk-bil",
+      homeTeam: "Hammerfest SK",
+      awayTeam: "Bjørnevatn IL",
+      matchDate: "2026-05-20T16:00:00.000Z",
+      league: "4. divisjon Finnmark",
+      venue: "Hammerfest kunstgress",
+      isHomeMatch: false,
+      isFeatured: false,
+      ticketSalesEnabled: false,
     },
   },
+] as const;
+
+const HOMEPAGE_SETTINGS_ITEM = {
+  id: "seed-homepage-settings",
+  slug: "homepage-settings",
+  title: "Homepage Settings",
+  data: {
+    heroTitle: "Velkommen til Bjørnevatn IL",
+    heroText: "Fotballglede, fellesskap og aktivitet for hele lokalmiljøet.",
+    heroImage: "https://picsum.photos/seed/homepage-hero/1600/900",
+    showNextMatchHero: true,
+    showWeatherSection: true,
+    showNewsSection: true,
+    showGrasrotSection: true,
+    showFundingSection: true,
+    showSponsorsSection: true,
+    newsSectionTitle: "Siste nytt",
+    sponsorsSectionTitle: "Våre samarbeidspartnere",
+    fundingSectionTitle: "Støtte og tilskudd",
+    grasrotSectionTitle: "Støtt oss med Grasrotandelen",
+    grasrotInstructionsTitle: "Slik velger du Bjørnevatn IL",
+    grasrotInstructionsText:
+      "Send SMS med Bjornevatn IL til 60000 eller velg oss hos Norsk Tipping.",
+    grasrotButtonLabel: "Velg Bjørnevatn IL",
+    grasrotButtonUrl: "https://www.norsk-tipping.no/grasrotandelen",
+  },
+} as const;
+
+const FUNDING_GRANTS = [
   {
-    id: "seed-news-item-4",
-    slug: "behind-the-scenes-update",
-    title: "Behind the Scenes Update",
+    id: "seed-funding-grant-1",
+    slug: "tippemidler-2025-garderobeoppgradering",
+    title: "Tippemidler til garderobeoppgradering",
     data: {
-      excerpt:
-        "Moren ipsum dolor sit amet, consectetur adipiscing elit. Sed posuere consectetur est at lobortis.",
-      body: "Moren ipsum dolor sit amet, consectetur adipiscing elit. Curabitur blandit tempus porttitor. Moren ipsum vivamus sagittis lacus vel augue laoreet rutrum faucibus dolor auctor.",
-      image: "https://picsum.photos/seed/news-4/1200/800",
+      title: "Tippemidler til garderobeoppgradering",
+      year: "2025",
+      amount: "350000",
+      description:
+        "Tilskudd brukt til oppgradering av garderober og universell tilrettelegging.",
+      image: "https://picsum.photos/seed/funding-grant-1/1200/800",
+      category: "tippemidler",
+      isFeaturedOnHomepage: true,
+      sortOrder: "1",
     },
   },
 ] as const;
@@ -249,19 +317,41 @@ async function seedNavigation() {
 }
 
 async function seedNews() {
+  const newsTypeFields = [
+    { key: "title", type: "text", required: true },
+    { key: "slug", type: "text", required: true },
+    { key: "excerpt", type: "textarea", required: false },
+    { key: "content", type: "rich_text", required: true },
+    { key: "image", type: "image", required: false },
+    {
+      key: "category",
+      type: "text",
+      required: true,
+      helpText:
+        "Allowed: club-news, match-report, events, youth, announcements",
+    },
+    { key: "publishedAt", type: "date", required: true },
+    { key: "authorName", type: "text", required: false },
+    { key: "isFeatured", type: "boolean", required: false },
+  ] as const;
+
   const newsType = await prisma.contentType.upsert({
     where: { slug: "news" },
     update: {
       name: "News",
-      description: "Demo news entries for local development.",
+      description: "Club news and match reports.",
+      templateKey: "news",
       isPublic: true,
+      fields: newsTypeFields,
     },
     create: {
       id: "seed-content-type-news",
       name: "News",
       slug: "news",
-      description: "Demo news entries for local development.",
+      description: "Club news and match reports.",
+      templateKey: "news",
       isPublic: true,
+      fields: newsTypeFields,
     },
   });
 
@@ -279,6 +369,202 @@ async function seedNews() {
           title: item.title,
           data: item.data,
           published: true,
+        },
+      }),
+    ),
+  );
+}
+
+async function seedMatches() {
+  const matchTypeFields = [
+    { key: "externalId", type: "text", required: false },
+    { key: "homeTeam", type: "text", required: false },
+    { key: "awayTeam", type: "text", required: false },
+    { key: "matchDate", type: "date", required: true },
+    { key: "league", type: "text", required: false },
+    { key: "venue", type: "text", required: false },
+    { key: "isHomeMatch", type: "boolean", required: false },
+    { key: "isFeatured", type: "boolean", required: false },
+    { key: "ticketSalesEnabled", type: "boolean", required: false },
+  ] as const;
+
+  const matchType = await prisma.contentType.upsert({
+    where: { slug: "match" },
+    update: {
+      name: "Match",
+      description:
+        "Football matches, including imported identifiers and fixtures.",
+      templateKey: "match",
+      isPublic: true,
+      fields: matchTypeFields,
+    },
+    create: {
+      id: "seed-content-type-match",
+      name: "Match",
+      slug: "match",
+      description:
+        "Football matches, including imported identifiers and fixtures.",
+      templateKey: "match",
+      isPublic: true,
+      fields: matchTypeFields,
+    },
+  });
+
+  await Promise.all(
+    MATCH_ITEMS.map((item, index) =>
+      prisma.contentItem.upsert({
+        where: {
+          contentTypeId_slug: { contentTypeId: matchType.id, slug: item.slug },
+        },
+        update: {
+          title: item.title,
+          data: item.data,
+          published: true,
+          sortOrder: index + 1,
+        },
+        create: {
+          id: item.id,
+          contentTypeId: matchType.id,
+          slug: item.slug,
+          title: item.title,
+          data: item.data,
+          published: true,
+          sortOrder: index + 1,
+        },
+      }),
+    ),
+  );
+}
+
+async function seedHomepageSettings() {
+  const homepageSettingsFields = [
+    { key: "heroTitle", type: "text", required: false },
+    { key: "heroText", type: "textarea", required: false },
+    { key: "heroImage", type: "image", required: false },
+    { key: "showNextMatchHero", type: "boolean", required: false },
+    { key: "showWeatherSection", type: "boolean", required: false },
+    { key: "showNewsSection", type: "boolean", required: false },
+    { key: "showGrasrotSection", type: "boolean", required: false },
+    { key: "showFundingSection", type: "boolean", required: false },
+    { key: "showSponsorsSection", type: "boolean", required: false },
+    { key: "newsSectionTitle", type: "text", required: false },
+    { key: "sponsorsSectionTitle", type: "text", required: false },
+    { key: "fundingSectionTitle", type: "text", required: false },
+    { key: "grasrotSectionTitle", type: "text", required: false },
+    { key: "grasrotInstructionsTitle", type: "text", required: false },
+    { key: "grasrotInstructionsText", type: "textarea", required: false },
+    { key: "grasrotButtonLabel", type: "text", required: false },
+    { key: "grasrotButtonUrl", type: "text", required: false },
+  ] as const;
+
+  const homepageSettingsType = await prisma.contentType.upsert({
+    where: { slug: "homepage-settings" },
+    update: {
+      name: "Homepage Settings",
+      description:
+        "Singleton-style homepage configuration and section toggles.",
+      templateKey: "homepage-settings",
+      isPublic: true,
+      fields: homepageSettingsFields,
+    },
+    create: {
+      id: "seed-content-type-homepage-settings",
+      name: "Homepage Settings",
+      slug: "homepage-settings",
+      description:
+        "Singleton-style homepage configuration and section toggles.",
+      templateKey: "homepage-settings",
+      isPublic: true,
+      fields: homepageSettingsFields,
+    },
+  });
+
+  await prisma.contentItem.upsert({
+    where: {
+      contentTypeId_slug: {
+        contentTypeId: homepageSettingsType.id,
+        slug: HOMEPAGE_SETTINGS_ITEM.slug,
+      },
+    },
+    update: {
+      title: HOMEPAGE_SETTINGS_ITEM.title,
+      data: HOMEPAGE_SETTINGS_ITEM.data,
+      published: true,
+      sortOrder: 1,
+    },
+    create: {
+      id: HOMEPAGE_SETTINGS_ITEM.id,
+      contentTypeId: homepageSettingsType.id,
+      slug: HOMEPAGE_SETTINGS_ITEM.slug,
+      title: HOMEPAGE_SETTINGS_ITEM.title,
+      data: HOMEPAGE_SETTINGS_ITEM.data,
+      published: true,
+      sortOrder: 1,
+    },
+  });
+}
+
+async function seedFundingGrants() {
+  const fundingGrantFields = [
+    { key: "title", type: "text", required: true },
+    { key: "year", type: "text", required: true },
+    { key: "amount", type: "text", required: true },
+    { key: "description", type: "textarea", required: false },
+    { key: "image", type: "image", required: false },
+    {
+      key: "category",
+      type: "text",
+      required: true,
+      helpText:
+        "Allowed: tippemidler, other-support, facility-upgrade, community-support",
+    },
+    { key: "isFeaturedOnHomepage", type: "boolean", required: false },
+    { key: "sortOrder", type: "text", required: false },
+  ] as const;
+
+  const fundingGrantType = await prisma.contentType.upsert({
+    where: { slug: "funding-grant" },
+    update: {
+      name: "Funding Grant",
+      description: "Funding and support entries for homepage presentation.",
+      templateKey: "funding-grant",
+      isPublic: true,
+      fields: fundingGrantFields,
+    },
+    create: {
+      id: "seed-content-type-funding-grant",
+      name: "Funding Grant",
+      slug: "funding-grant",
+      description: "Funding and support entries for homepage presentation.",
+      templateKey: "funding-grant",
+      isPublic: true,
+      fields: fundingGrantFields,
+    },
+  });
+
+  await Promise.all(
+    FUNDING_GRANTS.map((grant, index) =>
+      prisma.contentItem.upsert({
+        where: {
+          contentTypeId_slug: {
+            contentTypeId: fundingGrantType.id,
+            slug: grant.slug,
+          },
+        },
+        update: {
+          title: grant.title,
+          data: grant.data,
+          published: true,
+          sortOrder: index + 1,
+        },
+        create: {
+          id: grant.id,
+          contentTypeId: fundingGrantType.id,
+          slug: grant.slug,
+          title: grant.title,
+          data: grant.data,
+          published: true,
+          sortOrder: index + 1,
         },
       }),
     ),
@@ -1435,6 +1721,9 @@ async function main() {
   await seedPages();
   await seedNavigation();
   await seedNews();
+  await seedMatches();
+  await seedHomepageSettings();
+  await seedFundingGrants();
   await seedServices();
   await seedClubWebsiteModels();
 

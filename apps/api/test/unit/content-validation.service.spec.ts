@@ -1,4 +1,4 @@
-import { ForbiddenException } from "@nestjs/common";
+import { BadRequestException, ForbiddenException } from "@nestjs/common";
 import { ContentValidationService } from "../../src/modules/content/content-validation.service";
 
 describe("ContentValidationService", () => {
@@ -41,5 +41,51 @@ describe("ContentValidationService", () => {
         "Access denied: editors cannot modify relation fields.",
       ),
     );
+  });
+
+  it("validates allowed news categories", async () => {
+    const service = makeService();
+
+    await expect(
+      service.validateContentItemData(
+        [{ key: "category", type: "text", required: true }] as never,
+        { category: "invalid" },
+        "news",
+      ),
+    ).rejects.toThrow(BadRequestException);
+  });
+
+  it("enforces unique optional match externalId when present", async () => {
+    const pages = { findManyByIds: jest.fn().mockResolvedValue([]) };
+    const contentTypes = { findManyBySlugs: jest.fn().mockResolvedValue([]) };
+    const contentItems = {
+      findManyByIds: jest.fn().mockResolvedValue([]),
+      findManyByContentTypeSlug: jest.fn().mockResolvedValue([
+        {
+          id: "existing-match",
+          contentTypeId: "ct-match",
+          data: { externalId: "import-123" },
+        },
+      ]),
+    };
+    const media = {
+      findManyByIds: jest.fn().mockResolvedValue([]),
+      findManyByUrls: jest.fn().mockResolvedValue([]),
+    };
+
+    const service = new ContentValidationService(
+      pages as never,
+      contentTypes as never,
+      contentItems as never,
+      media as never,
+    );
+
+    await expect(
+      service.validateContentItemData(
+        [{ key: "externalId", type: "text", required: false }] as never,
+        { externalId: "import-123" },
+        "match",
+      ),
+    ).rejects.toThrow(BadRequestException);
   });
 });
