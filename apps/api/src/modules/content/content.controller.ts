@@ -1441,6 +1441,7 @@ export class ContentController {
       contentType.fields,
       body.data,
       contentType.slug,
+      undefined,
     );
     this.validationService.ensureEditorCannotModifyRelationFields(
       role,
@@ -1583,6 +1584,7 @@ export class ContentController {
       contentType.fields,
       data,
       contentType.slug,
+      existing.id,
     );
     this.validationService.ensureEditorCannotModifyRelationFields(
       role,
