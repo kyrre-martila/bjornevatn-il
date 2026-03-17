@@ -1,0 +1,47 @@
+.tickets-page__title {
+  font-size: var(--text-2xl, 2rem);
+}
+
+.tickets-page__intro {
+  color: var(--site-color-text-muted, var(--color-text-muted));
+}
+
+.tickets-page__grid {
+  display: grid;
+  gap: var(--site-space-4, var(--space-l));
+}
+
+.tickets-page__card {
+  border: 1px solid var(--site-color-border, var(--color-border-subtle));
+  border-radius: var(--radius-m);
+  padding: var(--site-space-4, var(--space-l));
+  background: var(--site-color-surface, var(--color-neutral-0));
+}
+
+.tickets-page-card__title {
+  font-size: var(--text-l);
+  margin-bottom: var(--site-space-2, var(--space-s));
+}
+
+.tickets-page-card__meta {
+  color: var(--site-color-text-muted, var(--color-text-muted));
+}
+
+.tickets-page-card__button {
+  margin-top: var(--site-space-3, var(--space-m));
+  display: inline-flex;
+  padding: var(--space-2xs) var(--space-m);
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--site-color-primary, var(--color-primary));
+  color: var(--site-color-primary, var(--color-primary));
+}
+
+.tickets-page__empty {
+  color: var(--site-color-text-muted, var(--color-text-muted));
+}
+
+@media (min-width: 768px) {
+  .tickets-page__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
