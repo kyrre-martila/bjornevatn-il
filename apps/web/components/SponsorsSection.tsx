@@ -7,12 +7,16 @@ const sponsorTypes = [
   "samarbeidspartner",
 ] as const;
 
-export default async function SponsorsSection() {
+type SponsorsSectionProps = {
+  title?: string;
+};
+
+export default async function SponsorsSection({ title = "Sponsors" }: SponsorsSectionProps) {
   const sponsors = await getSponsors();
 
   return (
-    <section className="stack">
-      <h2>Sponsorer</h2>
+    <section className="homepage-sponsors stack stack--sm" aria-labelledby="homepage-sponsors-title">
+      <h2 id="homepage-sponsors-title">{title}</h2>
       {sponsorTypes.map((type) => {
         const entries = sponsors
           .filter((sponsor) => sponsor.type === type)
@@ -25,13 +29,13 @@ export default async function SponsorsSection() {
         return (
           <div key={type} className="stack stack--sm">
             <h3>{type}</h3>
-            <div className="cluster">
+            <div className="homepage-sponsors__logos">
               {entries.map((sponsor) => {
                 const logo = sponsor.logo ? (
                   <img
                     src={sponsor.logo}
                     alt={sponsor.name}
-                    style={{ height: "64px", width: "auto", objectFit: "contain" }}
+                    className="homepage-sponsors__logo"
                   />
                 ) : (
                   <span>{sponsor.name}</span>
