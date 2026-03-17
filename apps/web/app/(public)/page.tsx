@@ -1,85 +1,30 @@
-import type { Metadata } from "next";
 import Link from "next/link";
 
-import {
-  getHomepageContent,
-  getPageContentBySlug,
-  getSiteConfiguration,
-  withTitleSuffix,
-} from "../../lib/content";
-import { renderBlock } from "./page/[slug]/block-renderer";
-import { resolvePageTemplate } from "./templates/template-registry";
-
-export async function generateMetadata(): Promise<Metadata> {
-  const [content, siteConfig] = await Promise.all([
-    getPageContentBySlug("home"),
-    getSiteConfiguration(),
-  ]);
-
-  if (!content) {
-    return {
-      alternates: { canonical: new URL("/", `${siteConfig.siteUrl}/`).toString() },
-    };
-  }
-
-  const canonicalUrl =
-    content.canonicalUrl?.trim() ||
-    new URL("/", `${siteConfig.siteUrl}/`).toString();
-
-  const title = withTitleSuffix(
-    content.seoTitle?.trim() || content.title,
-    siteConfig.defaultTitleSuffix,
-  );
-
-  return {
-    title,
-    description: content.seoDescription?.trim() || undefined,
-    alternates: { canonical: canonicalUrl },
-    robots: content.noIndex ? { index: false, follow: true } : undefined,
-  };
-}
-
-export default async function Homepage() {
-  const content = await getPageContentBySlug("home");
-
-  if (!content) {
-    const hero = await getHomepageContent();
-
-    return (
-      <section aria-labelledby="hero-heading" className="hero hero--public section stack">
-        <div className="hero__inner stack">
-          <p className="hero__eyebrow">{hero.eyebrow}</p>
-          <h1 id="hero-heading" className="hero__title">
-            {hero.title}
-          </h1>
-          <p className="hero__text">{hero.subtitle}</p>
-          <div className="hero__actions cluster">
-            <Link href={hero.primaryCta.href} className="button-primary">
-              {hero.primaryCta.label}
-            </Link>
-            <Link href={hero.secondaryCta.href} className="button-secondary">
-              {hero.secondaryCta.label}
-            </Link>
-          </div>
-        </div>
-      </section>
-    );
-  }
-
-  const renderedBlocks = await Promise.all(
-    content.blocks.map(async (block) => ({
-      id: block.id,
-      node: await renderBlock(block),
-    })),
-  );
-
-  const Template = resolvePageTemplate(content.templateKey);
-
+export default function Homepage() {
   return (
-    <Template title={content.title}>
-      {renderedBlocks.map((block) => (
-        <div key={block.id}>{block.node}</div>
-      ))}
-    </Template>
+    <section aria-labelledby="club-heading" className="hero hero--public section stack">
+      <div className="hero__inner stack">
+        <p className="hero__eyebrow">Bjørnevatn, Norway</p>
+        <h1 id="club-heading" className="hero__title">
+          Bjørnevatn IL
+        </h1>
+        <p className="hero__text">Official Club Website</p>
+        <p>
+          Welcome to the placeholder homepage for the Bjørnevatn IL Website – powered by Content Blueprint
+          architecture. Club content and feature pages will be added in upcoming iterations.
+        </p>
+        <nav aria-label="Homepage placeholder navigation" className="cluster">
+          <Link href="#" className="button-primary" aria-disabled="true">
+            Club Information (coming soon)
+          </Link>
+          <Link href="#" className="button-secondary" aria-disabled="true">
+            Teams (coming soon)
+          </Link>
+          <Link href="#" className="button-secondary" aria-disabled="true">
+            News (coming soon)
+          </Link>
+        </nav>
+      </div>
+    </section>
   );
 }

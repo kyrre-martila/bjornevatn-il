@@ -1,6 +1,6 @@
 # Architecture
 
-This blueprint is structured for content-driven websites: a public website experience backed by authenticated admin/editor workflows, shared content APIs, and typed contracts.
+Bjørnevatn IL Website – powered by Content Blueprint architecture uses a content-driven structure: a public website experience backed by authenticated admin/editor workflows, shared content APIs, and typed contracts.
 
 ## Layering
 

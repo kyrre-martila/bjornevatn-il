@@ -1,14 +1,14 @@
 # NEW_PROJECT
 
-Recommended workflow when starting a new site from this blueprint.
+Project setup guide for Bjørnevatn IL Website – powered by Content Blueprint architecture.
 
 ---
 
-## 1) Clone the blueprint
+## 1) Clone the project repository
 
 ```bash
-git clone <blueprint-repo-url> my-new-site
-cd my-new-site
+git clone <repository-url> bjornevatn-il-website
+cd bjornevatn-il-website
 ```
 
 ---

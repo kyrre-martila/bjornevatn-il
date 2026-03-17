@@ -7,8 +7,11 @@ import type { ReactNode } from "react";
 import { StagingBanner } from "./StagingBanner";
 
 export const metadata: Metadata = {
-  title: "Blueprint App",
-  description: "Fullstack blueprint",
+  title: "Bjørnevatn IL",
+  description: "Official website of Bjørnevatn IL football club",
+  other: {
+    location: "Bjørnevatn, Norway",
+  },
   icons: {
     icon: [
       { url: "/favicons/favicon-32x32.png", sizes: "32x32", type: "image/png" },
