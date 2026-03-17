@@ -2024,3 +2024,66 @@ button:focus-visible {
     grid-column: 1 / -1;
   }
 }
+
+.admin-bookings,
+.admin-booking-detail,
+.admin-blocked {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.admin-bookings__filters,
+.admin-blocked__form {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.admin-bookings__filters label,
+.admin-blocked__form label {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.admin-bookings__list,
+.admin-blocked__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-3);
+}
+
+.admin-bookings__item,
+.admin-blocked__item {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
+  background: var(--color-surface-muted);
+}
+
+.admin-bookings__status--approved { color: var(--color-primary); }
+.admin-bookings__status--pending { color: var(--color-base); }
+.admin-bookings__status--rejected,
+.admin-bookings__status--cancelled { color: var(--color-text-muted); }
+
+.admin-booking-detail__info {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-1) var(--space-3);
+}
+
+.admin-booking-detail__info dt { font-weight: 600; }
+
+.admin-booking-detail__actions,
+.admin-booking-detail__status-actions {
+  display: grid;
+  gap: var(--space-2);
+}
+
+@media (min-width: 768px) {
+  .admin-bookings__filters,
+  .admin-blocked__form,
+  .admin-booking-detail__info {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

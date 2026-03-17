@@ -1,9 +1,21 @@
-import { Body, Controller, Post } from "@nestjs/common";
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Patch,
+  Post,
+  Query,
+  Req,
+} from "@nestjs/common";
 import { ApiProperty, ApiTags } from "@nestjs/swagger";
+import { ClubhouseBookingStatus } from "@prisma/client";
 import { Type } from "class-transformer";
 import {
   IsDate,
   IsEmail,
+  IsIn,
   IsInt,
   IsOptional,
   IsString,
@@ -14,6 +26,10 @@ import {
   ValidatorConstraintInterface,
   ValidationArguments,
 } from "class-validator";
+import type { Request } from "express";
+
+import { requireMinimumRole } from "../../common/auth/admin-access";
+import { AuthService } from "../auth/auth.service";
 import { ClubhouseService } from "./clubhouse.service";
 
 @ValidatorConstraint({ name: "isEndAfterStart", async: false })
@@ -34,7 +50,20 @@ class IsEndAfterStartConstraint implements ValidatorConstraintInterface {
   }
 }
 
-class CreateClubhouseBookingDto {
+class DateRangeDto {
+  @ApiProperty({ type: String, format: "date-time" })
+  @Type(() => Date)
+  @IsDate()
+  startAt!: Date;
+
+  @ApiProperty({ type: String, format: "date-time" })
+  @Type(() => Date)
+  @IsDate()
+  @Validate(IsEndAfterStartConstraint)
+  endAt!: Date;
+}
+
+class CreateClubhouseBookingDto extends DateRangeDto {
   @ApiProperty()
   @IsString()
   bookedByName!: string;
@@ -63,44 +92,224 @@ class CreateClubhouseBookingDto {
   @Min(1)
   @Max(2000)
   attendeeCount?: number;
-
-  @ApiProperty({ type: String, format: "date-time" })
-  @Type(() => Date)
-  @IsDate()
-  startAt!: Date;
-
-  @ApiProperty({ type: String, format: "date-time" })
-  @Type(() => Date)
-  @IsDate()
-  @Validate(IsEndAfterStartConstraint)
-  endAt!: Date;
 }
 
-class ClubhouseBookingResponseDto {
+class ClubhouseBookingDto {
   @ApiProperty()
   id!: string;
+
+  @ApiProperty()
+  bookedByName!: string;
+
+  @ApiProperty()
+  bookedByEmail!: string;
+
+  @ApiProperty()
+  bookedByPhone!: string;
+
+  @ApiProperty({ required: false })
+  organization?: string;
+
+  @ApiProperty()
+  purpose!: string;
+
+  @ApiProperty({ required: false })
+  attendeeCount?: number;
 
   @ApiProperty({ enum: ["pending", "approved", "rejected", "cancelled"] })
   status!: "pending" | "approved" | "rejected" | "cancelled";
 
+  @ApiProperty({ required: false })
+  adminNotes?: string;
+
+  @ApiProperty({ type: String, format: "date-time" })
+  startAt!: string;
+
+  @ApiProperty({ type: String, format: "date-time" })
+  endAt!: string;
+
   @ApiProperty({ type: String, format: "date-time" })
   createdAt!: string;
+
+  @ApiProperty({ type: String, format: "date-time" })
+  updatedAt!: string;
+}
+
+class ListBookingsQueryDto {
+  @ApiProperty({ required: false, enum: ["pending", "approved", "rejected", "cancelled"] })
+  @IsOptional()
+  @IsIn(["pending", "approved", "rejected", "cancelled"])
+  status?: "pending" | "approved" | "rejected" | "cancelled";
+
+  @ApiProperty({ required: false, enum: ["upcoming", "past", "all"] })
+  @IsOptional()
+  @IsIn(["upcoming", "past", "all"])
+  timeframe?: "upcoming" | "past" | "all";
+}
+
+class UpdateAdminNotesDto {
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  adminNotes?: string;
+}
+
+class CreateBlockedPeriodDto extends DateRangeDto {
+  @ApiProperty()
+  @IsString()
+  reason!: string;
+}
+
+function toBookingDto(booking: {
+  id: string;
+  bookedByName: string;
+  bookedByEmail: string;
+  bookedByPhone: string;
+  organization: string | null;
+  purpose: string;
+  attendeeCount: number | null;
+  status: ClubhouseBookingStatus;
+  adminNotes: string | null;
+  startAt: Date;
+  endAt: Date;
+  createdAt: Date;
+  updatedAt: Date;
+}): ClubhouseBookingDto {
+  return {
+    ...booking,
+    organization: booking.organization ?? undefined,
+    attendeeCount: booking.attendeeCount ?? undefined,
+    adminNotes: booking.adminNotes ?? undefined,
+    status: booking.status,
+    startAt: booking.startAt.toISOString(),
+    endAt: booking.endAt.toISOString(),
+    createdAt: booking.createdAt.toISOString(),
+    updatedAt: booking.updatedAt.toISOString(),
+  };
 }
 
 @ApiTags("clubhouse")
 @Controller("clubhouse")
 export class ClubhouseController {
-  constructor(private readonly clubhouseService: ClubhouseService) {}
+  constructor(
+    private readonly clubhouseService: ClubhouseService,
+    private readonly auth: AuthService,
+  ) {}
 
   @Post("bookings")
-  async createBooking(
-    @Body() body: CreateClubhouseBookingDto,
-  ): Promise<ClubhouseBookingResponseDto> {
+  async createBooking(@Body() body: CreateClubhouseBookingDto): Promise<{ id: string; status: string; createdAt: string }> {
     const booking = await this.clubhouseService.createBooking(body);
     return {
       id: booking.id,
       status: booking.status,
       createdAt: booking.createdAt.toISOString(),
     };
+  }
+
+  @Get("admin/bookings")
+  async listBookings(
+    @Req() req: Request,
+    @Query() query: ListBookingsQueryDto,
+  ): Promise<ClubhouseBookingDto[]> {
+    await requireMinimumRole(req, this.auth, "admin");
+
+    const bookings = await this.clubhouseService.listBookings({
+      status: query.status,
+      timeframe: query.timeframe && query.timeframe !== "all" ? query.timeframe : undefined,
+    });
+
+    return bookings.map(toBookingDto);
+  }
+
+  @Get("admin/bookings/:id")
+  async getBooking(@Req() req: Request, @Param("id") id: string): Promise<ClubhouseBookingDto> {
+    await requireMinimumRole(req, this.auth, "admin");
+    const booking = await this.clubhouseService.getBookingById(id);
+    return toBookingDto(booking);
+  }
+
+  @Patch("admin/bookings/:id/admin-notes")
+  async updateAdminNotes(
+    @Req() req: Request,
+    @Param("id") id: string,
+    @Body() body: UpdateAdminNotesDto,
+  ): Promise<ClubhouseBookingDto> {
+    await requireMinimumRole(req, this.auth, "admin");
+    const booking = await this.clubhouseService.updateBookingAdminNotes(id, body.adminNotes ?? null);
+    return toBookingDto(booking);
+  }
+
+  @Post("admin/bookings/:id/approve")
+  async approveBooking(@Req() req: Request, @Param("id") id: string): Promise<ClubhouseBookingDto> {
+    await requireMinimumRole(req, this.auth, "admin");
+    const booking = await this.clubhouseService.changeBookingStatus(id, ClubhouseBookingStatus.approved);
+    return toBookingDto(booking);
+  }
+
+  @Post("admin/bookings/:id/reject")
+  async rejectBooking(@Req() req: Request, @Param("id") id: string): Promise<ClubhouseBookingDto> {
+    await requireMinimumRole(req, this.auth, "admin");
+    const booking = await this.clubhouseService.changeBookingStatus(id, ClubhouseBookingStatus.rejected);
+    return toBookingDto(booking);
+  }
+
+  @Post("admin/bookings/:id/cancel")
+  async cancelBooking(@Req() req: Request, @Param("id") id: string): Promise<ClubhouseBookingDto> {
+    await requireMinimumRole(req, this.auth, "admin");
+    const booking = await this.clubhouseService.changeBookingStatus(id, ClubhouseBookingStatus.cancelled);
+    return toBookingDto(booking);
+  }
+
+  @Get("admin/blocked-periods")
+  async listBlockedPeriods(@Req() req: Request) {
+    await requireMinimumRole(req, this.auth, "admin");
+    const blocked = await this.clubhouseService.listBlockedPeriods();
+    return blocked.map((item) => ({
+      ...item,
+      startAt: item.startAt.toISOString(),
+      endAt: item.endAt.toISOString(),
+      createdAt: item.createdAt.toISOString(),
+      updatedAt: item.updatedAt.toISOString(),
+    }));
+  }
+
+  @Post("admin/blocked-periods")
+  async createBlockedPeriod(
+    @Req() req: Request,
+    @Body() body: CreateBlockedPeriodDto,
+  ) {
+    await requireMinimumRole(req, this.auth, "admin");
+    const blocked = await this.clubhouseService.createBlockedPeriod(body);
+    return {
+      ...blocked,
+      startAt: blocked.startAt.toISOString(),
+      endAt: blocked.endAt.toISOString(),
+      createdAt: blocked.createdAt.toISOString(),
+      updatedAt: blocked.updatedAt.toISOString(),
+    };
+  }
+
+  @Patch("admin/blocked-periods/:id")
+  async updateBlockedPeriod(
+    @Req() req: Request,
+    @Param("id") id: string,
+    @Body() body: CreateBlockedPeriodDto,
+  ) {
+    await requireMinimumRole(req, this.auth, "admin");
+    const blocked = await this.clubhouseService.updateBlockedPeriod(id, body);
+    return {
+      ...blocked,
+      startAt: blocked.startAt.toISOString(),
+      endAt: blocked.endAt.toISOString(),
+      createdAt: blocked.createdAt.toISOString(),
+      updatedAt: blocked.updatedAt.toISOString(),
+    };
+  }
+
+  @Delete("admin/blocked-periods/:id")
+  async deleteBlockedPeriod(@Req() req: Request, @Param("id") id: string): Promise<{ ok: true }> {
+    await requireMinimumRole(req, this.auth, "admin");
+    await this.clubhouseService.deleteBlockedPeriod(id);
+    return { ok: true };
   }
 }
