@@ -32,6 +32,11 @@ const adminNavItems = [
     visible: canManageUsers,
   },
   {
+    href: "/admin/memberships",
+    label: "Memberships",
+    visible: canManageUsers,
+  },
+  {
     href: "/admin/clubhouse-blocked",
     label: "Clubhouse blocked periods",
     visible: canManageUsers,
