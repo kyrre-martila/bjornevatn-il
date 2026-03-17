@@ -28,13 +28,12 @@ export type PublicTicketSale = {
 export type TicketOrderSummary = {
   orderReference: string;
   buyerName: string;
-  buyerEmail: string;
+  buyerEmailMasked: string;
   status: "reserved" | "confirmed" | "cancelled" | "used";
   tickets: Array<{
     id: string;
     ticketType: string;
     quantity: number;
-    qrCodeValue: string;
     validationStatus: "valid" | "used" | "cancelled" | "revoked";
   }>;
   match: { id: string; title: string; data: Record<string, unknown> };
@@ -114,14 +113,17 @@ export async function getPublicTicketSale(
 
 export async function getTicketOrderSummary(
   orderReference: string,
+  orderToken?: string,
 ): Promise<TicketOrderSummary | null> {
-  const response = await fetch(
-    `${getApiBase()}/tickets/orders/${encodeURIComponent(orderReference)}`,
-    {
-      cache: "no-store",
-      headers: buildHeaders(),
-    },
-  );
+  const url = new URL(`${getApiBase()}/tickets/orders/${encodeURIComponent(orderReference)}`);
+  if (orderToken) {
+    url.searchParams.set("token", orderToken);
+  }
+
+  const response = await fetch(url.toString(), {
+    cache: "no-store",
+    headers: buildHeaders(),
+  });
 
   if (!response.ok) {
     return null;

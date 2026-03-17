@@ -29,6 +29,7 @@ import {
 import type { Request } from "express";
 
 import { requireMinimumRole } from "../../common/auth/admin-access";
+import { verifySubmissionChallenge } from "../../common/auth/submission-challenge";
 import { AuthService } from "../auth/auth.service";
 import { ClubhouseService } from "./clubhouse.service";
 
@@ -84,6 +85,11 @@ class CreateClubhouseBookingDto extends DateRangeDto {
   @ApiProperty()
   @IsString()
   purpose!: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  challengeToken?: string;
 
   @ApiProperty({ required: false })
   @IsOptional()
@@ -198,6 +204,7 @@ export class ClubhouseController {
 
   @Post("bookings")
   async createBooking(@Body() body: CreateClubhouseBookingDto): Promise<{ id: string; status: string; createdAt: string }> {
+    verifySubmissionChallenge(body.challengeToken);
     const booking = await this.clubhouseService.createBooking(body);
     return {
       id: booking.id,

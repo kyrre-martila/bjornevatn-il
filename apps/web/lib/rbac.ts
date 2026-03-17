@@ -11,7 +11,7 @@ const ROLE_RANK: Record<UserRole, number> = {
 export function normalizeRole(role: string | undefined | null): UserRole | null {
   if (!role) return null;
   const normalized = role.trim().toLowerCase();
-  if (normalized === "superadmin") {
+  if (normalized === "super_admin") {
     return "super_admin";
   }
   if (normalized === "editor" || normalized === "admin" || normalized === "super_admin") {

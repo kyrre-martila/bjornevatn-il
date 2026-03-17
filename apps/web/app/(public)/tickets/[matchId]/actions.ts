@@ -36,8 +36,8 @@ export async function submitTicketOrder(matchId: string, formData: FormData) {
     redirect(`/tickets/${matchId}?error=unavailable`);
   }
 
-  const data = (await response.json()) as { orderReference: string };
+  const data = (await response.json()) as { orderReference: string; orderLookupToken: string };
   redirect(
-    `/tickets/${matchId}?orderReference=${encodeURIComponent(data.orderReference)}`,
+    `/tickets/${matchId}?orderReference=${encodeURIComponent(data.orderReference)}&orderToken=${encodeURIComponent(data.orderLookupToken)}` ,
   );
 }

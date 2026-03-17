@@ -6,6 +6,7 @@ import { MembershipApplicationStatus } from "@prisma/client";
 import type { Request } from "express";
 
 import { requireMinimumRole } from "../../common/auth/admin-access";
+import { verifySubmissionChallenge } from "../../common/auth/submission-challenge";
 import { AuthService } from "../auth/auth.service";
 import { MembershipService } from "./membership.service";
 
@@ -72,6 +73,11 @@ class CreateMembershipApplicationDto {
   @IsOptional()
   @IsString()
   notes?: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  challengeToken?: string;
 }
 
 class MembershipApplicationsQueryDto {
@@ -125,6 +131,7 @@ export class MembershipController {
 
   @Post("applications")
   async createApplication(@Body() body: CreateMembershipApplicationDto) {
+    verifySubmissionChallenge(body.challengeToken);
     if (body.dateOfBirth && isMinor(body.dateOfBirth)) {
       if (!body.guardianName || !body.guardianPhone || !body.guardianEmail) {
         throw new BadRequestException("Guardian name, phone, and email are required for minors.");

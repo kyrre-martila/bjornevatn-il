@@ -38,10 +38,10 @@ const WORKFLOW_ACTIONS: Array<{ key: WorkflowStatus; label: string }> = [
 ];
 
 function canUseWorkflowAction(
-  role: "editor" | "admin" | "superadmin",
+  role: "editor" | "admin" | "super_admin",
   action: WorkflowStatus,
 ): boolean {
-  if (role === "superadmin") return true;
+  if (role === "super_admin") return true;
   if (role === "admin") return true;
   return action === "draft" || action === "in_review";
 }
@@ -381,7 +381,7 @@ export function PageEditorClient({
   canEditRawJson: boolean;
   canEditSlug: boolean;
   canDeletePage: boolean;
-  userRole: "editor" | "admin" | "superadmin";
+  userRole: "editor" | "admin" | "super_admin";
 }) {
   const router = useRouter();
   const [title, setTitle] = React.useState(initialPage?.title ?? "");
@@ -771,7 +771,7 @@ export function PageEditorClient({
     const slugChanged = Boolean(initialPage && normalizedSlug !== originalSlug);
 
     if (slugChanged && !canEditSlug) {
-      setError("Only admins and superadmins can change page URLs.");
+      setError("Only admins and super admins can change page URLs.");
       return;
     }
 

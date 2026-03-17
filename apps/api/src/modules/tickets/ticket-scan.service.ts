@@ -60,6 +60,28 @@ export class TicketScanService {
     }
   }
 
+
+
+  private deriveScanReason(ticket: {
+    status: TicketStatus;
+    validationStatus: TicketValidationStatus;
+    isRevoked: boolean;
+  }, allowOverride?: boolean): ScanReason {
+    if (ticket.status === TicketStatus.cancelled || ticket.validationStatus === TicketValidationStatus.cancelled) {
+      return "cancelled";
+    }
+
+    if (ticket.isRevoked || ticket.validationStatus === TicketValidationStatus.revoked) {
+      return "revoked";
+    }
+
+    if (ticket.status === TicketStatus.used || ticket.validationStatus === TicketValidationStatus.used) {
+      return allowOverride ? "valid" : "already-used";
+    }
+
+    return "valid";
+  }
+
   private buildResult(ticket: Prisma.TicketGetPayload<{ include: { ticketSale: { include: { match: true } } } }> | null, reason: ScanReason) {
     return {
       isValid: reason === "valid",
@@ -113,14 +135,7 @@ export class TicketScanService {
       return this.buildResult(null, "not-found");
     }
 
-    let reason: ScanReason = "valid";
-    if (ticket.validationStatus === TicketValidationStatus.cancelled || ticket.status === TicketStatus.cancelled) {
-      reason = "cancelled";
-    } else if (ticket.isRevoked || ticket.validationStatus === TicketValidationStatus.revoked) {
-      reason = "revoked";
-    } else if (ticket.validationStatus === TicketValidationStatus.used || ticket.status === TicketStatus.used) {
-      reason = input.allowOverride ? "valid" : "already-used";
-    }
+    const reason = this.deriveScanReason(ticket, input.allowOverride);
 
     await this.writeLog({
       ticketId: ticket.id,
@@ -145,8 +160,14 @@ export class TicketScanService {
     }
 
     const now = new Date();
-    const updated = await this.prisma.ticket.update({
-      where: { id: validation.ticket.id },
+    const updatedCount = await this.prisma.ticket.updateMany({
+      where: input.allowOverride
+        ? { id: validation.ticket.id }
+        : {
+            id: validation.ticket.id,
+            status: { not: TicketStatus.used },
+            validationStatus: { not: TicketValidationStatus.used },
+          },
       data: {
         scanCount: { increment: 1 },
         firstScannedAt: validation.ticket.scanCount > 0 ? undefined : now,
@@ -155,6 +176,25 @@ export class TicketScanService {
         validationStatus: TicketValidationStatus.used,
         status: TicketStatus.used,
       },
+    });
+
+    if (updatedCount.count === 0) {
+      const current = await this.prisma.ticket.findUnique({
+        where: { id: validation.ticket.id },
+        include: { ticketSale: { include: { match: true } } },
+      });
+      await this.writeLog({
+        ticketId: validation.ticket.id,
+        scannedBy: input.scannedBy,
+        action: TicketScanAction.confirm_entry,
+        result: TicketScanResult.already_used,
+        notes: "Concurrent scan detected",
+      });
+      return this.buildResult(current, "already-used");
+    }
+
+    const updated = await this.prisma.ticket.findUniqueOrThrow({
+      where: { id: validation.ticket.id },
       include: { ticketSale: { include: { match: true } } },
     });
 

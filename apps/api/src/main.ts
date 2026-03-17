@@ -81,6 +81,28 @@ function configureCors(app: INestApplication, allowedOrigins: string[]) {
   });
 }
 
+
+function envInt(name: string, fallback: number): number {
+  const raw = process.env[name];
+  const parsed = Number(raw);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+function createRateLimiter(input: {
+  windowMs: number;
+  limit: number;
+  message: string;
+}) {
+  return rateLimit({
+    windowMs: input.windowMs,
+    limit: input.limit,
+    standardHeaders: true,
+    legacyHeaders: false,
+    keyGenerator: (req) => req.ip ?? req.socket.remoteAddress ?? "unknown",
+    message: { error: input.message },
+  });
+}
+
 async function emitOpenApiDocument(app: INestApplication) {
   const outputPath = "packages/contracts/openapi.v1.json";
   const document = createOpenApiDocument(app);
@@ -175,19 +197,52 @@ async function bootstrap() {
 
   app.use(
     `/${API_PREFIX}/auth`,
-    rateLimit({
-      windowMs: 10 * 60 * 1000,
-      limit: 100,
-      standardHeaders: true,
-      legacyHeaders: false,
+    createRateLimiter({
+      windowMs: envInt("RATE_LIMIT_AUTH_WINDOW_MS", 10 * 60 * 1000),
+      limit: envInt("RATE_LIMIT_AUTH_LIMIT", 100),
+      message: "Too many authentication attempts. Please try again later.",
+    }),
+  );
+
+  app.use(
+    `/${API_PREFIX}/clubhouse/bookings`,
+    createRateLimiter({
+      windowMs: envInt("RATE_LIMIT_PUBLIC_SUBMISSION_WINDOW_MS", 10 * 60 * 1000),
+      limit: envInt("RATE_LIMIT_CLUBHOUSE_BOOKINGS_LIMIT", 10),
+      message: "Too many submissions. Please wait before trying again.",
     }),
   );
   app.use(
-    rateLimit({
-      windowMs: 15 * 60 * 1000,
-      limit: 1000,
-      standardHeaders: true,
-      legacyHeaders: false,
+    `/${API_PREFIX}/membership/applications`,
+    createRateLimiter({
+      windowMs: envInt("RATE_LIMIT_PUBLIC_SUBMISSION_WINDOW_MS", 10 * 60 * 1000),
+      limit: envInt("RATE_LIMIT_MEMBERSHIP_APPLICATIONS_LIMIT", 8),
+      message: "Too many submissions. Please wait before trying again.",
+    }),
+  );
+  app.use(
+    `/${API_PREFIX}/tickets/orders`,
+    createRateLimiter({
+      windowMs: envInt("RATE_LIMIT_PUBLIC_SUBMISSION_WINDOW_MS", 10 * 60 * 1000),
+      limit: envInt("RATE_LIMIT_TICKET_ORDER_CREATE_LIMIT", 20),
+      message: "Too many ticket requests. Please try again in a few minutes.",
+    }),
+  );
+
+  app.use(
+    `/${API_PREFIX}/tickets/orders`,
+    createRateLimiter({
+      windowMs: envInt("RATE_LIMIT_ORDER_LOOKUP_WINDOW_MS", 10 * 60 * 1000),
+      limit: envInt("RATE_LIMIT_ORDER_LOOKUP_LIMIT", 40),
+      message: "Too many order lookups. Please wait before trying again.",
+    }),
+  );
+
+  app.use(
+    createRateLimiter({
+      windowMs: envInt("RATE_LIMIT_GLOBAL_WINDOW_MS", 15 * 60 * 1000),
+      limit: envInt("RATE_LIMIT_GLOBAL_LIMIT", 1000),
+      message: "Too many requests. Please try again later.",
     }),
   );
 

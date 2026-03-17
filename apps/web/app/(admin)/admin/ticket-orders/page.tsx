@@ -33,11 +33,11 @@ export default async function AdminTicketOrdersPage() {
               <th>Match</th>
               <th>Quantity</th>
               <th>QR</th>
-              <th>Validation</th>
+              <th>Entry state</th>
               <th>Scans</th>
               <th>Last scan</th>
               <th>Created</th>
-              <th>Status</th>
+              <th>Order status</th>
               <th>Update</th>
             </tr>
           </thead>
@@ -50,7 +50,7 @@ export default async function AdminTicketOrdersPage() {
                 <td>{order.match}</td>
                 <td>{order.quantity}</td>
                 <td>{order.qrCodePreview}</td>
-                <td>{order.validationStatus}</td>
+                <td>{order.validationStatus === "used" ? "entered" : order.validationStatus}</td>
                 <td>{order.scanCount}</td>
                 <td>
                   {order.lastScannedAt

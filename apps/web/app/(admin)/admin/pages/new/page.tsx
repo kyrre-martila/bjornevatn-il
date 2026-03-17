@@ -19,7 +19,7 @@ export default async function NewAdminPage() {
       canDeletePage={canEditSlug(me?.user?.role)}
       userRole={
         hasMinimumRole(me?.user?.role, "super_admin")
-          ? "superadmin"
+          ? "super_admin"
           : hasMinimumRole(me?.user?.role, "admin")
             ? "admin"
             : "editor"

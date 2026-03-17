@@ -4,7 +4,7 @@ import { proxyAdminJson } from "../upstream";
 export async function DELETE(request: Request) {
   const denied = await requireSuperAdmin();
   if (denied) {
-    return deniedAccess("Access denied: only superadmins can delete staging.");
+    return deniedAccess("Access denied: only super admins can delete staging.");
   }
 
   return proxyAdminJson("/admin/staging", {

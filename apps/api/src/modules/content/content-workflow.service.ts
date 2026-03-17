@@ -4,7 +4,7 @@ import {
   Injectable,
 } from "@nestjs/common";
 
-export type WorkflowRole = "editor" | "admin" | "superadmin";
+export type WorkflowRole = "editor" | "admin" | "super_admin";
 export type WorkflowStatus =
   | "draft"
   | "in_review"

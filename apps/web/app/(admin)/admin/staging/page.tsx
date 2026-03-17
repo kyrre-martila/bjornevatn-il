@@ -26,7 +26,7 @@ export default async function AdminStagingPage() {
       </h1>
       <p className="hero__subtitle">
         Review staging environment health and run deployment operations.
-        Admins can view status details, while superadmins can run destructive
+        Admins can view status details, while super admins can run destructive
         staging actions.
       </p>
       <StagingControlsClient

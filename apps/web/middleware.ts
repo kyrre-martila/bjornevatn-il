@@ -55,7 +55,7 @@ function normalizeRole(role: string | undefined | null): "admin" | "super_admin"
   if (!role) return null;
 
   const normalized = role.trim().toLowerCase();
-  if (normalized === "superadmin") return "super_admin";
+  if (normalized === "super_admin") return "super_admin";
   if (normalized === "admin" || normalized === "super_admin") return normalized;
 
   return null;
@@ -136,7 +136,7 @@ function unauthorizedResponse(req: NextRequest): NextResponse {
 function forbiddenResponse(req: NextRequest): NextResponse {
   if (req.nextUrl.pathname.startsWith("/api/")) {
     return NextResponse.json(
-      { error: "Forbidden: admin or superadmin role required for staging." },
+      { error: "Forbidden: admin or super_admin role required for staging." },
       { status: 403 },
     );
   }

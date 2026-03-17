@@ -36,7 +36,7 @@ export default async function TicketPurchasePage({
   searchParams,
 }: {
   params: { matchId: string };
-  searchParams?: { orderReference?: string; error?: string };
+  searchParams?: { orderReference?: string; orderToken?: string; error?: string };
 }) {
   const sale = await getPublicTicketSale(params.matchId);
   if (!sale) {
@@ -49,7 +49,7 @@ export default async function TicketPurchasePage({
   const venue = asText(sale.match.data.venue);
 
   if (searchParams?.orderReference) {
-    const order = await getTicketOrderSummary(searchParams.orderReference);
+    const order = await getTicketOrderSummary(searchParams.orderReference, searchParams.orderToken);
 
     return (
       <section className="tickets-page section">
@@ -72,10 +72,6 @@ export default async function TicketPurchasePage({
               <li key={ticket.id} className="tickets-page__summary-item">
                 <div>
                   <strong>{ticket.ticketType}</strong> · {ticket.quantity} stk
-                </div>
-                <div className="tickets-page__qr-placeholder">
-                  <span>QR payload</span>
-                  <code>{ticket.qrCodeValue}</code>
                 </div>
                 <div className="tickets-page__summary-status">
                   Validation: {ticket.validationStatus}

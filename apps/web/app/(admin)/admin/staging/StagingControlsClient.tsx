@@ -125,7 +125,7 @@ export function StagingControlsClient({ canTriggerActions, initialStatus }: Prop
             <p className="admin-pages__help">
               {canTriggerActions
                 ? "Run staging management actions. Destructive operations require confirmation."
-                : "Destructive staging actions are restricted to superadmins."}
+                : "Destructive staging actions are restricted to super admins."}
             </p>
             {operationInProgress ? (
               <p className="admin-pages__help">Operation in progress</p>

@@ -798,9 +798,9 @@ export class ContentController {
   @Post("pages")
   async createPage(@Req() req: Request, @Body() body: CreatePageDto) {
     const role = await requireMinimumRole(req, this.auth, "editor");
-    if (body.templateKey !== undefined && role !== "superadmin") {
+    if (body.templateKey !== undefined && role !== "super_admin") {
       throw new ForbiddenException(
-        "Access denied: only superadmin can modify page templates.",
+        "Access denied: only super_admin can modify page templates.",
       );
     }
     await this.ensurePageSlugDoesNotConflict(body.slug);
@@ -906,9 +906,9 @@ export class ContentController {
       throw new BadRequestException("Page not found.");
     }
 
-    if (body.templateKey !== undefined && role !== "superadmin") {
+    if (body.templateKey !== undefined && role !== "super_admin") {
       throw new ForbiddenException(
-        "Access denied: only superadmin can modify page templates.",
+        "Access denied: only super_admin can modify page templates.",
       );
     }
 
@@ -1807,7 +1807,7 @@ export class ContentController {
   async listSettings(@Req() req: Request, @Query() query: AdminListQueryDto) {
     const role = await requireMinimumRole(req, this.auth, "admin");
     const settings = await this.settings.findMany(this.buildPagination(query));
-    if (role === "superadmin") {
+    if (role === "super_admin") {
       return settings;
     }
 
@@ -1847,16 +1847,16 @@ export class ContentController {
   }
 
   private ensureRoleCanManageSetting(
-    role: "editor" | "admin" | "superadmin",
+    role: "editor" | "admin" | "super_admin",
     key: string,
   ) {
-    if (role === "superadmin") {
+    if (role === "super_admin") {
       return;
     }
 
     if (!this.isAdminEditableSetting(key) || this.isProtectedSettingKey(key)) {
       throw new ForbiddenException(
-        "Access denied: only superadmin can manage this setting.",
+        "Access denied: only super_admin can manage this setting.",
       );
     }
   }
