@@ -1,6 +1,17 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 
 import { getTeams } from "../../../lib/content";
+import { buildMetadata } from "../../../lib/seo";
+
+
+export async function generateMetadata(): Promise<Metadata> {
+  return buildMetadata({
+    pageTitle: "Teams | Bjørnevatn IL",
+    pageDescription: "Overview of Bjørnevatn IL teams",
+    path: "/teams",
+  });
+}
 
 export default async function TeamsPage() {
   const teams = await getTeams();

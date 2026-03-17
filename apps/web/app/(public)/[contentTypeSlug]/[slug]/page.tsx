@@ -8,7 +8,12 @@ import {
   resolveContentItemBySlug,
   withTitleSuffix,
 } from "../../../../lib/content";
+import { buildJsonLd, buildMetadata } from "../../../../lib/seo";
 import { resolveContentTypeTemplate } from "../../templates/template-registry";
+
+function asRecord(value: unknown): Record<string, unknown> {
+  return typeof value === "object" && value !== null ? (value as Record<string, unknown>) : {};
+}
 
 export async function generateMetadata({
   params,
@@ -32,17 +37,37 @@ export async function generateMetadata({
 
   const fallbackPath =
     getContentItemPath(contentTypeSlug, item.slug) ?? `/${contentTypeSlug}`;
-  const canonicalUrl =
-    item.canonicalUrl?.trim() ||
-    new URL(fallbackPath, `${siteConfig.siteUrl}/`).toString();
-  const title = withTitleSuffix(item.title, siteConfig.defaultTitleSuffix);
 
-  return {
-    title,
-    description: item.summary,
-    alternates: { canonical: canonicalUrl },
-    robots: item.noIndex ? { index: false, follow: true } : undefined,
-  };
+  if (contentTypeSlug === "match") {
+    const match = asRecord(item.data);
+    const home = String(match.homeTeam ?? "").trim();
+    const away = String(match.awayTeam ?? "").trim();
+    const date = String(match.matchDate ?? "").trim();
+    const title = withTitleSuffix(`${home} vs ${away} · ${date}`, siteConfig.defaultTitleSuffix);
+
+    return buildMetadata({
+      pageTitle: title,
+      pageDescription: item.summary,
+      seoTitle: item.seoTitle,
+      seoDescription: item.seoDescription,
+      seoImage: item.seoImage,
+      seoCanonicalUrl: item.canonicalUrl,
+      seoNoIndex: item.noIndex,
+      path: fallbackPath,
+    });
+  }
+
+  return buildMetadata({
+    pageTitle: item.title,
+    pageDescription: item.summary,
+    seoTitle: item.seoTitle,
+    seoDescription: item.seoDescription,
+    seoImage: item.seoImage,
+    seoCanonicalUrl: item.canonicalUrl,
+    seoNoIndex: item.noIndex,
+    path: fallbackPath,
+    ogType: contentTypeSlug === "news" ? "article" : "website",
+  });
 }
 
 export default async function ContentItemPage({
@@ -61,7 +86,6 @@ export default async function ContentItemPage({
   }
 
   if (resolved.redirect) {
-    // Honor API semantics while keeping redirect targets constrained to internal paths.
     if (resolved.redirect.permanent) {
       permanentRedirect(resolved.redirect.target);
     }
@@ -78,8 +102,30 @@ export default async function ContentItemPage({
     item.templateKey || contentType.templateKey,
   );
 
+  const matchData = contentTypeSlug === "match" ? asRecord(item.data) : null;
+  const sportsEventJsonLd =
+    matchData
+      ? buildJsonLd({
+          "@context": "https://schema.org",
+          "@type": "SportsEvent",
+          name: `${String(matchData.homeTeam ?? "")} vs ${String(matchData.awayTeam ?? "")}`.trim(),
+          startDate: String(matchData.matchDate ?? ""),
+          location: {
+            "@type": "Place",
+            name: String(matchData.venue ?? ""),
+          },
+          competitor: [
+            { "@type": "SportsTeam", name: String(matchData.homeTeam ?? "") },
+            { "@type": "SportsTeam", name: String(matchData.awayTeam ?? "") },
+          ],
+        })
+      : null;
+
   return (
     <Template title={item.title} meta={item.publishedAt}>
+      {sportsEventJsonLd ? (
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: sportsEventJsonLd }} />
+      ) : null}
       {item.body ? <p>{item.body}</p> : <p>{item.summary}</p>}
     </Template>
   );

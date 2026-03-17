@@ -1,6 +1,8 @@
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 import { getTeamBySlug } from "../../../../lib/content";
+import { buildMetadata } from "../../../../lib/seo";
 
 const socialIconByPlatform: Record<string, string> = {
   facebook: "📘",
@@ -9,6 +11,23 @@ const socialIconByPlatform: Record<string, string> = {
   x: "𝕏",
   tiktok: "🎵",
 };
+
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
+  const { slug } = await params;
+  const team = await getTeamBySlug(slug);
+  if (!team) return {};
+
+  return buildMetadata({
+    pageTitle: `${team.name} | Bjørnevatn IL`,
+    pageDescription: team.seoDescription ?? team.shortDescription,
+    seoTitle: team.seoTitle,
+    seoDescription: team.seoDescription,
+    seoImage: team.seoImage ?? team.teamImage,
+    seoCanonicalUrl: team.seoCanonicalUrl,
+    seoNoIndex: team.seoNoIndex,
+    path: `/teams/${team.slug}`,
+  });
+}
 
 export default async function TeamDetailPage({
   params,

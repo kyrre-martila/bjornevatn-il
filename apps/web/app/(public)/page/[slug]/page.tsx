@@ -3,10 +3,9 @@ import { notFound, permanentRedirect, redirect } from "next/navigation";
 
 import {
   getPagePath,
-  getSiteConfiguration,
   resolvePageContentBySlug,
-  withTitleSuffix,
 } from "../../../../lib/content";
+import { buildMetadata } from "../../../../lib/seo";
 import { renderBlock } from "./block-renderer";
 import { resolvePageTemplate } from "../../templates/template-registry";
 
@@ -40,10 +39,7 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
   const { slug } = await params;
-  const [resolved, siteConfig] = await Promise.all([
-    resolvePageContentBySlug(slug),
-    getSiteConfiguration(),
-  ]);
+  const resolved = await resolvePageContentBySlug(slug);
 
   if (resolved.redirect) {
     return {};
@@ -56,33 +52,17 @@ export async function generateMetadata({
   }
 
   const basePath = getPagePath(page.slug) ?? "/";
-  const canonicalUrl =
-    page.canonicalUrl?.trim() ||
-    new URL(basePath, `${siteConfig.siteUrl}/`).toString();
-  const title = withTitleSuffix(
-    page.seoTitle?.trim() || page.title,
-    siteConfig.defaultTitleSuffix,
-  );
-  const description =
-    page.seoDescription?.trim() || fallbackDescriptionFromBlocks(page.blocks);
-  const ogImage = page.seoImage || siteConfig.defaultSeoImage;
 
-  const openGraph = {
-    title,
-    description,
-    type: "website" as const,
-    url: canonicalUrl,
-    images: ogImage ? [{ url: ogImage }] : undefined,
-    siteName: siteConfig.siteName,
-  };
-
-  return {
-    title,
-    description: description || undefined,
-    openGraph,
-    alternates: { canonical: canonicalUrl },
-    robots: page.noIndex ? { index: false, follow: true } : undefined,
-  };
+  return buildMetadata({
+    pageTitle: page.title,
+    pageDescription: fallbackDescriptionFromBlocks(page.blocks),
+    seoTitle: page.seoTitle,
+    seoDescription: page.seoDescription,
+    seoImage: page.seoImage,
+    seoCanonicalUrl: page.canonicalUrl,
+    seoNoIndex: page.noIndex,
+    path: basePath,
+  });
 }
 
 export default async function GenericPage({

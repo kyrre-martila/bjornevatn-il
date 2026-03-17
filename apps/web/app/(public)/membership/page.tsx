@@ -1,5 +1,17 @@
+import type { Metadata } from "next";
+import { buildMetadata } from "../../../lib/seo";
 import MembershipApplicationForm from "../../../components/membership/MembershipApplicationForm";
 import { getMembershipSettings, listMembershipCategories } from "../../../lib/membership";
+
+
+export async function generateMetadata(): Promise<Metadata> {
+  const settings = await getMembershipSettings();
+  return buildMetadata({
+    pageTitle: settings?.pageTitle || "Membership",
+    pageDescription: settings?.introText || "Become a member of Bjørnevatn IL",
+    path: "/membership",
+  });
+}
 
 export default async function MembershipPage() {
   const [settings, categories] = await Promise.all([

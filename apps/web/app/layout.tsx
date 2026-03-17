@@ -4,27 +4,23 @@ import "./globals.css";
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 
+import { getSeoSettings } from "../lib/seo";
 import { StagingBanner } from "./StagingBanner";
 
-export const metadata: Metadata = {
-  title: "Bjørnevatn IL",
-  description: "Official website of Bjørnevatn IL football club",
-  other: {
-    location: "Bjørnevatn, Norway",
-  },
-  icons: {
-    icon: [
-      { url: "/favicons/favicon-32x32.png", sizes: "32x32", type: "image/png" },
-      { url: "/favicons/favicon-16x16.png", sizes: "16x16", type: "image/png" },
-      { url: "/favicons/favicon.ico", sizes: "any" },
-      { url: "/favicons/favicon.svg", type: "image/svg+xml" },
-      { url: "/favicons/web-app-manifest-192x192.png", sizes: "192x192", type: "image/png" },
-      { url: "/favicons/web-app-manifest-512x512.png", sizes: "512x512", type: "image/png" },
-    ],
-    apple: "/favicons/apple-touch-icon.png",
-  },
-  manifest: "/favicons/site.webmanifest",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const seo = await getSeoSettings();
+
+  return {
+    metadataBase: new URL(seo.siteUrl),
+    title: seo.siteTitle,
+    description: seo.siteDescription,
+    icons: {
+      icon: seo.favicon ? [{ url: seo.favicon }] : undefined,
+      apple: seo.appleTouchIcon ?? undefined,
+    },
+    manifest: seo.manifestIcon ?? "/favicons/site.webmanifest",
+  };
+}
 
 export default function RootLayout({
   children,

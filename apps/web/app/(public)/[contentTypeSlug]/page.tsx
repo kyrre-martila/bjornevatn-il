@@ -7,10 +7,9 @@ import {
   getContentItemPath,
   getPagePath,
   getPublicContentTypeBySlug,
-  getSiteConfiguration,
   resolvePageContentBySlug,
-  withTitleSuffix,
 } from "../../../lib/content";
+import { buildMetadata } from "../../../lib/seo";
 import { renderBlock } from "../page/[slug]/block-renderer";
 import {
   resolveContentTypeTemplate,
@@ -23,47 +22,34 @@ export async function generateMetadata({
   params: Promise<{ contentTypeSlug: string }>;
 }): Promise<Metadata> {
   const { contentTypeSlug } = await params;
-  const [pageResolution, contentType, siteConfig] = await Promise.all([
+  const [pageResolution, contentType] = await Promise.all([
     resolvePageContentBySlug(contentTypeSlug),
     getPublicContentTypeBySlug(contentTypeSlug),
-    getSiteConfiguration(),
   ]);
 
   if (pageResolution.page) {
     const page = pageResolution.page;
     const pagePath = getPagePath(page.slug) ?? `/${contentTypeSlug}`;
-    const canonicalUrl =
-      page.canonicalUrl?.trim() ||
-      new URL(pagePath, `${siteConfig.siteUrl}/`).toString();
-    const title = withTitleSuffix(
-      page.seoTitle?.trim() || page.title,
-      siteConfig.defaultTitleSuffix,
-    );
 
-    return {
-      title,
-      description: page.seoDescription?.trim() || undefined,
-      alternates: { canonical: canonicalUrl },
-      robots: page.noIndex ? { index: false, follow: true } : undefined,
-    };
+    return buildMetadata({
+      pageTitle: page.title,
+      seoTitle: page.seoTitle,
+      seoDescription: page.seoDescription,
+      seoImage: page.seoImage,
+      seoCanonicalUrl: page.canonicalUrl,
+      seoNoIndex: page.noIndex,
+      path: pagePath,
+    });
   }
 
   if (!contentType) {
     return {};
   }
 
-  const canonicalPath = `/${contentType.slug}`;
-  const title = withTitleSuffix(
-    contentType.name,
-    siteConfig.defaultTitleSuffix,
-  );
-
-  return {
-    title,
-    alternates: {
-      canonical: new URL(canonicalPath, `${siteConfig.siteUrl}/`).toString(),
-    },
-  };
+  return buildMetadata({
+    pageTitle: contentType.name,
+    path: `/${contentType.slug}`,
+  });
 }
 
 export default async function ContentTypeArchivePage({
