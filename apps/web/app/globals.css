@@ -949,6 +949,11 @@ button:focus-visible {
   color: var(--site-color-primary, var(--color-primary));
 }
 
+.public-nav__link--active {
+  color: var(--site-color-primary, var(--color-primary));
+  font-weight: 600;
+}
+
 .public-main {
   flex: 1;
 }
