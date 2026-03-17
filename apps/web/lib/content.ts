@@ -99,6 +99,7 @@ export type SiteSettingKey =
   | "siteName"
   | "siteUrl"
   | "defaultSeoImage"
+  | "defaultOgImage"
   | "defaultTitleSuffix"
   | "site_title"
   | "site_tagline"
@@ -109,7 +110,18 @@ export type SiteSettingKey =
   | "youtube_url"
   | "site_url"
   | "robots_noindex"
-  | "robots_disallow_all";
+  | "robots_disallow_all"
+  | "twitter_handle"
+  | "facebookPageUrl"
+  | "defaultMetaImage"
+  | "defaultMetaTitleSuffix"
+  | "robotsIndexEnabled"
+  | "robotsFollowEnabled"
+  | "googleVerificationCode"
+  | "bingVerificationCode"
+  | "favicon"
+  | "appleTouchIcon"
+  | "manifestIcon";
 
 export type PublicSiteSettings = Partial<Record<SiteSettingKey, string>>;
 
@@ -154,6 +166,9 @@ type ApiContentItemArchive = {
   publishedAt: string;
   canonicalUrl: string | null;
   noIndex: boolean;
+  seoTitle?: string | null;
+  seoDescription?: string | null;
+  seoImage?: string | null;
   updatedAt: string;
   data?: Record<string, unknown>;
   parentId?: string | null;
@@ -210,6 +225,10 @@ export type GenericContentDetailItem = {
   templateKey: string;
   canonicalUrl: string | null;
   noIndex: boolean;
+  seoTitle: string | null;
+  seoDescription: string | null;
+  seoImage: string | null;
+  data: Record<string, unknown>;
   publishedAt: string;
 };
 
@@ -252,6 +271,11 @@ export type TeamItem = {
   coaches: TeamCoach[];
   trainingSessions: TeamTrainingSession[];
   socialLinks: SocialLink[];
+  seoTitle?: string | null;
+  seoDescription?: string | null;
+  seoImage?: string | null;
+  seoCanonicalUrl?: string | null;
+  seoNoIndex?: boolean;
 };
 
 export type PersonRoleItem = {
@@ -291,6 +315,11 @@ export type ClubNewsItem = {
   image: string | null;
   authorName: string;
   content: string;
+  seoTitle?: string | null;
+  seoDescription?: string | null;
+  seoImage?: string | null;
+  seoCanonicalUrl?: string | null;
+  seoNoIndex?: boolean;
 };
 
 export type ClubProfile = {
@@ -308,6 +337,11 @@ export type ClubProfile = {
   longitude: string;
   grasrotEnabled: boolean;
   grasrotOrganizationNumber: string;
+  seoTitle?: string | null;
+  seoDescription?: string | null;
+  seoImage?: string | null;
+  seoCanonicalUrl?: string | null;
+  seoNoIndex?: boolean;
 };
 
 export type HomepageSettings = {
@@ -331,6 +365,7 @@ export type HomepageSettings = {
 
 export type MatchItem = {
   id: string;
+  slug?: string;
   homeTeam: string;
   awayTeam: string;
   matchDate: string;
@@ -344,6 +379,11 @@ export type MatchItem = {
   sourceUrl: string;
   lastSyncedAt: string;
   syncHash: string;
+  seoTitle?: string | null;
+  seoDescription?: string | null;
+  seoImage?: string | null;
+  seoCanonicalUrl?: string | null;
+  seoNoIndex?: boolean;
 };
 
 export type FundingGrantItem = {
@@ -436,6 +476,7 @@ const PUBLIC_SITE_SETTING_KEYS: SiteSettingKey[] = [
   "siteName",
   "siteUrl",
   "defaultSeoImage",
+  "defaultOgImage",
   "defaultTitleSuffix",
   "site_title",
   "site_tagline",
@@ -447,6 +488,17 @@ const PUBLIC_SITE_SETTING_KEYS: SiteSettingKey[] = [
   "site_url",
   "robots_noindex",
   "robots_disallow_all",
+  "twitter_handle",
+  "facebookPageUrl",
+  "defaultMetaImage",
+  "defaultMetaTitleSuffix",
+  "robotsIndexEnabled",
+  "robotsFollowEnabled",
+  "googleVerificationCode",
+  "bingVerificationCode",
+  "favicon",
+  "appleTouchIcon",
+  "manifestIcon",
 ];
 
 export type SiteConfiguration = {
@@ -925,6 +977,10 @@ function mapGenericDetailItem(
     templateKey: coerceTemplateKey(fallbackTemplateKey),
     canonicalUrl: item.canonicalUrl ?? null,
     noIndex: Boolean(item.noIndex),
+    seoTitle: item.seoTitle ?? null,
+    seoDescription: item.seoDescription ?? null,
+    seoImage: item.seoImage ?? null,
+    data: item.data ?? {},
     publishedAt: new Date(item.publishedAt).toISOString().slice(0, 10),
   };
 }
@@ -1433,6 +1489,11 @@ export async function getTeams(): Promise<TeamItem[]> {
         }))
         .sort((a, b) => a.sortOrder - b.sortOrder),
       socialLinks: mapSocialLinks(data.socialLinks),
+      seoTitle: item.seoTitle ?? null,
+      seoDescription: item.seoDescription ?? null,
+      seoImage: item.seoImage ?? null,
+      seoCanonicalUrl: item.canonicalUrl ?? null,
+      seoNoIndex: Boolean(item.noIndex),
     };
   });
 }
@@ -1516,6 +1577,11 @@ export async function getClubNews(): Promise<ClubNewsItem[]> {
       image: asMediaUrl(data.featuredImage),
       authorName: asText(data.authorName),
       content: asText(data.body),
+      seoTitle: item.seoTitle ?? null,
+      seoDescription: item.seoDescription ?? null,
+      seoImage: item.seoImage ?? null,
+      seoCanonicalUrl: item.canonicalUrl ?? null,
+      seoNoIndex: Boolean(item.noIndex),
     };
   });
 }
@@ -1550,6 +1616,11 @@ export async function getClubProfile(): Promise<ClubProfile | null> {
     longitude: asText(data.longitude),
     grasrotEnabled: asBoolean(data.grasrotEnabled),
     grasrotOrganizationNumber: asText(data.grasrotOrganizationNumber),
+    seoTitle: item.seoTitle ?? null,
+    seoDescription: item.seoDescription ?? null,
+    seoImage: item.seoImage ?? null,
+    seoCanonicalUrl: item.canonicalUrl ?? null,
+    seoNoIndex: Boolean(item.noIndex),
   };
 }
 
@@ -1592,6 +1663,7 @@ export async function getMatches(): Promise<MatchItem[]> {
 
     return {
       id: item.id,
+      slug: item.slug,
       homeTeam: asText(data.homeTeam),
       awayTeam: asText(data.awayTeam),
       matchDate: asText(data.matchDate),
@@ -1610,6 +1682,11 @@ export async function getMatches(): Promise<MatchItem[]> {
       sourceUrl: asText(data.sourceUrl),
       lastSyncedAt: asText(data.lastSyncedAt),
       syncHash: asText(data.syncHash),
+      seoTitle: item.seoTitle ?? null,
+      seoDescription: item.seoDescription ?? null,
+      seoImage: item.seoImage ?? null,
+      seoCanonicalUrl: item.canonicalUrl ?? null,
+      seoNoIndex: Boolean(item.noIndex),
     };
   });
 }

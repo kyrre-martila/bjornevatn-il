@@ -1,26 +1,19 @@
 import { NextResponse } from "next/server";
 
-import { getRobotsSettings, getSiteUrl } from "../../lib/content";
+import { getSeoSettings } from "../../lib/seo";
 
 export async function GET() {
-  const [baseUrl, settings] = await Promise.all([
-    getSiteUrl(),
-    getRobotsSettings(),
-  ]);
+  const seo = await getSeoSettings();
 
   const lines = ["User-agent: *"];
 
-  if (settings.disallowAll) {
+  if (!seo.robotsIndexEnabled) {
     lines.push("Disallow: /");
   } else {
     lines.push("Allow: /");
   }
 
-  if (settings.noIndex) {
-    lines.push("Noindex: /");
-  }
-
-  lines.push(`Sitemap: ${baseUrl}/sitemap.xml`);
+  lines.push(`Sitemap: ${seo.siteUrl}/sitemap.xml`);
 
   return new NextResponse(`${lines.join("\n")}\n`, {
     headers: {

@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import FundingSection from "../../components/homepage/FundingSection";
 import GrasrotSection from "../../components/homepage/GrasrotSection";
 import HeroSection from "../../components/homepage/HeroSection";
@@ -11,6 +12,7 @@ import {
   getHomepageSettings,
   getMatches,
 } from "../../lib/content";
+import { buildMetadata } from "../../lib/seo";
 import { getWeatherSnapshot } from "../../lib/services/weather";
 
 function formatNorwegianDate(value: string): string {
@@ -23,6 +25,20 @@ function formatNorwegianDate(value: string): string {
     dateStyle: "long",
     timeStyle: "short",
   }).format(date);
+}
+
+export async function generateMetadata(): Promise<Metadata> {
+  const [settings, club] = await Promise.all([getHomepageSettings(), getClubProfile()]);
+  return buildMetadata({
+    pageTitle: settings?.heroTitle || club?.name || "Bjørnevatn IL",
+    pageDescription: settings?.heroText || club?.description || "Official website of Bjørnevatn IL",
+    seoTitle: club?.seoTitle,
+    seoDescription: club?.seoDescription,
+    seoImage: club?.seoImage || club?.heroImage || club?.logo,
+    seoCanonicalUrl: club?.seoCanonicalUrl,
+    seoNoIndex: club?.seoNoIndex,
+    path: "/",
+  });
 }
 
 export default async function HomePage() {

@@ -1,6 +1,17 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 
 import { getClubNews } from "../../../lib/content";
+import { buildMetadata } from "../../../lib/seo";
+
+
+export async function generateMetadata(): Promise<Metadata> {
+  return buildMetadata({
+    pageTitle: "News | Bjørnevatn IL",
+    pageDescription: "Latest news from Bjørnevatn IL",
+    path: "/news",
+  });
+}
 
 export default async function NewsPage() {
   const news = (await getClubNews()).sort((a, b) =>

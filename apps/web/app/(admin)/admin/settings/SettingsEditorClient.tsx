@@ -18,6 +18,17 @@ const RECOMMENDED_KEYS = [
   "site_url",
   "robots_noindex",
   "robots_disallow_all",
+  "twitter_handle",
+  "facebookPageUrl",
+  "defaultMetaImage",
+  "defaultMetaTitleSuffix",
+  "robotsIndexEnabled",
+  "robotsFollowEnabled",
+  "googleVerificationCode",
+  "bingVerificationCode",
+  "favicon",
+  "appleTouchIcon",
+  "manifestIcon",
 ] as const;
 
 export function SettingsEditorClient({

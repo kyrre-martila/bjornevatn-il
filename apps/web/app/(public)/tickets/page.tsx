@@ -1,9 +1,20 @@
+import type { Metadata } from "next";
 import Link from "next/link";
+import { buildMetadata } from "../../../lib/seo";
 import { listPublicTicketSales } from "../../../lib/tickets";
 import "./tickets.css";
 
 function asText(value: unknown): string {
   return typeof value === "string" ? value : "";
+}
+
+
+export async function generateMetadata(): Promise<Metadata> {
+  return buildMetadata({
+    pageTitle: "Tickets",
+    pageDescription: "Buy match tickets for Bjørnevatn IL",
+    path: "/tickets",
+  });
 }
 
 export default async function TicketsPage() {
