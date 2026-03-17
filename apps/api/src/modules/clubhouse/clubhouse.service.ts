@@ -1,6 +1,10 @@
-import { Injectable, BadRequestException } from "@nestjs/common";
-import { PrismaService } from "../../prisma/prisma.service";
+import {
+  Injectable,
+  BadRequestException,
+  NotFoundException,
+} from "@nestjs/common";
 import { ClubhouseBookingStatus, type Prisma } from "@prisma/client";
+import { PrismaService } from "../../prisma/prisma.service";
 
 export type CreateClubhouseBookingInput = {
   bookedByName: string;
@@ -13,36 +17,70 @@ export type CreateClubhouseBookingInput = {
   endAt: Date;
 };
 
+type EnsureNoConflictInput = {
+  startAt: Date;
+  endAt: Date;
+  excludeBookingId?: string;
+  excludeBlockedPeriodId?: string;
+};
+
 @Injectable()
 export class ClubhouseService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async ensureAvailability(startAt: Date, endAt: Date): Promise<void> {
-    const overlapWhere: Prisma.ClubhouseBookingWhereInput = {
+  private assertValidRange(startAt: Date, endAt: Date): void {
+    if (endAt.getTime() <= startAt.getTime()) {
+      throw new BadRequestException("endAt must be later than startAt.");
+    }
+  }
+
+  async ensureNoConflicts({
+    startAt,
+    endAt,
+    excludeBookingId,
+    excludeBlockedPeriodId,
+  }: EnsureNoConflictInput): Promise<void> {
+    this.assertValidRange(startAt, endAt);
+
+    const bookingWhere: Prisma.ClubhouseBookingWhereInput = {
+      id: excludeBookingId ? { not: excludeBookingId } : undefined,
       status: ClubhouseBookingStatus.approved,
       startAt: { lt: endAt },
       endAt: { gt: startAt },
     };
 
-    const [approvedOverlapCount, blockedOverlapCount] = await Promise.all([
-      this.prisma.clubhouseBooking.count({ where: overlapWhere }),
-      this.prisma.clubhouseBlockedPeriod.count({
-        where: {
-          startAt: { lt: endAt },
-          endAt: { gt: startAt },
-        },
+    const blockedWhere: Prisma.ClubhouseBlockedPeriodWhereInput = {
+      id: excludeBlockedPeriodId ? { not: excludeBlockedPeriodId } : undefined,
+      startAt: { lt: endAt },
+      endAt: { gt: startAt },
+    };
+
+    const [bookingConflict, blockedConflict] = await Promise.all([
+      this.prisma.clubhouseBooking.findFirst({
+        where: bookingWhere,
+        select: { id: true, startAt: true, endAt: true },
+      }),
+      this.prisma.clubhouseBlockedPeriod.findFirst({
+        where: blockedWhere,
+        select: { id: true, startAt: true, endAt: true, reason: true },
       }),
     ]);
 
-    if (approvedOverlapCount > 0 || blockedOverlapCount > 0) {
+    if (bookingConflict) {
       throw new BadRequestException(
-        "The selected time range is unavailable because it overlaps an existing booking or blocked period.",
+        `Conflict with approved booking ${bookingConflict.id} (${bookingConflict.startAt.toISOString()} - ${bookingConflict.endAt.toISOString()}).`,
+      );
+    }
+
+    if (blockedConflict) {
+      throw new BadRequestException(
+        `Conflict with blocked period ${blockedConflict.id} (${blockedConflict.startAt.toISOString()} - ${blockedConflict.endAt.toISOString()})${blockedConflict.reason ? `: ${blockedConflict.reason}` : ""}.`,
       );
     }
   }
 
   async createBooking(input: CreateClubhouseBookingInput) {
-    await this.ensureAvailability(input.startAt, input.endAt);
+    this.assertValidRange(input.startAt, input.endAt);
 
     return this.prisma.clubhouseBooking.create({
       data: {
@@ -50,5 +88,112 @@ export class ClubhouseService {
         status: ClubhouseBookingStatus.pending,
       },
     });
+  }
+
+  async listBookings(filters: {
+    status?: ClubhouseBookingStatus;
+    timeframe?: "upcoming" | "past";
+  }) {
+    const now = new Date();
+
+    return this.prisma.clubhouseBooking.findMany({
+      where: {
+        status: filters.status,
+        ...(filters.timeframe === "upcoming"
+          ? { endAt: { gte: now } }
+          : filters.timeframe === "past"
+            ? { endAt: { lt: now } }
+            : {}),
+      },
+      orderBy: { startAt: "asc" },
+    });
+  }
+
+  async getBookingById(id: string) {
+    const booking = await this.prisma.clubhouseBooking.findUnique({ where: { id } });
+    if (!booking) {
+      throw new NotFoundException("Booking not found.");
+    }
+    return booking;
+  }
+
+  async updateBookingAdminNotes(id: string, adminNotes: string | null) {
+    await this.getBookingById(id);
+
+    return this.prisma.clubhouseBooking.update({
+      where: { id },
+      data: {
+        adminNotes: adminNotes?.trim() || null,
+      },
+    });
+  }
+
+  async changeBookingStatus(id: string, status: ClubhouseBookingStatus) {
+    const booking = await this.getBookingById(id);
+
+    if (status === ClubhouseBookingStatus.approved) {
+      await this.ensureNoConflicts({
+        startAt: booking.startAt,
+        endAt: booking.endAt,
+        excludeBookingId: booking.id,
+      });
+    }
+
+    return this.prisma.clubhouseBooking.update({
+      where: { id },
+      data: { status },
+    });
+  }
+
+  async listBlockedPeriods() {
+    return this.prisma.clubhouseBlockedPeriod.findMany({
+      orderBy: { startAt: "asc" },
+    });
+  }
+
+  async createBlockedPeriod(input: { startAt: Date; endAt: Date; reason: string }) {
+    await this.ensureNoConflicts({ startAt: input.startAt, endAt: input.endAt });
+
+    return this.prisma.clubhouseBlockedPeriod.create({
+      data: {
+        startAt: input.startAt,
+        endAt: input.endAt,
+        reason: input.reason.trim(),
+      },
+    });
+  }
+
+  async updateBlockedPeriod(
+    id: string,
+    input: { startAt: Date; endAt: Date; reason: string },
+  ) {
+    const existing = await this.prisma.clubhouseBlockedPeriod.findUnique({ where: { id } });
+    if (!existing) {
+      throw new NotFoundException("Blocked period not found.");
+    }
+
+    await this.ensureNoConflicts({
+      startAt: input.startAt,
+      endAt: input.endAt,
+      excludeBlockedPeriodId: id,
+    });
+
+    return this.prisma.clubhouseBlockedPeriod.update({
+      where: { id },
+      data: {
+        startAt: input.startAt,
+        endAt: input.endAt,
+        reason: input.reason.trim(),
+      },
+    });
+  }
+
+  async deleteBlockedPeriod(id: string) {
+    const existing = await this.prisma.clubhouseBlockedPeriod.findUnique({ where: { id } });
+    if (!existing) {
+      throw new NotFoundException("Blocked period not found.");
+    }
+
+    await this.prisma.clubhouseBlockedPeriod.delete({ where: { id } });
   }
 }
