@@ -299,6 +299,11 @@ export type ClubProfile = {
   description: string;
   logo: string | null;
   heroImage: string | null;
+  clubhouseName: string;
+  clubhouseDescription: string;
+  clubhouseAddress: string;
+  clubhouseRentalPrice: string;
+  clubhouseRentalRules: string;
   latitude: string;
   longitude: string;
   grasrotEnabled: boolean;
@@ -1497,6 +1502,11 @@ export async function getClubProfile(): Promise<ClubProfile | null> {
     description: asText(data.description) || item.summary,
     logo: asText(data.logo) || null,
     heroImage: asText(data.heroImage) || null,
+    clubhouseName: asText(data.clubhouseName),
+    clubhouseDescription: asText(data.clubhouseDescription),
+    clubhouseAddress: asText(data.clubhouseAddress),
+    clubhouseRentalPrice: asText(data.clubhouseRentalPrice),
+    clubhouseRentalRules: asText(data.clubhouseRentalRules),
     latitude: asText(data.latitude),
     longitude: asText(data.longitude),
     grasrotEnabled: asBoolean(data.grasrotEnabled),

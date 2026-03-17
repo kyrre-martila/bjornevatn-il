@@ -1930,3 +1930,97 @@ button:focus-visible {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
+
+.clubhouse-hero {
+  background: var(--site-color-surface, var(--color-neutral-soft));
+  border: 1px solid var(--site-color-border, var(--color-border-subtle));
+  border-radius: var(--radius-lg);
+  padding: var(--site-space-4, var(--space-l));
+}
+
+.clubhouse-hero__image {
+  width: 100%;
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+}
+
+.clubhouse-hero__title {
+  font-size: var(--font-size-xl);
+}
+
+.clubhouse-hero__lead {
+  font-size: var(--font-size-lg);
+  font-weight: 600;
+}
+
+.clubhouse-hero__description,
+.clubhouse-hero__address,
+.clubhouse-booking__intro {
+  color: var(--color-text-muted);
+}
+
+.clubhouse-info__list {
+  display: grid;
+  gap: var(--site-space-3, var(--space-m));
+}
+
+.clubhouse-info__item {
+  background: var(--color-surface-muted);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--site-space-3, var(--space-m));
+}
+
+.clubhouse-info__item dt {
+  font-weight: 600;
+  margin-bottom: var(--space-2xs);
+}
+
+.clubhouse-booking__form {
+  background: var(--color-surface-muted);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--site-space-4, var(--space-l));
+}
+
+.clubhouse-booking__field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2xs);
+}
+
+.clubhouse-booking__field input,
+.clubhouse-booking__field textarea {
+  width: 100%;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-xs) var(--space-s);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
+}
+
+.clubhouse-booking__field small,
+.clubhouse-booking__error {
+  color: var(--color-danger, #c53030);
+}
+
+.clubhouse-booking__success {
+  color: var(--color-success, #2f855a);
+}
+
+@media (min-width: 768px) {
+  .clubhouse-booking__form {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    display: grid;
+    gap: var(--site-space-3, var(--space-m));
+  }
+
+  .clubhouse-booking__field:nth-child(5),
+  .clubhouse-booking__field:nth-child(9),
+  .clubhouse-booking__form button,
+  .clubhouse-booking__error,
+  .clubhouse-booking__success {
+    grid-column: 1 / -1;
+  }
+}

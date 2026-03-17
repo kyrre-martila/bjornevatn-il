@@ -11,6 +11,7 @@ import { MetricsModule } from "../common/metrics/metrics.module";
 import { AuditModule } from "./audit/audit.module";
 import { AuditAdminModule } from "./audit/audit-admin.module";
 import { StagingModule } from "./staging/staging.module";
+import { ClubhouseModule } from "./clubhouse/clubhouse.module";
 
 @Module({
   imports: [
@@ -26,6 +27,7 @@ import { StagingModule } from "./staging/staging.module";
     AuditModule,
     AuditAdminModule,
     StagingModule,
+    ClubhouseModule,
   ],
 })
 export class AppModule {}
