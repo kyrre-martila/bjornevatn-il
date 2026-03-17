@@ -1440,6 +1440,7 @@ export class ContentController {
     await this.validationService.validateContentItemData(
       contentType.fields,
       body.data,
+      contentType.slug,
     );
     this.validationService.ensureEditorCannotModifyRelationFields(
       role,
@@ -1581,6 +1582,7 @@ export class ContentController {
     await this.validationService.validateContentItemData(
       contentType.fields,
       data,
+      contentType.slug,
     );
     this.validationService.ensureEditorCannotModifyRelationFields(
       role,
