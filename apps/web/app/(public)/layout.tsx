@@ -58,7 +58,7 @@ export default async function PublicLayout({
     getPublicNavigationTree(),
   ]);
 
-  const siteTitle = siteSettings.site_title ?? "Blueprint Website";
+  const siteTitle = siteSettings.site_title ?? "Bjørnevatn IL";
   const siteTagline = siteSettings.site_tagline ?? "";
   const logoUrl = siteSettings.logo_url;
   const footerText = siteSettings.footer_text ?? `© ${siteTitle}`;

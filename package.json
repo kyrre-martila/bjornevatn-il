@@ -1,5 +1,5 @@
 {
-  "name": "content-website-blueprint",
+  "name": "bjornevatn-il-website",
   "version": "1.0.0",
   "private": true,
   "license": "MIT",
@@ -52,5 +52,6 @@
     "typescript-eslint": "^8.46.3",
     "wait-on": "^7.2.0"
   },
-  "packageManager": "pnpm@10.5.2"
+  "packageManager": "pnpm@10.5.2",
+  "description": "Bjørnevatn IL Website – powered by Content Blueprint architecture"
 }
