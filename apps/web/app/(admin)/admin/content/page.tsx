@@ -58,7 +58,7 @@ export default async function AdminContentPage({
       initialSelectedTypeSlug={initialSelectedTypeSlug}
       userRole={
         hasMinimumRole(role, "super_admin")
-          ? "superadmin"
+          ? "super_admin"
           : hasMinimumRole(role, "admin")
             ? "admin"
             : "editor"

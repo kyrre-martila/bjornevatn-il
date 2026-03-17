@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Injectable,
   NotFoundException,
+  UnauthorizedException,
 } from "@nestjs/common";
 import {
   Prisma,
@@ -9,6 +10,7 @@ import {
   TicketStatus,
   TicketValidationStatus,
 } from "@prisma/client";
+import { createHmac, timingSafeEqual } from "node:crypto";
 import { PrismaService } from "../../prisma/prisma.service";
 import { TicketQrService } from "./ticket-qr.service";
 import {
@@ -49,6 +51,47 @@ export class TicketsService {
     private readonly availability: TicketAvailabilityService,
     private readonly qrService: TicketQrService,
   ) {}
+
+  private getOrderLookupSecret(): string {
+    return process.env.TICKET_ORDER_LOOKUP_SECRET ?? process.env.JWT_SECRET ?? "dev-order-lookup-secret";
+  }
+
+  private createOrderLookupToken(orderReference: string): string {
+    const issuedAt = Date.now();
+    const payload = `${orderReference}.${issuedAt}`;
+    const signature = createHmac("sha256", this.getOrderLookupSecret()).update(payload).digest("base64url");
+    return `${payload}.${signature}`;
+  }
+
+  private verifyOrderLookupToken(orderReference: string, token?: string): void {
+    if (!token) {
+      throw new UnauthorizedException("Order lookup token is required.");
+    }
+    const parts = token.split(".");
+    if (parts.length !== 3) {
+      throw new UnauthorizedException("Invalid order lookup token.");
+    }
+    const [tokenReference, issuedAtRaw, signature] = parts;
+    if (tokenReference !== orderReference || !/^\d+$/.test(issuedAtRaw)) {
+      throw new UnauthorizedException("Invalid order lookup token.");
+    }
+
+    const maxAgeMs = Number(process.env.TICKET_ORDER_LOOKUP_TOKEN_TTL_MS ?? 1000 * 60 * 60 * 24 * 14);
+    const issuedAt = Number(issuedAtRaw);
+    if (!Number.isFinite(issuedAt) || Date.now() - issuedAt > maxAgeMs) {
+      throw new UnauthorizedException("Order lookup session has expired.");
+    }
+
+    const expected = createHmac("sha256", this.getOrderLookupSecret())
+      .update(`${tokenReference}.${issuedAtRaw}`)
+      .digest("base64url");
+
+    const expectedBuf = Buffer.from(expected);
+    const providedBuf = Buffer.from(signature);
+    if (expectedBuf.length !== providedBuf.length || !timingSafeEqual(expectedBuf, providedBuf)) {
+      throw new UnauthorizedException("Invalid order lookup token.");
+    }
+  }
 
   private async getSoldByType(
     ticketSaleId: string,
@@ -213,13 +256,16 @@ export class TicketsService {
 
     return {
       orderReference,
+      orderLookupToken: this.createOrderLookupToken(orderReference),
       tickets: createdTickets,
       ticketSale,
       match: ticketSale.match,
     };
   }
 
-  async getPublicOrderByReference(orderReference: string) {
+  async getPublicOrderByReference(orderReference: string, orderLookupToken?: string) {
+    this.verifyOrderLookupToken(orderReference, orderLookupToken);
+
     const tickets = await this.prisma.ticket.findMany({
       where: { orderReference },
       include: { ticketSale: { include: { match: true } } },
@@ -233,14 +279,13 @@ export class TicketsService {
     const first = tickets[0];
     return {
       orderReference,
-      buyerName: first.buyerName,
-      buyerEmail: first.buyerEmail,
+      buyerName: first.buyerName.split(" ")[0],
+      buyerEmailMasked: first.buyerEmail.replace(/(^.).+(@.*$)/, "$1***$2"),
       status: first.status,
       tickets: tickets.map((ticket) => ({
         id: ticket.id,
         ticketType: ticket.ticketType,
         quantity: ticket.quantity,
-        qrCodeValue: ticket.qrCodeValue,
         validationStatus: ticket.validationStatus,
       })),
       match: first.ticketSale.match,

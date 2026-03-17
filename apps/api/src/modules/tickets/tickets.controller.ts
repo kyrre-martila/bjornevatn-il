@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Post, Req } from "@nestjs/common";
+import { Body, Controller, Get, Param, Patch, Post, Query, Req } from "@nestjs/common";
 import { ApiTags } from "@nestjs/swagger";
 import { TicketSaleStatus, TicketStatus } from "@prisma/client";
 import {
@@ -17,6 +17,7 @@ import {
 import { Type } from "class-transformer";
 import type { Request } from "express";
 import { requireMinimumRole } from "../../common/auth/admin-access";
+import { verifySubmissionChallenge } from "../../common/auth/submission-challenge";
 import { AuthService } from "../auth/auth.service";
 import { TicketScanService } from "./ticket-scan.service";
 import { TicketTypeConfig } from "./ticket-availability.service";
@@ -111,6 +112,10 @@ class CreateTicketOrderDto {
   @ValidateNested({ each: true })
   @Type(() => TicketSelectionDto)
   selections!: TicketSelectionDto[];
+
+  @IsOptional()
+  @IsString()
+  challengeToken?: string;
 }
 
 class UpdateOrderStatusDto {
@@ -154,12 +159,16 @@ export class TicketsController {
 
   @Post("orders")
   createOrder(@Body() body: CreateTicketOrderDto) {
+    verifySubmissionChallenge(body.challengeToken);
     return this.ticketsService.createTicketOrder(body);
   }
 
   @Get("orders/:orderReference")
-  getOrder(@Param("orderReference") orderReference: string) {
-    return this.ticketsService.getPublicOrderByReference(orderReference);
+  getOrder(
+    @Param("orderReference") orderReference: string,
+    @Query("token") orderLookupToken?: string,
+  ) {
+    return this.ticketsService.getPublicOrderByReference(orderReference, orderLookupToken);
   }
 
   @Post("scanner/validate")
@@ -167,7 +176,7 @@ export class TicketsController {
     const role = await requireMinimumRole(req, this.auth, "editor");
     return this.ticketScanService.validateScan({
       qrCodeValue: body.qrCodeValue,
-      allowOverride: role === "admin" || role === "superadmin" ? body.allowOverride : false,
+      allowOverride: role === "admin" || role === "super_admin" ? body.allowOverride : false,
       scannedBy: undefined,
     });
   }
@@ -177,7 +186,7 @@ export class TicketsController {
     const role = await requireMinimumRole(req, this.auth, "editor");
     return this.ticketScanService.confirmEntry({
       qrCodeValue: body.qrCodeValue,
-      allowOverride: role === "admin" || role === "superadmin" ? body.allowOverride : false,
+      allowOverride: role === "admin" || role === "super_admin" ? body.allowOverride : false,
       scannedBy: undefined,
       notes: body.notes,
     });

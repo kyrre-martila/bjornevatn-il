@@ -25,10 +25,10 @@ const WORKFLOW_ACTIONS: Array<{ key: WorkflowStatus; label: string }> = [
 ];
 
 function canUseWorkflowAction(
-  role: "editor" | "admin" | "superadmin",
+  role: "editor" | "admin" | "super_admin",
   action: WorkflowStatus,
 ): boolean {
-  if (role === "superadmin") return true;
+  if (role === "super_admin") return true;
   if (role === "admin") return true;
   return action === "draft" || action === "in_review";
 }
@@ -48,7 +48,7 @@ type Props = {
   canEditSlug: boolean;
   canEditRelations: boolean;
   initialSelectedTypeSlug?: string;
-  userRole: "editor" | "admin" | "superadmin";
+  userRole: "editor" | "admin" | "super_admin";
 };
 
 type ContentItemDraft = {
@@ -955,7 +955,7 @@ function ContentItemEditor({
   canEditSlug: boolean;
   canEditRelations: boolean;
   onRestoreRevision: (revisionId: string) => Promise<void>;
-  userRole: "editor" | "admin" | "superadmin";
+  userRole: "editor" | "admin" | "super_admin";
 }) {
   const isSimpleMode = userRole === "editor";
   const canAccessAdvancedSettings = !isSimpleMode;
@@ -1754,7 +1754,7 @@ export function ContentAdminClient({
         const previousSlug = normalizeSlug(existing.slug);
         const nextSlug = normalizeSlug(payload.slug);
         if (previousSlug !== nextSlug && !canEditSlug) {
-          setError("Only admins and superadmins can change entry URLs.");
+          setError("Only admins and super admins can change entry URLs.");
           return;
         }
 

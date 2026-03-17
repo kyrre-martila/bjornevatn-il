@@ -4,7 +4,7 @@ import { proxyAdminJson } from "../../upstream";
 export async function POST(request: Request) {
   const denied = await requireSuperAdmin();
   if (denied) {
-    return deniedAccess("Access denied: only superadmins can push staging to live.");
+    return deniedAccess("Access denied: only super admins can push staging to live.");
   }
 
   return proxyAdminJson("/admin/staging/push-to-live", {

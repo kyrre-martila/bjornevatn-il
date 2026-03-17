@@ -73,7 +73,7 @@ export class UsersAdminController {
   }
 
   private assertRoleChangeAllowed(input: {
-    actorRole: "editor" | "admin" | "superadmin";
+    actorRole: "editor" | "admin" | "super_admin";
     actorId: string | null;
     targetUserId: string;
     targetCurrentRole: "editor" | "admin" | "super_admin";
@@ -87,24 +87,24 @@ export class UsersAdminController {
       nextRole,
     } = input;
 
-    if (nextRole === "super_admin" && actorRole !== "superadmin") {
+    if (nextRole === "super_admin" && actorRole !== "super_admin") {
       throw new ForbiddenException(
-        "Access denied: only superadmin can assign super_admin.",
+        "Access denied: only super_admin can assign super_admin.",
       );
     }
 
     if (
       targetCurrentRole === "super_admin" &&
       nextRole !== "super_admin" &&
-      actorRole !== "superadmin"
+      actorRole !== "super_admin"
     ) {
       throw new ForbiddenException(
-        "Access denied: only superadmin can remove super_admin role.",
+        "Access denied: only super_admin can remove super_admin role.",
       );
     }
 
     if (
-      actorRole !== "superadmin" &&
+      actorRole !== "super_admin" &&
       actorId !== null &&
       actorId === targetUserId &&
       nextRole === "super_admin"

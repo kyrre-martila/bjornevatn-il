@@ -730,7 +730,7 @@ export class ContentValidationService {
   }
 
   ensureEditorCannotModifyRelationFields(
-    role: "editor" | "admin" | "superadmin",
+    role: "editor" | "admin" | "super_admin",
     fields: Array<ContentFieldDefinition>,
     incomingData: Record<string, unknown>,
     existingData: Record<string, unknown> | null,

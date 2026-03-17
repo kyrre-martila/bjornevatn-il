@@ -18,7 +18,7 @@ export default async function AdminUsersPage() {
             Users
           </h1>
           <p className="admin-pages__summary">
-            User management is restricted to admin and superadmin roles.
+            User management is restricted to admin and super_admin roles.
           </p>
         </div>
       </div>
