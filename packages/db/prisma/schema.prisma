@@ -293,6 +293,7 @@ model ContentItem {
   @@index([parentId])
   @@index([contentTypeId, parentId, sortOrder])
   @@index([published])
+  @@index([contentTypeId, published, createdAt])
 }
 
 model TicketSale {
@@ -337,7 +338,9 @@ model Ticket {
   scanLogs         TicketScanLog[]
 
   @@index([ticketSaleId, ticketType])
+  @@index([ticketSaleId, status])
   @@index([orderReference])
+  @@index([orderReference, createdAt])
   @@index([status])
   @@index([validationStatus])
 }
@@ -546,6 +549,10 @@ model Media {
   uploadedBy   String?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+
+  @@index([createdAt])
+  @@index([mimeType, createdAt])
+  @@index([fileName])
 }
 
 model Taxonomy {

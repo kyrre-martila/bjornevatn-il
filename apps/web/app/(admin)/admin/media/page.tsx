@@ -13,13 +13,13 @@ export default async function AdminMediaPage() {
   }
 
   const pageSize = 50;
-  const media = await listAdminMedia({ limit: pageSize + 1, offset: 0 });
+  const media = await listAdminMedia({ page: 1, pageSize });
 
   return (
     <MediaManagerClient
-      initialMedia={media.slice(0, pageSize)}
+      initialMedia={media.items}
       pageSize={pageSize}
-      initialHasNext={media.length > pageSize}
+      initialPagination={media.pagination}
       canDeleteMedia={canManageTaxonomies(me?.user?.role)}
     />
   );

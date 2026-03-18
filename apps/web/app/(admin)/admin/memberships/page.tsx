@@ -10,7 +10,7 @@ const statuses: MembershipApplicationStatus[] = ["new", "contacted", "approved",
 export default async function AdminMembershipApplicationsPage({
   searchParams,
 }: {
-  searchParams?: { status?: string; membershipCategoryId?: string };
+  searchParams?: { status?: string; membershipCategoryId?: string; page?: string; pageSize?: string };
 }) {
   const me = await getMe();
   if (!canManageUsers(me?.user?.role)) redirect("/access-denied");
@@ -20,10 +20,15 @@ export default async function AdminMembershipApplicationsPage({
     : "") as MembershipApplicationStatus | "";
   const membershipCategoryId = searchParams?.membershipCategoryId ?? "";
 
+  const page = Math.max(1, Number(searchParams?.page ?? "1") || 1);
+  const pageSize = Math.min(100, Math.max(10, Number(searchParams?.pageSize ?? "25") || 25));
+
   const [applications, categories] = await Promise.all([
     listAdminMembershipApplications({
       status: status || undefined,
       membershipCategoryId: membershipCategoryId || undefined,
+      page,
+      pageSize,
     }),
     listAdminMembershipCategories(),
   ]);
@@ -50,6 +55,8 @@ export default async function AdminMembershipApplicationsPage({
             {categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}
           </select>
         </label>
+        <input type="hidden" name="page" value="1" />
+        <input type="hidden" name="pageSize" value={String(pageSize)} />
         <button type="submit" className="button-primary">Apply</button>
       </form>
 
@@ -67,7 +74,7 @@ export default async function AdminMembershipApplicationsPage({
             </tr>
           </thead>
           <tbody>
-            {applications.map((application) => (
+            {applications.items.map((application) => (
               <tr key={application.id}>
                 <td>{application.fullName}</td>
                 <td>{application.email}</td>
@@ -81,6 +88,10 @@ export default async function AdminMembershipApplicationsPage({
           </tbody>
         </table>
       </div>
+
+      <p>
+        Page {applications.pagination.page} of {applications.pagination.totalPages} ({applications.pagination.total} total)
+      </p>
     </section>
   );
 }

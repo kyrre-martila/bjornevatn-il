@@ -45,9 +45,9 @@ export default async function HomePage() {
   const [settings, club, matches, news, funding] = await Promise.all([
     getHomepageSettings(),
     getClubProfile(),
-    getMatches(),
-    getClubNews(),
-    getFundingGrants(),
+    getMatches(30),
+    getClubNews(6),
+    getFundingGrants(30),
   ]);
 
   const upcomingHomeMatch = settings?.showNextMatchHero

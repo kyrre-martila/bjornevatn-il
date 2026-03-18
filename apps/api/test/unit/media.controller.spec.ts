@@ -33,7 +33,8 @@ describe("MediaController deleteMedia role enforcement", () => {
       }),
     } as unknown as jest.Mocked<AuthService>;
 
-    const controller = new MediaController(mediaService, mediaUsageService, auth);
+    const prisma = {} as any;
+    const controller = new MediaController(mediaService, mediaUsageService, auth, prisma);
 
     return { controller, mediaService };
   }

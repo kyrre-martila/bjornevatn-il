@@ -35,15 +35,22 @@ function asText(value: unknown): string {
   return typeof value === "string" ? value : "";
 }
 
-export default async function AdminTicketSalesPage() {
+export default async function AdminTicketSalesPage({
+  searchParams,
+}: {
+  searchParams?: { page?: string; pageSize?: string };
+}) {
   const me = await getMe();
   if (!canManageUsers(me?.user?.role)) {
     redirect("/access-denied");
   }
 
+  const page = Math.max(1, Number(searchParams?.page ?? "1") || 1);
+  const pageSize = Math.min(100, Math.max(10, Number(searchParams?.pageSize ?? "25") || 25));
+
   const [matches, sales] = await Promise.all([
     getMatches(),
-    listAdminTicketSales(),
+    listAdminTicketSales({ page, pageSize }),
   ]);
 
   return (
@@ -118,8 +125,13 @@ export default async function AdminTicketSalesPage() {
         </button>
       </form>
 
+
+      <p>
+        Showing page {sales.pagination.page} of {sales.pagination.totalPages} ({sales.pagination.total} total)
+      </p>
+
       <ul className="admin-bookings__list">
-        {sales.map((sale) => (
+        {sales.items.map((sale) => (
           <li key={sale.id} className="admin-bookings__item">
             <p>
               <strong>
@@ -148,6 +160,11 @@ export default async function AdminTicketSalesPage() {
           </li>
         ))}
       </ul>
+
+      <nav className="admin-bookings__pagination" aria-label="Ticket sales pages">
+        <a href={`/admin/ticket-sales?page=${Math.max(1, page - 1)}&pageSize=${pageSize}`} aria-disabled={page <= 1}>Previous</a>
+        <a href={`/admin/ticket-sales?page=${Math.min(sales.pagination.totalPages, page + 1)}&pageSize=${pageSize}`} aria-disabled={page >= sales.pagination.totalPages}>Next</a>
+      </nav>
     </section>
   );
 }

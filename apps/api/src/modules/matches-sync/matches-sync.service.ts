@@ -7,7 +7,6 @@ import {
 } from "@prisma/client";
 import { PrismaService } from "../../prisma/prisma.service";
 import {
-  MATCH_EXTERNAL_SOURCES,
   MATCH_STATUSES,
   MatchSyncSettingsDto,
   MatchSyncSummary,
@@ -100,25 +99,50 @@ export class MatchesSyncService {
     source?: string;
     upcoming?: boolean;
     ticketSalesEnabled?: boolean;
+    page?: number;
+    pageSize?: number;
   }) {
-    const contentType = await this.prisma.contentType.findUnique({
-      where: { slug: "match" },
-    });
-    if (!contentType) return [];
+    const contentType = await this.prisma.contentType.findUnique({ where: { slug: "match" } });
+    if (!contentType) {
+      return { items: [], pagination: { page: 1, pageSize: 25, total: 0, totalPages: 1 }, filters: {} };
+    }
 
-    const items = await this.prisma.contentItem.findMany({
-      where: {
-        contentTypeId: contentType.id,
-        published: true,
-      },
-      orderBy: { createdAt: "desc" },
-      include: { ticketSale: true },
-    });
+    const pageSize = Math.min(100, Math.max(1, filters.pageSize ?? 25));
+    const page = Math.max(1, filters.page ?? 1);
+    const skip = (page - 1) * pageSize;
 
-    const now = Date.now();
+    const nowIso = new Date().toISOString();
+    const where: Prisma.ContentItemWhereInput = {
+      contentTypeId: contentType.id,
+      published: true,
+      AND: [
+        filters.source
+          ? { data: { path: ["externalSource"], equals: filters.source } }
+          : {},
+        typeof filters.ticketSalesEnabled === "boolean"
+          ? { data: { path: ["ticketSalesEnabled"], equals: filters.ticketSalesEnabled } }
+          : {},
+        filters.upcoming === true
+          ? { data: { path: ["matchDate"], gte: nowIso } }
+          : filters.upcoming === false
+            ? { data: { path: ["matchDate"], lt: nowIso } }
+            : {},
+      ],
+    };
 
-    return items
-      .map((item) => {
+    const [items, total] = await Promise.all([
+      this.prisma.contentItem.findMany({
+        where,
+        orderBy: { createdAt: "desc" },
+        skip,
+        take: pageSize,
+        select: { id: true, data: true },
+      }),
+      this.prisma.contentItem.count({ where }),
+    ]);
+
+    return {
+      items: items.map((item) => {
         const data = item.data as Record<string, unknown>;
         return {
           id: item.id,
@@ -131,20 +155,14 @@ export class MatchesSyncService {
           ticketSalesEnabled: Boolean(data.ticketSalesEnabled ?? false),
           lastSyncedAt: data.lastSyncedAt ? String(data.lastSyncedAt) : null,
         };
-      })
-      .filter((entry) =>
-        filters.source ? entry.externalSource === filters.source : true,
-      )
-      .filter((entry) => {
-        if (filters.upcoming === undefined) return true;
-        const when = new Date(entry.matchDate).getTime();
-        return filters.upcoming ? when > now : when <= now;
-      })
-      .filter((entry) =>
-        filters.ticketSalesEnabled === undefined
-          ? true
-          : entry.ticketSalesEnabled === filters.ticketSalesEnabled,
-      );
+      }),
+      pagination: { page, pageSize, total, totalPages: Math.max(1, Math.ceil(total / pageSize)) },
+      filters: {
+        source: filters.source ?? null,
+        upcoming: typeof filters.upcoming === "boolean" ? (filters.upcoming ? "upcoming" : "past") : null,
+        ticketSalesEnabled: typeof filters.ticketSalesEnabled === "boolean" ? filters.ticketSalesEnabled : null,
+      },
+    };
   }
 
   private async getProvider(sourceType: MatchSyncSourceType) {

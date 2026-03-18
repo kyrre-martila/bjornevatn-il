@@ -10,6 +10,8 @@ export default async function AdminMatchesPage({
     source?: string;
     upcoming?: "upcoming" | "past";
     ticketSalesEnabled?: "true" | "false";
+    page?: string;
+    pageSize?: string;
   };
 }) {
   const me = await getMe();
@@ -17,10 +19,15 @@ export default async function AdminMatchesPage({
     redirect("/access-denied");
   }
 
+  const page = Math.max(1, Number(searchParams?.page ?? "1") || 1);
+  const pageSize = Math.min(100, Math.max(10, Number(searchParams?.pageSize ?? "25") || 25));
+
   const matches = await listAdminMatches({
     source: searchParams?.source,
     upcoming: searchParams?.upcoming,
     ticketSalesEnabled: searchParams?.ticketSalesEnabled,
+    page,
+    pageSize,
   });
 
   return (
@@ -57,6 +64,8 @@ export default async function AdminMatchesPage({
             <option value="false">Disabled</option>
           </select>
         </label>
+        <input type="hidden" name="page" value="1" />
+        <input type="hidden" name="pageSize" value={String(pageSize)} />
         <button type="submit" className="button-primary">
           Filter
         </button>
@@ -77,7 +86,7 @@ export default async function AdminMatchesPage({
             </tr>
           </thead>
           <tbody>
-            {matches.map((match) => (
+            {matches.items.map((match) => (
               <tr key={match.id}>
                 <td>{match.homeTeam}</td>
                 <td>{match.awayTeam}</td>
@@ -96,6 +105,8 @@ export default async function AdminMatchesPage({
           </tbody>
         </table>
       </div>
+
+      <p>Page {matches.pagination.page} of {matches.pagination.totalPages} ({matches.pagination.total} total)</p>
     </section>
   );
 }
