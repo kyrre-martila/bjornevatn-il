@@ -3,9 +3,18 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
-import type { AdminMembershipApplication, MembershipApplicationStatus } from "../../../../../lib/admin/memberships";
+import type {
+  AdminMembershipApplication,
+  MembershipApplicationStatus,
+} from "../../../../../lib/admin/memberships";
 
-const statuses: MembershipApplicationStatus[] = ["new", "contacted", "approved", "rejected", "archived"];
+const statuses: MembershipApplicationStatus[] = [
+  "new",
+  "contacted",
+  "approved",
+  "rejected",
+  "archived",
+];
 
 export default function MembershipDetailClient({ application }: { application: AdminMembershipApplication }) {
   const router = useRouter();
@@ -33,26 +42,45 @@ export default function MembershipDetailClient({ application }: { application: A
       return;
     }
 
-    setState("Application updated.");
+    setState("Membership application updated.");
     setSaving(false);
     router.refresh();
   }
 
   return (
-    <div className="admin-membership-detail__editor">
-      <label>
-        Status
-        <select value={status} onChange={(event) => setStatus(event.target.value as MembershipApplicationStatus)}>
-          {statuses.map((value) => <option key={value} value={value}>{value}</option>)}
-        </select>
-      </label>
-      <label>
-        Admin notes
-        <textarea rows={5} value={adminNotes} onChange={(event) => setAdminNotes(event.target.value)} />
-      </label>
-      <button type="button" className="button-primary" disabled={saving} onClick={save}>{saving ? "Saving..." : "Save"}</button>
-      {error ? <p className="admin-membership-detail__error">{error}</p> : null}
-      {state ? <p className="admin-membership-detail__state">{state}</p> : null}
+    <div className="admin-form-panel">
+      <div className="admin-form-panel__grid">
+        <label className="admin-form-panel__field">
+          <span>Status</span>
+          <select
+            value={status}
+            onChange={(event) => setStatus(event.target.value as MembershipApplicationStatus)}
+          >
+            {statuses.map((value) => (
+              <option key={value} value={value}>
+                {value}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="admin-form-panel__field admin-form-panel__field--full">
+          <span>Admin notes</span>
+          <textarea
+            rows={5}
+            value={adminNotes}
+            onChange={(event) => setAdminNotes(event.target.value)}
+          />
+        </label>
+      </div>
+
+      {error ? <p className="admin-form-feedback admin-form-feedback--error">{error}</p> : null}
+      {state ? <p className="admin-form-feedback admin-form-feedback--success">{state}</p> : null}
+
+      <div className="admin-form-actions">
+        <button type="button" className="button-primary" disabled={saving} onClick={save}>
+          {saving ? "Saving..." : "Save changes"}
+        </button>
+      </div>
     </div>
   );
 }

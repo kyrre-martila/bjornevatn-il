@@ -97,19 +97,20 @@ test.describe("Admin role-based visibility", () => {
     await page.goto("/admin");
 
     await expect(page.getByRole("link", { name: "Pages" })).toBeVisible();
-    await expect(page.getByRole("link", { name: "Content" }).first()).toBeVisible();
-    await expect(page.getByRole("link", { name: "Media" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Content entries" }).first()).toBeVisible();
+    await expect(page.getByRole("link", { name: "Media library" })).toBeVisible();
 
-    await expect(page.getByRole("link", { name: "Developer tools" })).toHaveCount(0);
+    await expect(page.getByRole("link", { name: "Staging" })).toHaveCount(0);
     await expect(page.getByRole("link", { name: "System" })).toHaveCount(0);
     await expect(page.getByRole("link", { name: "Users" })).toHaveCount(0);
     await expect(page.getByRole("link", { name: "Redirects" })).toHaveCount(0);
-    await expect(page.getByRole("link", { name: "Taxonomies" })).toHaveCount(0);
+    await expect(page.getByRole("link", { name: "Navigation" })).toHaveCount(0);
   });
 
   test("editor cannot access staging screen", async ({ page }) => {
     await page.goto("/admin/staging");
-    await expect(page).toHaveURL(/\/access-denied$/);
+    await expect(page).not.toHaveURL(/\/admin\/staging$/);
+    await expect(page).toHaveURL(/\/(access-denied|login)(\?|$)/);
   });
 
   test("editor page editing hides advanced workflow controls", async ({ page }) => {

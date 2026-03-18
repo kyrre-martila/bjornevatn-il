@@ -4,18 +4,15 @@ import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-type NavItem = {
-  href: string;
-  label: string;
-};
+import type { AppShellNavSection } from "./AppShell";
 
 type PrimaryNavProps = {
-  items: NavItem[];
+  sections: AppShellNavSection[];
   variant: "header" | "sidebar";
   onItemClick?: () => void;
 };
 
-export function PrimaryNav({ items, variant, onItemClick }: PrimaryNavProps) {
+export function PrimaryNav({ sections, variant, onItemClick }: PrimaryNavProps) {
   const pathname = usePathname();
 
   const isActive = React.useCallback(
@@ -33,44 +30,58 @@ export function PrimaryNav({ items, variant, onItemClick }: PrimaryNavProps) {
 
   if (variant === "sidebar") {
     return (
-      <ul className="app-sidebar__nav">
-        {items.map((item) => {
-          const active = isActive(item.href);
-          return (
-            <li key={item.href}>
-              <Link
-                href={item.href}
-                className={`app-sidebar__nav-link${
-                  active ? " app-sidebar__nav-link--active" : ""
-                }`}
-                onClick={onItemClick}
-              >
-                {item.label}
-              </Link>
-            </li>
-          );
-        })}
-      </ul>
+      <div className="app-sidebar__nav-groups">
+        {sections.map((section) => (
+          <div key={section.label} className="app-sidebar__nav-group">
+            <div className="app-sidebar__nav-group-label">{section.label}</div>
+            <ul className="app-sidebar__nav">
+              {section.items.map((item) => {
+                const active = isActive(item.href);
+                return (
+                  <li key={item.href}>
+                    <Link
+                      href={item.href}
+                      className={`app-sidebar__nav-link${
+                        active ? " app-sidebar__nav-link--active" : ""
+                      }`}
+                      onClick={onItemClick}
+                    >
+                      {item.label}
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        ))}
+      </div>
     );
   }
 
   return (
-    <>
-      {items.map((item) => {
-        const active = isActive(item.href);
-        return (
-          <Link
-            key={item.href}
-            href={item.href}
-            className={`app-header__nav-link${
-              active ? " app-header__nav-link--active" : ""
-            }`}
-            onClick={onItemClick}
-          >
-            {item.label}
-          </Link>
-        );
-      })}
-    </>
+    <div className="app-header__nav-groups">
+      {sections.map((section) => (
+        <div key={section.label} className="app-header__nav-group">
+          <div className="app-header__nav-group-label">{section.label}</div>
+          <div className="app-header__nav-group-items">
+            {section.items.map((item) => {
+              const active = isActive(item.href);
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={`app-header__nav-link${
+                    active ? " app-header__nav-link--active" : ""
+                  }`}
+                  onClick={onItemClick}
+                >
+                  {item.label}
+                </Link>
+              );
+            })}
+          </div>
+        </div>
+      ))}
+    </div>
   );
 }

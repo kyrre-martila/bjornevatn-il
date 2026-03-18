@@ -1,87 +1,112 @@
 "use client";
 
-import * as React from "react";
-import type { AdminMedia, AdminMediaPagination } from "../../../../lib/admin/media";
-import { DestructiveConfirmModal } from "../components/DestructiveConfirmModal";
+import { useCallback, useMemo, useState, type FormEvent } from "react";
+
 import { ImageAsset } from "../../../../components/media/ImageAsset";
+import type {
+  AdminMedia,
+  AdminMediaPagination,
+} from "../../../../lib/admin/media";
+import { AdminEmptyState } from "../components/AdminEmptyState";
+import { AdminPageHeader } from "../components/AdminPageHeader";
+import { AdminPagination } from "../components/AdminPagination";
+import { AdminSectionCard } from "../components/AdminSectionCard";
+import { DestructiveConfirmModal } from "../components/DestructiveConfirmModal";
+
+type MediaManagerClientProps = {
+  initialMedia: AdminMedia[];
+  initialPagination: AdminMediaPagination;
+  pageSize: number;
+  canDeleteMedia: boolean;
+};
 
 export function MediaManagerClient({
   initialMedia,
-  pageSize,
   initialPagination,
+  pageSize,
   canDeleteMedia,
-}: {
-  initialMedia: AdminMedia[];
-  pageSize: number;
-  initialPagination: AdminMediaPagination;
-  canDeleteMedia: boolean;
-}) {
-  const [media, setMedia] = React.useState(initialMedia);
-  const [page, setPage] = React.useState(initialPagination.page);
-  const [loadingPage, setLoadingPage] = React.useState(false);
-  const [pagination, setPagination] = React.useState(initialPagination);
-  const [uploading, setUploading] = React.useState(false);
-  const [error, setError] = React.useState<string | null>(null);
-  const [pendingDelete, setPendingDelete] = React.useState<AdminMedia | null>(null);
-  const [isDeleting, setIsDeleting] = React.useState(false);
-  const [mimeTypeFilter, setMimeTypeFilter] = React.useState<string>("");
-  const [uploadedAfter, setUploadedAfter] = React.useState<string>("");
-  const [search, setSearch] = React.useState<string>("");
+}: MediaManagerClientProps) {
+  const [media, setMedia] = useState(initialMedia);
+  const [pagination, setPagination] = useState(initialPagination);
+  const [page, setPage] = useState(initialPagination.page);
+  const [mimeTypeFilter, setMimeTypeFilter] = useState("");
+  const [uploadedAfter, setUploadedAfter] = useState("");
+  const [search, setSearch] = useState("");
+  const [loadingPage, setLoadingPage] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<AdminMedia | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [feedback, setFeedback] = useState<string | null>(null);
 
-  async function loadPage(nextPage: number) {
-    setLoadingPage(true);
-    setError(null);
+  const hasActiveFilters = useMemo(
+    () => Boolean(mimeTypeFilter || uploadedAfter || search.trim()),
+    [mimeTypeFilter, search, uploadedAfter],
+  );
 
-    try {
+  const buildQuery = useCallback(
+    (nextPage: number) => {
       const query = new URLSearchParams({
         page: String(nextPage),
         pageSize: String(pageSize),
       });
-      if (mimeTypeFilter) query.set("mimeType", mimeTypeFilter);
-      if (uploadedAfter) query.set("uploadedAfter", uploadedAfter);
-      if (search) query.set("search", search);
 
-      const res = await fetch(`/api/admin/media?${query.toString()}`, { cache: "no-store" });
-
-      if (!res.ok) {
-        throw new Error("Failed to load media page");
+      if (mimeTypeFilter) {
+        query.set("mimeType", mimeTypeFilter);
+      }
+      if (uploadedAfter) {
+        query.set("uploadedAfter", uploadedAfter);
+      }
+      if (search.trim()) {
+        query.set("search", search.trim());
       }
 
-      const batch = (await res.json()) as { items: AdminMedia[]; pagination: AdminMediaPagination };
-      setMedia(batch.items);
-      setPagination(batch.pagination);
-      setPage(nextPage);
-    } catch {
-      setError("Unable to load media.");
-    } finally {
-      setLoadingPage(false);
-    }
-  }
+      return query;
+    },
+    [mimeTypeFilter, pageSize, search, uploadedAfter],
+  );
+
+  const loadPage = useCallback(
+    async (requestedPage: number) => {
+      setLoadingPage(true);
+      setError(null);
+      setFeedback(null);
+      try {
+        const response = await fetch(`/api/admin/media?${buildQuery(requestedPage).toString()}`);
+        if (!response.ok) {
+          setError("Unable to load media.");
+          return;
+        }
+
+        const data = (await response.json()) as {
+          items: AdminMedia[];
+          pagination: AdminMediaPagination;
+        };
+        setMedia(data.items);
+        setPagination(data.pagination);
+        setPage(data.pagination.page);
+      } catch {
+        setError("Network error while loading media.");
+      } finally {
+        setLoadingPage(false);
+      }
+    },
+    [buildQuery],
+  );
 
   async function refresh() {
-    await loadPage(0);
+    await loadPage(page);
   }
 
-  async function onUpload(event: React.FormEvent<HTMLFormElement>) {
+  async function onUpload(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);
+    setFeedback(null);
+    setUploading(true);
 
     const form = event.currentTarget;
     const formData = new FormData(form);
-    const file = formData.get("file");
-    const altText = formData.get("altText");
 
-    if (!(file instanceof File) || !file.name) {
-      setError("Please choose a file before uploading.");
-      return;
-    }
-
-    if (typeof altText !== "string" || !altText.trim()) {
-      setError("Please add alt text for the uploaded image.");
-      return;
-    }
-
-    setUploading(true);
     try {
       const res = await fetch("/api/admin/media/upload", {
         method: "POST",
@@ -95,6 +120,7 @@ export function MediaManagerClient({
       }
 
       form.reset();
+      setFeedback("Media uploaded.");
       await refresh();
     } catch {
       setError("Network error while uploading media.");
@@ -109,6 +135,7 @@ export function MediaManagerClient({
     }
 
     setError(null);
+    setFeedback(null);
     setIsDeleting(true);
     const res = await fetch(`/api/admin/media/${pendingDelete.id}`, {
       method: "DELETE",
@@ -120,6 +147,7 @@ export function MediaManagerClient({
     }
 
     setPendingDelete(null);
+    setFeedback("Media deleted.");
     await loadPage(page);
   }
 
@@ -138,109 +166,165 @@ export function MediaManagerClient({
 
     const updated = (await res.json()) as AdminMedia;
     setMedia((current) => current.map((item) => (item.id === id ? updated : item)));
+    setFeedback("Media details updated.");
   }
 
   return (
-    <section className="media-manager stack">
-      <h1>Media library</h1>
+    <section className="admin-list-page media-manager">
+      <AdminPageHeader
+        title="Media library"
+        description="Upload, filter, and maintain reusable image assets using the same list, empty state, and action conventions as the rest of admin."
+      />
 
-      <form onSubmit={onUpload} className="media-manager__upload">
-        <input name="file" type="file" accept="image/png,image/jpeg" required />
-        <input name="altText" placeholder="Alt text" required />
-        <input name="caption" placeholder="Caption (optional)" />
-        <button type="submit" disabled={uploading}>
-          {uploading ? "Uploading..." : "Upload"}
-        </button>
-      </form>
-
-      <div className="media-manager__filters">
-        <label>
-          Image type
-          <select value={mimeTypeFilter} onChange={(e) => setMimeTypeFilter(e.target.value)}>
-            <option value="">All</option>
-            <option value="image/jpeg">JPEG</option>
-            <option value="image/png">PNG</option>
-          </select>
-        </label>
-        <label>
-          Upload date (from)
-          <input type="date" value={uploadedAfter} onChange={(e) => setUploadedAfter(e.target.value)} />
-        </label>
-        <label>
-          Filename
-          <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search filename" />
-        </label>
-        <button type="button" onClick={() => void loadPage(0)} disabled={loadingPage}>Apply filters</button>
-      </div>
-
-      {error ? <p className="page-editor__error">{error}</p> : null}
-
-      <p>
-        Showing page {pagination.page} of {pagination.totalPages} ({pagination.total} total)
-      </p>
-
-      <div className="media-manager__grid">
-        {media.length === 0 ? <p>No media found for current filters.</p> : null}
-        {media.map((item) => (
-          <article key={item.id} className="media-manager__item stack stack--sm">
-            <ImageAsset asset={item} className="media-manager__preview" imageClassName="media-manager__image" />
-            <p>{item.fileName}</p>
-            <p className="media-manager__date">
-              {item.mimeType || "unknown type"} • {item.width ?? "?"}×{item.height ?? "?"} • {item.fileSize ?? 0} bytes
-            </p>
-            <p className="media-manager__date">Uploaded: {new Date(item.createdAt).toLocaleString()}</p>
-            <button type="button" onClick={() => void navigator.clipboard.writeText(item.url)}>Copy image URL</button>
-            <label>
-              Alt text
-              <input
-                defaultValue={item.altText ?? ""}
-                onBlur={(e) => {
-                  const nextAltText = e.target.value.trim();
-                  if (nextAltText !== (item.altText ?? "")) {
-                    void onUpdateAsset(item.id, { altText: nextAltText });
-                  }
-                }}
-              />
+      <AdminSectionCard title="Upload media" description="Add a new image and set the required accessibility text up front.">
+        <form onSubmit={onUpload} className="admin-form-panel">
+          <div className="admin-form-panel__grid">
+            <label className="admin-form-panel__field">
+              <span>Image file</span>
+              <input name="file" type="file" accept="image/png,image/jpeg" required />
             </label>
-            <label>
-              Caption
-              <input
-                defaultValue={item.caption ?? ""}
-                onBlur={(e) => {
-                  const nextCaption = e.target.value.trim();
-                  if (nextCaption !== (item.caption ?? "")) {
-                    void onUpdateAsset(item.id, { caption: nextCaption });
-                  }
-                }}
-              />
+            <label className="admin-form-panel__field">
+              <span>Alt text</span>
+              <input name="altText" required />
             </label>
-            {canDeleteMedia ? (
-              <button type="button" onClick={() => setPendingDelete(item)}>
-                Delete
-              </button>
-            ) : (
-              <small>Only admins can delete media.</small>
-            )}
-          </article>
-        ))}
-      </div>
+            <label className="admin-form-panel__field admin-form-panel__field--full">
+              <span>Caption</span>
+              <input name="caption" placeholder="Optional caption" />
+            </label>
+          </div>
+          <div className="admin-form-actions">
+            <button type="submit" className="button-primary" disabled={uploading}>
+              {uploading ? "Uploading..." : "Upload media"}
+            </button>
+          </div>
+        </form>
+      </AdminSectionCard>
 
-      <div>
-        <button
-          type="button"
-          onClick={() => void loadPage(Math.max(1, page - 1))}
-          disabled={loadingPage || page === 1}
-        >
-          Previous page
-        </button>
-        <button
-          type="button"
-          onClick={() => void loadPage(page + 1)}
-          disabled={loadingPage || page >= pagination.totalPages}
-        >
-          Next page
-        </button>
-      </div>
+      <AdminSectionCard title="Filters" description="Narrow the library by type, upload date, or filename.">
+        <div className="admin-filters-bar">
+          <div className="admin-filters-bar__fields">
+            <label className="admin-filters-bar__field">
+              <span>Image type</span>
+              <select value={mimeTypeFilter} onChange={(e) => setMimeTypeFilter(e.target.value)}>
+                <option value="">All types</option>
+                <option value="image/jpeg">JPEG</option>
+                <option value="image/png">PNG</option>
+              </select>
+            </label>
+            <label className="admin-filters-bar__field">
+              <span>Upload date (from)</span>
+              <input type="date" value={uploadedAfter} onChange={(e) => setUploadedAfter(e.target.value)} />
+            </label>
+            <label className="admin-filters-bar__field">
+              <span>Filename</span>
+              <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search filename" />
+            </label>
+          </div>
+          <div className="admin-filters-bar__actions">
+            <button type="button" className="button-primary" onClick={() => void loadPage(1)} disabled={loadingPage}>
+              Apply filters
+            </button>
+          </div>
+        </div>
+      </AdminSectionCard>
+
+      {error ? <p className="admin-form-feedback admin-form-feedback--error">{error}</p> : null}
+      {feedback ? <p className="admin-form-feedback admin-form-feedback--success">{feedback}</p> : null}
+
+      <AdminSectionCard title="Assets" description="Each asset card includes preview details, editable metadata, and copy or delete actions.">
+        {media.length === 0 ? (
+          <AdminEmptyState
+            title={hasActiveFilters ? "No media matches these filters" : "No media uploaded yet"}
+            description={
+              hasActiveFilters
+                ? "Adjust or clear the current filters to see more assets."
+                : "Upload an image above to start building the shared media library."
+            }
+          />
+        ) : (
+          <div className="media-manager__grid">
+            {media.map((item) => (
+              <article key={item.id} className="media-manager__item admin-card-list__item">
+                <ImageAsset
+                  asset={item}
+                  className="media-manager__preview"
+                  imageClassName="media-manager__image"
+                />
+                <div className="admin-card-list__row">
+                  <div>
+                    <h2 className="admin-card-list__title">{item.fileName}</h2>
+                    <p className="admin-card-list__meta">{item.originalName}</p>
+                  </div>
+                </div>
+                <dl className="admin-key-value-list">
+                  <div>
+                    <dt>File details</dt>
+                    <dd>
+                      {item.mimeType || "Unknown type"} • {item.width ?? "?"}×{item.height ?? "?"} • {item.fileSize ?? 0} bytes
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>Uploaded</dt>
+                    <dd>{new Date(item.createdAt).toLocaleString()}</dd>
+                  </div>
+                </dl>
+                <div className="admin-inline-actions">
+                  <button type="button" onClick={() => void navigator.clipboard.writeText(item.url)}>
+                    Copy image URL
+                  </button>
+                  {canDeleteMedia ? (
+                    <button type="button" onClick={() => setPendingDelete(item)}>
+                      Delete media
+                    </button>
+                  ) : (
+                    <span className="admin-table-help">Only admins can delete media.</span>
+                  )}
+                </div>
+                <div className="admin-form-panel__grid">
+                  <label className="admin-form-panel__field">
+                    <span>Alt text</span>
+                    <input
+                      defaultValue={item.altText ?? ""}
+                      onBlur={(e) => {
+                        const nextAltText = e.target.value.trim();
+                        if (nextAltText !== (item.altText ?? "")) {
+                          void onUpdateAsset(item.id, { altText: nextAltText });
+                        }
+                      }}
+                    />
+                  </label>
+                  <label className="admin-form-panel__field">
+                    <span>Caption</span>
+                    <input
+                      defaultValue={item.caption ?? ""}
+                      onBlur={(e) => {
+                        const nextCaption = e.target.value.trim();
+                        if (nextCaption !== (item.caption ?? "")) {
+                          void onUpdateAsset(item.id, { caption: nextCaption });
+                        }
+                      }}
+                    />
+                  </label>
+                </div>
+              </article>
+            ))}
+          </div>
+        )}
+      </AdminSectionCard>
+
+      <AdminPagination
+        page={pagination.page}
+        totalPages={pagination.totalPages}
+        total={pagination.total}
+        basePath="/admin/media"
+        query={{
+          pageSize: String(pageSize),
+          mimeType: mimeTypeFilter || undefined,
+          uploadedAfter: uploadedAfter || undefined,
+          search: search.trim() || undefined,
+        }}
+        ariaLabel="Media library pages"
+      />
 
       <DestructiveConfirmModal
         open={Boolean(pendingDelete)}
