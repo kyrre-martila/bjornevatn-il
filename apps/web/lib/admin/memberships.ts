@@ -28,6 +28,9 @@ export type AdminMembershipApplication = {
   membershipCategory: AdminMembershipCategory;
 };
 
+export type AdminPagination = { page: number; pageSize: number; total: number; totalPages: number };
+export type AdminPaginatedResponse<T> = { items: T[]; pagination: AdminPagination; filters?: Record<string, unknown> };
+
 export type AdminMembershipCategoryFilter = {
   id: string;
   name: string;
@@ -50,18 +53,27 @@ function buildHeaders() {
 export async function listAdminMembershipApplications(filters: {
   status?: MembershipApplicationStatus;
   membershipCategoryId?: string;
-}): Promise<AdminMembershipApplication[]> {
+  page?: number;
+  pageSize?: number;
+}): Promise<AdminPaginatedResponse<AdminMembershipApplication>> {
   const query = new URLSearchParams();
   if (filters.status) query.set("status", filters.status);
   if (filters.membershipCategoryId) query.set("membershipCategoryId", filters.membershipCategoryId);
+  if (filters.page) query.set("page", String(filters.page));
+  if (filters.pageSize) query.set("pageSize", String(filters.pageSize));
 
   const response = await fetch(`${getApiBase()}/membership/admin/applications?${query.toString()}`, {
     headers: buildHeaders(),
     cache: "no-store",
   });
 
-  if (!response.ok) return [];
-  return (await response.json()) as AdminMembershipApplication[];
+  if (!response.ok) {
+    return {
+      items: [],
+      pagination: { page: filters.page ?? 1, pageSize: filters.pageSize ?? 25, total: 0, totalPages: 1 },
+    };
+  }
+  return (await response.json()) as AdminPaginatedResponse<AdminMembershipApplication>;
 }
 
 export async function getAdminMembershipApplication(id: string): Promise<AdminMembershipApplication | null> {

@@ -73,8 +73,13 @@ export class MembershipService {
     });
   }
 
-  async listApplications(filters: { status?: MembershipApplicationStatus; membershipCategoryId?: string }) {
-    return this.prisma.membershipApplication.findMany({
+  async listApplications(filters: { status?: MembershipApplicationStatus; membershipCategoryId?: string; page?: number; pageSize?: number }) {
+    const pageSize = Math.min(100, Math.max(1, filters.pageSize ?? 25));
+    const page = Math.max(1, filters.page ?? 1);
+    const skip = (page - 1) * pageSize;
+
+    const [items, total] = await Promise.all([
+      this.prisma.membershipApplication.findMany({
       where: {
         status: filters.status,
         membershipCategoryId: filters.membershipCategoryId,
@@ -83,7 +88,30 @@ export class MembershipService {
         membershipCategory: { select: { id: true, name: true, slug: true } },
       },
       orderBy: { createdAt: "desc" },
-    });
+      skip,
+      take: pageSize,
+    }),
+      this.prisma.membershipApplication.count({
+        where: {
+          status: filters.status,
+          membershipCategoryId: filters.membershipCategoryId,
+        },
+      }),
+    ]);
+
+    return {
+      items,
+      pagination: {
+        page,
+        pageSize,
+        total,
+        totalPages: Math.max(1, Math.ceil(total / pageSize)),
+      },
+      filters: {
+        status: filters.status ?? null,
+        membershipCategoryId: filters.membershipCategoryId ?? null,
+      },
+    };
   }
 
   async getApplication(id: string) {

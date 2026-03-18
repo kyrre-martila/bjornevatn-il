@@ -1,5 +1,17 @@
 import { cookies } from "next/headers";
 
+export type AdminPagination = {
+  page: number;
+  pageSize: number;
+  total: number;
+  totalPages: number;
+};
+
+export type PaginatedAdminResponse<T> = {
+  items: T[];
+  pagination: AdminPagination;
+};
+
 export type AdminTicketSale = {
   id: string;
   title: string;
@@ -44,14 +56,26 @@ function buildHeaders() {
   return headers;
 }
 
-export async function listAdminTicketSales(): Promise<AdminTicketSale[]> {
-  const response = await fetch(`${getApiBase()}/tickets/admin/sales`, {
+export async function listAdminTicketSales(query?: {
+  page?: number;
+  pageSize?: number;
+}): Promise<PaginatedAdminResponse<AdminTicketSale>> {
+  const params = new URLSearchParams();
+  if (query?.page) params.set("page", String(query.page));
+  if (query?.pageSize) params.set("pageSize", String(query.pageSize));
+
+  const response = await fetch(`${getApiBase()}/tickets/admin/sales?${params.toString()}`, {
     cache: "no-store",
     headers: buildHeaders(),
   });
 
-  if (!response.ok) return [];
-  return (await response.json()) as AdminTicketSale[];
+  if (!response.ok) {
+    return {
+      items: [],
+      pagination: { page: query?.page ?? 1, pageSize: query?.pageSize ?? 25, total: 0, totalPages: 1 },
+    };
+  }
+  return (await response.json()) as PaginatedAdminResponse<AdminTicketSale>;
 }
 
 export async function createAdminTicketSale(
@@ -84,14 +108,26 @@ export async function updateAdminTicketSaleStatus(
   return response.ok;
 }
 
-export async function listAdminTicketOrders(): Promise<AdminTicketOrder[]> {
-  const response = await fetch(`${getApiBase()}/tickets/admin/orders`, {
+export async function listAdminTicketOrders(query?: {
+  page?: number;
+  pageSize?: number;
+}): Promise<PaginatedAdminResponse<AdminTicketOrder>> {
+  const params = new URLSearchParams();
+  if (query?.page) params.set("page", String(query.page));
+  if (query?.pageSize) params.set("pageSize", String(query.pageSize));
+
+  const response = await fetch(`${getApiBase()}/tickets/admin/orders?${params.toString()}`, {
     cache: "no-store",
     headers: buildHeaders(),
   });
 
-  if (!response.ok) return [];
-  return (await response.json()) as AdminTicketOrder[];
+  if (!response.ok) {
+    return {
+      items: [],
+      pagination: { page: query?.page ?? 1, pageSize: query?.pageSize ?? 25, total: 0, totalPages: 1 },
+    };
+  }
+  return (await response.json()) as PaginatedAdminResponse<AdminTicketOrder>;
 }
 
 export async function updateAdminTicketOrderStatus(

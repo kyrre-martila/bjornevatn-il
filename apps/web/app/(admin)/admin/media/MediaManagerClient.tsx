@@ -1,43 +1,45 @@
 "use client";
 
 import * as React from "react";
-import type { AdminMedia } from "../../../../lib/admin/media";
+import type { AdminMedia, AdminMediaPagination } from "../../../../lib/admin/media";
 import { DestructiveConfirmModal } from "../components/DestructiveConfirmModal";
 import { ImageAsset } from "../../../../components/media/ImageAsset";
 
 export function MediaManagerClient({
   initialMedia,
   pageSize,
-  initialHasNext,
+  initialPagination,
   canDeleteMedia,
 }: {
   initialMedia: AdminMedia[];
   pageSize: number;
-  initialHasNext: boolean;
+  initialPagination: AdminMediaPagination;
   canDeleteMedia: boolean;
 }) {
   const [media, setMedia] = React.useState(initialMedia);
-  const [offset, setOffset] = React.useState(0);
+  const [page, setPage] = React.useState(initialPagination.page);
   const [loadingPage, setLoadingPage] = React.useState(false);
-  const [hasNext, setHasNext] = React.useState(initialHasNext);
+  const [pagination, setPagination] = React.useState(initialPagination);
   const [uploading, setUploading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [pendingDelete, setPendingDelete] = React.useState<AdminMedia | null>(null);
   const [isDeleting, setIsDeleting] = React.useState(false);
   const [mimeTypeFilter, setMimeTypeFilter] = React.useState<string>("");
   const [uploadedAfter, setUploadedAfter] = React.useState<string>("");
+  const [search, setSearch] = React.useState<string>("");
 
-  async function loadPage(nextOffset: number) {
+  async function loadPage(nextPage: number) {
     setLoadingPage(true);
     setError(null);
 
     try {
       const query = new URLSearchParams({
-        offset: String(nextOffset),
-        limit: String(pageSize + 1),
+        page: String(nextPage),
+        pageSize: String(pageSize),
       });
       if (mimeTypeFilter) query.set("mimeType", mimeTypeFilter);
       if (uploadedAfter) query.set("uploadedAfter", uploadedAfter);
+      if (search) query.set("search", search);
 
       const res = await fetch(`/api/admin/media?${query.toString()}`, { cache: "no-store" });
 
@@ -45,10 +47,10 @@ export function MediaManagerClient({
         throw new Error("Failed to load media page");
       }
 
-      const batch = (await res.json()) as AdminMedia[];
-      setMedia(batch.slice(0, pageSize));
-      setHasNext(batch.length > pageSize);
-      setOffset(nextOffset);
+      const batch = (await res.json()) as { items: AdminMedia[]; pagination: AdminMediaPagination };
+      setMedia(batch.items);
+      setPagination(batch.pagination);
+      setPage(nextPage);
     } catch {
       setError("Unable to load media.");
     } finally {
@@ -118,7 +120,7 @@ export function MediaManagerClient({
     }
 
     setPendingDelete(null);
-    await loadPage(offset);
+    await loadPage(page);
   }
 
   async function onUpdateAsset(id: string, values: { altText?: string; caption?: string }) {
@@ -164,16 +166,21 @@ export function MediaManagerClient({
           Upload date (from)
           <input type="date" value={uploadedAfter} onChange={(e) => setUploadedAfter(e.target.value)} />
         </label>
+        <label>
+          Filename
+          <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search filename" />
+        </label>
         <button type="button" onClick={() => void loadPage(0)} disabled={loadingPage}>Apply filters</button>
       </div>
 
       {error ? <p className="page-editor__error">{error}</p> : null}
 
       <p>
-        Showing {offset + 1}-{offset + media.length}
+        Showing page {pagination.page} of {pagination.totalPages} ({pagination.total} total)
       </p>
 
       <div className="media-manager__grid">
+        {media.length === 0 ? <p>No media found for current filters.</p> : null}
         {media.map((item) => (
           <article key={item.id} className="media-manager__item stack stack--sm">
             <ImageAsset asset={item} className="media-manager__preview" imageClassName="media-manager__image" />
@@ -221,15 +228,15 @@ export function MediaManagerClient({
       <div>
         <button
           type="button"
-          onClick={() => void loadPage(Math.max(0, offset - pageSize))}
-          disabled={loadingPage || offset === 0}
+          onClick={() => void loadPage(Math.max(1, page - 1))}
+          disabled={loadingPage || page === 1}
         >
           Previous page
         </button>
         <button
           type="button"
-          onClick={() => void loadPage(offset + pageSize)}
-          disabled={loadingPage || !hasNext}
+          onClick={() => void loadPage(page + 1)}
+          disabled={loadingPage || page >= pagination.totalPages}
         >
           Next page
         </button>

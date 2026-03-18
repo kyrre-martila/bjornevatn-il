@@ -21,6 +21,7 @@ import { MediaUsageService } from "./media-usage.service";
 import { AuthService } from "../auth/auth.service";
 import { requireMinimumRole } from "../../common/auth/admin-access";
 import type { Request } from "express";
+import { PrismaService } from "../../prisma/prisma.service";
 
 const MEDIA_UPLOAD_LIMITS = {
   fileSizeBytes: 10 * 1024 * 1024,
@@ -39,12 +40,20 @@ class UploadMediaDto {
 }
 
 class ListMediaQueryDto {
-  @ApiProperty({ required: false, minimum: 0 })
+  @ApiProperty({ required: false, minimum: 1 })
   @IsOptional()
   @Type(() => Number)
   @IsInt()
-  @Min(0)
-  offset?: number;
+  @Min(1)
+  page?: number;
+
+  @ApiProperty({ required: false, minimum: 1, maximum: 200 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(200)
+  pageSize?: number;
 
   @ApiProperty({ required: false, minimum: 1, maximum: 200 })
   @IsOptional()
@@ -68,6 +77,11 @@ class ListMediaQueryDto {
   @IsOptional()
   @IsString()
   uploadedBefore?: string;
+
+  @ApiProperty({ required: false, description: "Search filename" })
+  @IsOptional()
+  @IsString()
+  search?: string;
 }
 
 class UpdateMediaDto {
@@ -89,37 +103,59 @@ export class MediaController {
     private readonly mediaService: MediaService,
     private readonly mediaUsageService: MediaUsageService,
     private readonly auth: AuthService,
+    private readonly prisma: PrismaService,
   ) {}
 
   @Get()
   async listMedia(@Req() req: Request, @Query() query: ListMediaQueryDto) {
     await requireMinimumRole(req, this.auth, "editor");
-    const media = await this.mediaService.list({
-      offset: query.offset,
-      limit: query.limit,
-    });
 
-    const filtered = media.filter((item) => {
-      if (query.mimeType && item.mimeType !== query.mimeType) {
-        return false;
-      }
-      if (query.uploadedAfter && item.createdAt < new Date(query.uploadedAfter)) {
-        return false;
-      }
-      if (query.uploadedBefore && item.createdAt > new Date(query.uploadedBefore)) {
-        return false;
-      }
-      return true;
-    });
+    const pageSize = Math.min(200, Math.max(1, query.pageSize ?? query.limit ?? 50));
+    const page = Math.max(1, query.page ?? 1);
+    const skip = (page - 1) * pageSize;
 
-    const usedUrls = await this.mediaUsageService.getUsedUrls(
-      filtered.map((item) => item.url),
-    );
+    const where = {
+      ...(query.mimeType ? { mimeType: query.mimeType } : {}),
+      ...(query.uploadedAfter || query.uploadedBefore
+        ? {
+            createdAt: {
+              ...(query.uploadedAfter ? { gte: new Date(query.uploadedAfter) } : {}),
+              ...(query.uploadedBefore ? { lte: new Date(query.uploadedBefore) } : {}),
+            },
+          }
+        : {}),
+      ...(query.search
+        ? {
+            OR: [
+              { fileName: { contains: query.search, mode: "insensitive" as const } },
+              { originalName: { contains: query.search, mode: "insensitive" as const } },
+            ],
+          }
+        : {}),
+    };
 
-    return filtered.map((item) => ({
-      ...item,
-      isUsed: usedUrls.has(item.url),
-    }));
+    const [items, total] = await Promise.all([
+      this.prisma.media.findMany({
+        where,
+        orderBy: { createdAt: "desc" },
+        skip,
+        take: pageSize,
+      }),
+      this.prisma.media.count({ where }),
+    ]);
+
+    const usedUrls = await this.mediaUsageService.getUsedUrls(items.map((item) => item.url));
+
+    return {
+      items: items.map((item) => ({ ...item, isUsed: usedUrls.has(item.url) })),
+      pagination: { page, pageSize, total, totalPages: Math.max(1, Math.ceil(total / pageSize)) },
+      filters: {
+        mimeType: query.mimeType ?? null,
+        uploadedAfter: query.uploadedAfter ?? null,
+        uploadedBefore: query.uploadedBefore ?? null,
+        search: query.search ?? null,
+      },
+    };
   }
 
   @Post("upload")

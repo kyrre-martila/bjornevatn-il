@@ -8,7 +8,7 @@ import { getMe } from "../../../../lib/me";
 export default async function AdminClubhouseBookingsPage({
   searchParams,
 }: {
-  searchParams?: { status?: string; timeframe?: string };
+  searchParams?: { status?: string; timeframe?: string; page?: string; pageSize?: string };
 }) {
   const me = await getMe();
   if (!canManageUsers(me?.user?.role)) {
@@ -22,9 +22,14 @@ export default async function AdminClubhouseBookingsPage({
     ? searchParams?.timeframe
     : "upcoming") as BookingTimeframe;
 
+  const page = Math.max(1, Number(searchParams?.page ?? "1") || 1);
+  const pageSize = Math.min(100, Math.max(10, Number(searchParams?.pageSize ?? "25") || 25));
+
   const bookings = await listAdminClubhouseBookings({
     status: status || undefined,
     timeframe,
+    page,
+    pageSize,
   });
 
   return (
@@ -55,11 +60,13 @@ export default async function AdminClubhouseBookingsPage({
             <option value="all">All</option>
           </select>
         </label>
+        <input type="hidden" name="page" value="1" />
+        <input type="hidden" name="pageSize" value={String(pageSize)} />
         <button type="submit" className="button-primary">Apply</button>
       </form>
 
       <ul className="admin-bookings__list">
-        {bookings.map((booking) => (
+        {bookings.items.map((booking) => (
           <li key={booking.id} className="admin-bookings__item">
             <p><strong>{booking.bookedByName}</strong> ({booking.bookedByEmail})</p>
             <p>{new Date(booking.startAt).toLocaleString()} → {new Date(booking.endAt).toLocaleString()}</p>
@@ -71,6 +78,8 @@ export default async function AdminClubhouseBookingsPage({
           </li>
         ))}
       </ul>
+
+      <p>Page {bookings.pagination.page} of {bookings.pagination.totalPages} ({bookings.pagination.total} total)</p>
     </section>
   );
 }

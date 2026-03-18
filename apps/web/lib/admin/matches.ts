@@ -21,6 +21,9 @@ export type MatchSyncSummary = {
   failed: number;
 };
 
+export type AdminMatchPagination = { page: number; pageSize: number; total: number; totalPages: number };
+export type AdminMatchListResponse = { items: AdminMatchRow[]; pagination: AdminMatchPagination; filters?: Record<string, unknown> };
+
 export type AdminMatchRow = {
   id: string;
   homeTeam: string;
@@ -82,13 +85,17 @@ export async function listAdminMatches(query: {
   source?: string;
   upcoming?: "upcoming" | "past";
   ticketSalesEnabled?: "true" | "false";
-}): Promise<AdminMatchRow[]> {
+  page?: number;
+  pageSize?: number;
+}): Promise<AdminMatchListResponse> {
   const params = new URLSearchParams();
   if (query.source) params.set("source", query.source);
   if (query.upcoming) params.set("upcoming", query.upcoming);
   if (query.ticketSalesEnabled) {
     params.set("ticketSalesEnabled", query.ticketSalesEnabled);
   }
+  if (query.page) params.set("page", String(query.page));
+  if (query.pageSize) params.set("pageSize", String(query.pageSize));
 
   const response = await fetch(
     `${getApiBase()}/matches/admin?${params.toString()}`,
@@ -97,6 +104,6 @@ export async function listAdminMatches(query: {
       headers: buildHeaders(),
     },
   );
-  if (!response.ok) return [];
-  return (await response.json()) as AdminMatchRow[];
+  if (!response.ok) return { items: [], pagination: { page: query.page ?? 1, pageSize: query.pageSize ?? 25, total: 0, totalPages: 1 } };
+  return (await response.json()) as AdminMatchListResponse;
 }

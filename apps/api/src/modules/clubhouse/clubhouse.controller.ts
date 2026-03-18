@@ -151,6 +151,20 @@ class ListBookingsQueryDto {
   @IsOptional()
   @IsIn(["upcoming", "past", "all"])
   timeframe?: "upcoming" | "past" | "all";
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  page?: number;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  pageSize?: number;
 }
 
 class UpdateAdminNotesDto {
@@ -217,15 +231,20 @@ export class ClubhouseController {
   async listBookings(
     @Req() req: Request,
     @Query() query: ListBookingsQueryDto,
-  ): Promise<ClubhouseBookingDto[]> {
+  ): Promise<{ items: ClubhouseBookingDto[]; pagination: { page: number; pageSize: number; total: number; totalPages: number }; filters: { status: string | null; timeframe: string | null } }> {
     await requireMinimumRole(req, this.auth, "admin");
 
     const bookings = await this.clubhouseService.listBookings({
       status: query.status,
       timeframe: query.timeframe && query.timeframe !== "all" ? query.timeframe : undefined,
+      page: query.page,
+      pageSize: query.pageSize,
     });
 
-    return bookings.map(toBookingDto);
+    return {
+      ...bookings,
+      items: bookings.items.map(toBookingDto),
+    };
   }
 
   @Get("admin/bookings/:id")

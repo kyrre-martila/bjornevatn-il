@@ -82,8 +82,13 @@ export class MatchesSyncController {
     @Query("source") source?: string,
     @Query("upcoming") upcoming?: string,
     @Query("ticketSalesEnabled") ticketSalesEnabled?: string,
+    @Query("page") pageRaw?: string,
+    @Query("pageSize") pageSizeRaw?: string,
   ) {
     await requireMinimumRole(req, this.auth, "admin");
+    const page = Number(pageRaw);
+    const pageSize = Number(pageSizeRaw);
+
     return this.service.listMatches({
       source: MATCH_EXTERNAL_SOURCES.includes(source as never)
         ? source
@@ -100,6 +105,8 @@ export class MatchesSyncController {
           : ticketSalesEnabled === "false"
             ? false
             : undefined,
+      page: Number.isFinite(page) && page > 0 ? page : undefined,
+      pageSize: Number.isFinite(pageSize) && pageSize > 0 ? pageSize : undefined,
     });
   }
 }

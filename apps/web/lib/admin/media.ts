@@ -1,5 +1,8 @@
 import { cookies } from "next/headers";
 
+export type AdminMediaPagination = { page: number; pageSize: number; total: number; totalPages: number };
+export type AdminMediaListResponse = { items: AdminMedia[]; pagination: AdminMediaPagination; filters?: Record<string, unknown> };
+
 export type AdminMedia = {
   id: string;
   fileName: string;
@@ -39,18 +42,19 @@ function buildHeaders() {
 }
 
 export async function listAdminMedia(pagination?: {
-  limit?: number;
-  offset?: number;
+  page?: number;
+  pageSize?: number;
   mimeType?: string;
   uploadedAfter?: string;
   uploadedBefore?: string;
-}): Promise<AdminMedia[]> {
+  search?: string;
+}): Promise<AdminMediaListResponse> {
   const query = new URLSearchParams();
-  if (typeof pagination?.limit === "number") {
-    query.set("limit", String(pagination.limit));
+  if (typeof pagination?.page === "number") {
+    query.set("page", String(pagination.page));
   }
-  if (typeof pagination?.offset === "number") {
-    query.set("offset", String(pagination.offset));
+  if (typeof pagination?.pageSize === "number") {
+    query.set("pageSize", String(pagination.pageSize));
   }
   if (pagination?.mimeType) {
     query.set("mimeType", pagination.mimeType);
@@ -61,6 +65,9 @@ export async function listAdminMedia(pagination?: {
   if (pagination?.uploadedBefore) {
     query.set("uploadedBefore", pagination.uploadedBefore);
   }
+  if (pagination?.search) {
+    query.set("search", pagination.search);
+  }
 
   const queryString = query.size > 0 ? `?${query.toString()}` : "";
 
@@ -70,8 +77,8 @@ export async function listAdminMedia(pagination?: {
   });
 
   if (!response.ok) {
-    return [];
+    return { items: [], pagination: { page: pagination?.page ?? 1, pageSize: pagination?.pageSize ?? 50, total: 0, totalPages: 1 } };
   }
 
-  return (await response.json()) as AdminMedia[];
+  return (await response.json()) as AdminMediaListResponse;
 }

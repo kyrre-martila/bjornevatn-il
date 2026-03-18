@@ -1,7 +1,7 @@
 import { BadRequestException, Body, Controller, Get, Param, Patch, Post, Query, Req } from "@nestjs/common";
 import { ApiProperty, ApiTags } from "@nestjs/swagger";
 import { Type } from "class-transformer";
-import { IsDate, IsEmail, IsIn, IsNotEmpty, IsOptional, IsString } from "class-validator";
+import { IsDate, IsEmail, IsIn, IsInt, IsNotEmpty, IsOptional, IsString, Min } from "class-validator";
 import { MembershipApplicationStatus } from "@prisma/client";
 import type { Request } from "express";
 
@@ -90,6 +90,18 @@ class MembershipApplicationsQueryDto {
   @IsOptional()
   @IsString()
   membershipCategoryId?: string;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  page?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  pageSize?: number;
 }
 
 class UpdateMembershipApplicationDto {

@@ -591,6 +591,18 @@ async function fetchAllContentItemsByTypeSlug(
   return items;
 }
 
+
+async function fetchContentItemsByTypeSlugLimited(
+  contentTypeSlug: string,
+  limit: number,
+): Promise<ApiContentItemArchive[]> {
+  const safeLimit = Math.max(1, Math.min(limit, DEFAULT_ARCHIVE_PAGE_SIZE));
+  const items = await fetchContent<ApiContentItemArchive[]>(
+    `/public/content/items/type-slug/${encodeURIComponent(contentTypeSlug)}?offset=0&limit=${safeLimit}`,
+  );
+  return items ?? [];
+}
+
 function mapApiPageBlock(block: ApiPageBlock): ContentBlock | null {
   if (!isContentBlockType(block.type)) {
     console.warn(
@@ -1559,11 +1571,11 @@ export async function getSponsors(): Promise<SponsorItem[]> {
   });
 }
 
-export async function getClubNews(): Promise<ClubNewsItem[]> {
-  const items = await fetchAllContentItemsByTypeSlug(
-    "news",
-    DEFAULT_ARCHIVE_PAGE_SIZE,
-  );
+export async function getClubNews(limit = DEFAULT_ARCHIVE_PAGE_SIZE): Promise<ClubNewsItem[]> {
+  const items =
+    limit < DEFAULT_ARCHIVE_PAGE_SIZE
+      ? await fetchContentItemsByTypeSlugLimited("news", limit)
+      : await fetchAllContentItemsByTypeSlug("news", DEFAULT_ARCHIVE_PAGE_SIZE);
 
   return items.map((item) => {
     const data = asRecord(item.data);
@@ -1652,11 +1664,11 @@ export async function getHomepageSettings(): Promise<HomepageSettings | null> {
   };
 }
 
-export async function getMatches(): Promise<MatchItem[]> {
-  const items = await fetchAllContentItemsByTypeSlug(
-    "match",
-    DEFAULT_ARCHIVE_PAGE_SIZE,
-  );
+export async function getMatches(limit = DEFAULT_ARCHIVE_PAGE_SIZE): Promise<MatchItem[]> {
+  const items =
+    limit < DEFAULT_ARCHIVE_PAGE_SIZE
+      ? await fetchContentItemsByTypeSlugLimited("match", limit)
+      : await fetchAllContentItemsByTypeSlug("match", DEFAULT_ARCHIVE_PAGE_SIZE);
 
   return items.map((item) => {
     const data = asRecord(item.data);
@@ -1691,11 +1703,11 @@ export async function getMatches(): Promise<MatchItem[]> {
   });
 }
 
-export async function getFundingGrants(): Promise<FundingGrantItem[]> {
-  const items = await fetchAllContentItemsByTypeSlug(
-    "funding-grant",
-    DEFAULT_ARCHIVE_PAGE_SIZE,
-  );
+export async function getFundingGrants(limit = DEFAULT_ARCHIVE_PAGE_SIZE): Promise<FundingGrantItem[]> {
+  const items =
+    limit < DEFAULT_ARCHIVE_PAGE_SIZE
+      ? await fetchContentItemsByTypeSlugLimited("funding-grant", limit)
+      : await fetchAllContentItemsByTypeSlug("funding-grant", DEFAULT_ARCHIVE_PAGE_SIZE);
 
   return items.map((item) => {
     const data = asRecord(item.data);

@@ -123,6 +123,20 @@ class UpdateOrderStatusDto {
   status!: TicketStatus;
 }
 
+class AdminListQueryDto {
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  page?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  pageSize?: number;
+}
+
 class ValidateQrDto {
   @IsString()
   qrCodeValue!: string;
@@ -193,9 +207,12 @@ export class TicketsController {
   }
 
   @Get("admin/sales")
-  async listAdminSales(@Req() req: Request) {
+  async listAdminSales(@Req() req: Request, @Query() query: AdminListQueryDto) {
     await requireMinimumRole(req, this.auth, "admin");
-    return this.ticketsService.listAdminTicketSales();
+    return this.ticketsService.listAdminTicketSales({
+      page: query.page,
+      pageSize: query.pageSize,
+    });
   }
 
   @Post("admin/sales")
@@ -218,9 +235,12 @@ export class TicketsController {
   }
 
   @Get("admin/orders")
-  async listAdminOrders(@Req() req: Request) {
+  async listAdminOrders(@Req() req: Request, @Query() query: AdminListQueryDto) {
     await requireMinimumRole(req, this.auth, "admin");
-    return this.ticketsService.listAdminTicketOrders();
+    return this.ticketsService.listAdminTicketOrders({
+      page: query.page,
+      pageSize: query.pageSize,
+    });
   }
 
   @Patch("admin/orders/:orderReference/status")

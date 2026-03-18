@@ -93,20 +93,38 @@ export class ClubhouseService {
   async listBookings(filters: {
     status?: ClubhouseBookingStatus;
     timeframe?: "upcoming" | "past";
+    page?: number;
+    pageSize?: number;
   }) {
+    const pageSize = Math.min(100, Math.max(1, filters.pageSize ?? 25));
+    const page = Math.max(1, filters.page ?? 1);
+    const skip = (page - 1) * pageSize;
     const now = new Date();
 
-    return this.prisma.clubhouseBooking.findMany({
-      where: {
+    const where = {
         status: filters.status,
         ...(filters.timeframe === "upcoming"
           ? { endAt: { gte: now } }
           : filters.timeframe === "past"
             ? { endAt: { lt: now } }
             : {}),
-      },
+      };
+
+    const [items, total] = await Promise.all([
+      this.prisma.clubhouseBooking.findMany({
+      where,
       orderBy: { startAt: "asc" },
-    });
+      skip,
+      take: pageSize,
+    }),
+      this.prisma.clubhouseBooking.count({ where }),
+    ]);
+
+    return {
+      items,
+      pagination: { page, pageSize, total, totalPages: Math.max(1, Math.ceil(total / pageSize)) },
+      filters: { status: filters.status ?? null, timeframe: filters.timeframe ?? null },
+    };
   }
 
   async getBookingById(id: string) {
