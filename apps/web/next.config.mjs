@@ -13,7 +13,8 @@ function resolveDeploymentEnvironment(env) {
 
 function assertValidPublicRuntimeConfig(env) {
   const deploymentEnv = resolveDeploymentEnvironment(env);
-  const isHardened = deploymentEnv === "production" || deploymentEnv === "staging";
+  const isHardened =
+    deploymentEnv === "production" || deploymentEnv === "staging";
 
   const apiUrl = env.NEXT_PUBLIC_API_URL?.trim();
   const siteUrl = env.NEXT_PUBLIC_SITE_URL?.trim();
@@ -51,11 +52,15 @@ function assertValidPublicRuntimeConfig(env) {
   }
 
   if (!["http:", "https:"].includes(parsedApi.protocol)) {
-    throw new Error(`NEXT_PUBLIC_API_URL must use http/https. Received: ${parsedApi.protocol}`);
+    throw new Error(
+      `NEXT_PUBLIC_API_URL must use http/https. Received: ${parsedApi.protocol}`,
+    );
   }
 
   if (!["http:", "https:"].includes(parsedSite.protocol)) {
-    throw new Error(`NEXT_PUBLIC_SITE_URL must use http/https. Received: ${parsedSite.protocol}`);
+    throw new Error(
+      `NEXT_PUBLIC_SITE_URL must use http/https. Received: ${parsedSite.protocol}`,
+    );
   }
 
   if (parsedApi.pathname && parsedApi.pathname !== "/") {
@@ -100,7 +105,9 @@ const contentSecurityPolicy = buildContentSecurityPolicy(process.env);
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  output: "standalone",
   reactStrictMode: true,
+  poweredByHeader: false,
   headers: async () => [
     {
       source: "/(.*)",

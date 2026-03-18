@@ -1,4 +1,5 @@
 import { cookies } from "next/headers";
+import { getServerApiBaseUrl } from "../api-config";
 
 export type AdminContentFieldType =
   | "text"
@@ -55,12 +56,7 @@ export type AdminContentItem = {
 };
 
 function getApiBase() {
-  const api = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
-  const basePath = process.env.NEXT_PUBLIC_API_BASE_PATH ?? "/api/v1";
-  const normalizedBase = basePath.endsWith("/")
-    ? basePath.slice(0, -1)
-    : basePath;
-  return `${api}${normalizedBase}`;
+  return getServerApiBaseUrl();
 }
 
 function buildHeaders() {

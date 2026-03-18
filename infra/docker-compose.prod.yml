@@ -1,66 +1,145 @@
-version: "3.9"
 services:
+  db:
+    image: postgres:16-bookworm
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - ../data/postgres:/var/lib/postgresql/data
+    expose:
+      - "5432"
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB -h 127.0.0.1",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    networks:
+      - internal
+
+  migrate:
+    build:
+      context: ../
+      dockerfile: apps/api/Dockerfile
+      target: migrate
+    image: bjornevatn-il-api-migrate:prod
+    profiles: ["ops"]
+    restart: "no"
+    environment:
+      NODE_ENV: production
+      DEPLOY_ENV: ${DEPLOY_ENV:-production}
+      DATABASE_URL: ${DATABASE_URL}
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - internal
+
   api:
     build:
       context: ../
       dockerfile: apps/api/Dockerfile
-    image: blueprint-api:prod
-    labels:
-      traefik.enable: "true"
-      traefik.http.routers.blueprint-api.rule: "PathPrefix(`/api`)"
-      traefik.http.routers.blueprint-api.priority: "10"
-      traefik.http.routers.blueprint-api.entrypoints: web,websecure
-      traefik.http.routers.blueprint-api.middlewares: blueprint-api-strip
-      traefik.http.services.blueprint-api.loadbalancer.server.port: "3000"
-      traefik.http.middlewares.blueprint-api-strip.stripprefix.prefixes: /api
+      target: runtime
+    image: bjornevatn-il-api:prod
+    restart: unless-stopped
     environment:
       NODE_ENV: production
-      NODE_OPTIONS: --max-old-space-size=256
-      PORT: 3000
+      DEPLOY_ENV: ${DEPLOY_ENV:-production}
+      PORT: 4000
+      APP_URL: ${APP_URL}
       DATABASE_URL: ${DATABASE_URL}
       JWT_SECRET: ${JWT_SECRET}
       COOKIE_SECRET: ${COOKIE_SECRET}
       API_CORS_ORIGINS: ${API_CORS_ORIGINS}
+      MEDIA_STORAGE_PROVIDER: ${MEDIA_STORAGE_PROVIDER:-local}
+      METRICS_ALLOWLIST: ${METRICS_ALLOWLIST:-127.0.0.1/32,::1/128}
+      TRUST_PROXY: ${TRUST_PROXY:-1}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      SMTP_FROM: ${SMTP_FROM:-}
+      PUBLIC_SUBMISSION_CHALLENGE_TOKEN: ${PUBLIC_SUBMISSION_CHALLENGE_TOKEN:-}
+      REGISTRATION_ENABLED: ${REGISTRATION_ENABLED:-false}
+      NEXT_PUBLIC_REGISTRATION_ENABLED: ${NEXT_PUBLIC_REGISTRATION_ENABLED:-false}
+      TICKET_QR_SECRET: ${TICKET_QR_SECRET:-}
+      TICKET_ORDER_LOOKUP_SECRET: ${TICKET_ORDER_LOOKUP_SECRET:-}
+      TICKET_ORDER_LOOKUP_TOKEN_TTL_MS: ${TICKET_ORDER_LOOKUP_TOKEN_TTL_MS:-}
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
+      OTEL_SERVICE_NAME: ${OTEL_SERVICE_NAME:-bjornevatn-il-api}
+      OTEL_SERVICE_NAMESPACE: ${OTEL_SERVICE_NAMESPACE:-production}
+      LIVE_DATABASE_URL: ${LIVE_DATABASE_URL:-}
+      STAGING_DATABASE_URL: ${STAGING_DATABASE_URL:-}
+      LIVE_UPLOADS_PATH: ${LIVE_UPLOADS_PATH:-}
+      STAGING_UPLOADS_PATH: ${STAGING_UPLOADS_PATH:-}
+      STAGING_PUSH_CONFIRMATION_TOKEN: ${STAGING_PUSH_CONFIRMATION_TOKEN:-}
+      STAGING_SYNC_SCRIPT_PATH: ${STAGING_SYNC_SCRIPT_PATH:-}
+    volumes:
+      - ../data/uploads:/app/uploads
+    depends_on:
+      db:
+        condition: service_healthy
+    expose:
+      - "4000"
     ports:
-      - "3000:3000"
-    restart: unless-stopped
+      - "127.0.0.1:${API_PORT:-4000}:4000"
     healthcheck:
       test:
         [
           "CMD",
           "node",
           "-e",
-          "fetch('http://127.0.0.1:3000/health/ready').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+          "fetch('http://127.0.0.1:4000/health/ready').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
         ]
-      interval: 10s
-      timeout: 2s
-      retries: 6
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
     cap_drop:
       - ALL
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - internal
 
   web:
     build:
       context: ../
       dockerfile: apps/web/Dockerfile
-    image: blueprint-web:prod
-    labels:
-      traefik.enable: "true"
-      traefik.http.routers.blueprint-web.rule: "PathPrefix(`/`)"
-      traefik.http.routers.blueprint-web.entrypoints: web,websecure
-      traefik.http.services.blueprint-web.loadbalancer.server.port: "3000"
+      target: runtime
+      args:
+        NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL}
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
+        NEXT_PUBLIC_API_BASE_PATH: ${NEXT_PUBLIC_API_BASE_PATH:-/api/v1}
+        INTERNAL_API_URL: http://127.0.0.1:4010
+    image: bjornevatn-il-web:prod
+    restart: unless-stopped
     environment:
       NODE_ENV: production
-      NODE_OPTIONS: --max-old-space-size=256
-      PORT: 3001
+      DEPLOY_ENV: ${DEPLOY_ENV:-production}
+      PORT: 3000
+      APP_URL: ${APP_URL}
       NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL}
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
       NEXT_PUBLIC_API_BASE_PATH: ${NEXT_PUBLIC_API_BASE_PATH:-/api/v1}
+      NEXT_PUBLIC_CSP_MEDIA_ORIGINS: ${NEXT_PUBLIC_CSP_MEDIA_ORIGINS:-}
+      NEXT_PUBLIC_CSRF_COOKIE_NAME: ${NEXT_PUBLIC_CSRF_COOKIE_NAME:-XSRF-TOKEN}
+      NEXT_PUBLIC_REGISTRATION_ENABLED: ${NEXT_PUBLIC_REGISTRATION_ENABLED:-false}
+      INTERNAL_API_URL: ${INTERNAL_API_URL:-http://api:4000}
     depends_on:
       api:
         condition: service_healthy
+    expose:
+      - "3000"
     ports:
-      - "3001:3000"
-    restart: unless-stopped
+      - "127.0.0.1:${WEB_PORT:-3000}:3000"
     healthcheck:
       test:
         [
@@ -69,27 +148,17 @@ services:
           "-e",
           "fetch('http://127.0.0.1:3000/api/health?ready=1').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
         ]
-      interval: 10s
-      timeout: 2s
-      retries: 6
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
     cap_drop:
       - ALL
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - internal
 
-  proxy:
-    image: traefik:v3.1
-    command:
-      - "--api.dashboard=false"
-      - "--entrypoints.web.address=:80"
-      - "--entrypoints.websecure.address=:443"
-      - "--providers.docker=true"
-      - "--providers.docker.exposedbydefault=false"
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-    depends_on:
-      web:
-        condition: service_started
-      api:
-        condition: service_healthy
+networks:
+  internal:
+    driver: bridge

@@ -1,14 +1,10 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { getServerApiBaseUrl } from "../../../../lib/api-config";
 
 function getApiBase() {
-  const api = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
-  const basePath = process.env.NEXT_PUBLIC_API_BASE_PATH ?? "/api/v1";
-  const normalizedBase = basePath.endsWith("/")
-    ? basePath.slice(0, -1)
-    : basePath;
-  return `${api}${normalizedBase}`;
+  return getServerApiBaseUrl();
 }
 
 export async function submitTicketOrder(matchId: string, formData: FormData) {
@@ -36,8 +32,11 @@ export async function submitTicketOrder(matchId: string, formData: FormData) {
     redirect(`/tickets/${matchId}?error=unavailable`);
   }
 
-  const data = (await response.json()) as { orderReference: string; orderLookupToken: string };
+  const data = (await response.json()) as {
+    orderReference: string;
+    orderLookupToken: string;
+  };
   redirect(
-    `/tickets/${matchId}?orderReference=${encodeURIComponent(data.orderReference)}&orderToken=${encodeURIComponent(data.orderLookupToken)}` ,
+    `/tickets/${matchId}/confirmation?reference=${encodeURIComponent(data.orderReference)}&token=${encodeURIComponent(data.orderLookupToken)}`,
   );
 }

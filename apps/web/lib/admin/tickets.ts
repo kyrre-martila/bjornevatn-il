@@ -1,4 +1,5 @@
 import { cookies } from "next/headers";
+import { getServerApiBaseUrl } from "../api-config";
 
 export type AdminPagination = {
   page: number;
@@ -39,12 +40,7 @@ export type AdminTicketOrder = {
 };
 
 function getApiBase() {
-  const api = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
-  const basePath = process.env.NEXT_PUBLIC_API_BASE_PATH ?? "/api/v1";
-  const normalizedBase = basePath.endsWith("/")
-    ? basePath.slice(0, -1)
-    : basePath;
-  return `${api}${normalizedBase}`;
+  return getServerApiBaseUrl();
 }
 
 function buildHeaders() {
@@ -64,15 +60,23 @@ export async function listAdminTicketSales(query?: {
   if (query?.page) params.set("page", String(query.page));
   if (query?.pageSize) params.set("pageSize", String(query.pageSize));
 
-  const response = await fetch(`${getApiBase()}/tickets/admin/sales?${params.toString()}`, {
-    cache: "no-store",
-    headers: buildHeaders(),
-  });
+  const response = await fetch(
+    `${getApiBase()}/tickets/admin/sales?${params.toString()}`,
+    {
+      cache: "no-store",
+      headers: buildHeaders(),
+    },
+  );
 
   if (!response.ok) {
     return {
       items: [],
-      pagination: { page: query?.page ?? 1, pageSize: query?.pageSize ?? 25, total: 0, totalPages: 1 },
+      pagination: {
+        page: query?.page ?? 1,
+        pageSize: query?.pageSize ?? 25,
+        total: 0,
+        totalPages: 1,
+      },
     };
   }
   return (await response.json()) as PaginatedAdminResponse<AdminTicketSale>;
@@ -116,15 +120,23 @@ export async function listAdminTicketOrders(query?: {
   if (query?.page) params.set("page", String(query.page));
   if (query?.pageSize) params.set("pageSize", String(query.pageSize));
 
-  const response = await fetch(`${getApiBase()}/tickets/admin/orders?${params.toString()}`, {
-    cache: "no-store",
-    headers: buildHeaders(),
-  });
+  const response = await fetch(
+    `${getApiBase()}/tickets/admin/orders?${params.toString()}`,
+    {
+      cache: "no-store",
+      headers: buildHeaders(),
+    },
+  );
 
   if (!response.ok) {
     return {
       items: [],
-      pagination: { page: query?.page ?? 1, pageSize: query?.pageSize ?? 25, total: 0, totalPages: 1 },
+      pagination: {
+        page: query?.page ?? 1,
+        pageSize: query?.pageSize ?? 25,
+        total: 0,
+        totalPages: 1,
+      },
     };
   }
   return (await response.json()) as PaginatedAdminResponse<AdminTicketOrder>;

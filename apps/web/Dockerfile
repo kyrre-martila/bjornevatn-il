@@ -1,28 +1,40 @@
 # syntax=docker/dockerfile:1.7
-FROM node:20-alpine AS base
+FROM node:20-bookworm-slim AS base
 WORKDIR /app
 ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
-RUN corepack enable
+RUN corepack enable \
+  && apt-get update \
+  && apt-get install -y --no-install-recommends ca-certificates \
+  && rm -rf /var/lib/apt/lists/*
 
-FROM base AS builder
-RUN apk add --no-cache libc6-compat
+FROM base AS workspace
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json turbo.json ./
 COPY apps ./apps
 COPY packages ./packages
 ENV NODE_ENV=development
-RUN pnpm install --filter web... --frozen-lockfile
-RUN NEXT_TELEMETRY_DISABLED=1 pnpm --filter web... build
-RUN pnpm prune --prod
+RUN pnpm install --frozen-lockfile
 
-FROM gcr.io/distroless/nodejs20-debian12:latest
-WORKDIR /app
+FROM workspace AS build
+ARG NEXT_PUBLIC_SITE_URL=https://www.example.com
+ARG NEXT_PUBLIC_API_URL=https://api.example.com
+ARG NEXT_PUBLIC_API_BASE_PATH=/api/v1
+ARG INTERNAL_API_URL=http://127.0.0.1:4010
+ENV NEXT_TELEMETRY_DISABLED=1 \
+    NEXT_PUBLIC_SITE_URL=$NEXT_PUBLIC_SITE_URL \
+    NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL \
+    NEXT_PUBLIC_API_BASE_PATH=$NEXT_PUBLIC_API_BASE_PATH \
+    INTERNAL_API_URL=$INTERNAL_API_URL
+RUN pnpm --filter web build
+
+FROM base AS runtime
 ENV NODE_ENV=production \
+    PORT=3000 \
+    NEXT_TELEMETRY_DISABLED=1 \
     NODE_OPTIONS=--max-old-space-size=256
-USER 10001:10001
-COPY --from=builder /app/apps/web/.next/standalone ./
-COPY --from=builder /app/apps/web/.next/static ./.next/static
-COPY --from=builder /app/apps/web/public ./public
+COPY --from=build --chown=node:node /app/apps/web/.next/standalone ./
+COPY --from=build --chown=node:node /app/apps/web/.next/static ./apps/web/.next/static
+COPY --from=build --chown=node:node /app/apps/web/public ./apps/web/public
+USER node
 EXPOSE 3000
-HEALTHCHECK --interval=10s --timeout=5s --start-period=10s --retries=3 CMD ["node", "-e", "fetch('http://127.0.0.1:3000').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
-CMD ["server.js"]
+CMD ["node", "server.js"]

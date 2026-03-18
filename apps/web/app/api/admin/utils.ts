@@ -1,14 +1,11 @@
 import { cookies } from "next/headers";
+import { getServerApiBaseUrl } from "../../../lib/api-config";
 
-const CSRF_COOKIE_NAME = process.env.NEXT_PUBLIC_CSRF_COOKIE_NAME ?? "XSRF-TOKEN";
+const CSRF_COOKIE_NAME =
+  process.env.NEXT_PUBLIC_CSRF_COOKIE_NAME ?? "XSRF-TOKEN";
 
 export function getApiBase() {
-  const api = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
-  const basePath = process.env.NEXT_PUBLIC_API_BASE_PATH ?? "/api/v1";
-  const normalizedBase = basePath.endsWith("/")
-    ? basePath.slice(0, -1)
-    : basePath;
-  return `${api}${normalizedBase}`;
+  return getServerApiBaseUrl();
 }
 
 export function buildForwardHeaders(includeJsonContentType = false) {
