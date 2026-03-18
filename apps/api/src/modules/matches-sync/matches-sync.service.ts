@@ -17,7 +17,7 @@ import { ICalMatchProvider } from "./providers/ical-match.provider";
 import {
   type ObservabilityActorContext,
   type ObservabilityRouteContext,
-  ObservabilityService,
+  type OperationalEventInput,
 } from "../observability/observability.service";
 
 function toArrayOfStrings(value: Prisma.JsonValue | null): string[] {
@@ -33,15 +33,27 @@ function makeMatchSlug(input: ProviderMatch): string {
     .slice(0, 80);
 }
 
+type MatchesSyncObservability = {
+  createMatchSyncRun(input: {
+    provider: MatchSyncSourceType;
+    actor?: ObservabilityActorContext;
+  }): Promise<{ id: string }>;
+  completeMatchSyncRun(input: {
+    runId: string;
+    status: "succeeded" | "failed";
+    counts: MatchSyncSummary;
+    durationMs: number;
+    failureReason?: string | null;
+  }): Promise<unknown>;
+  logEvent(input: OperationalEventInput): Promise<void>;
+};
+
 @Injectable()
 export class MatchesSyncService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly icalProvider: ICalMatchProvider,
-    private readonly observability: Pick<
-      ObservabilityService,
-      "createMatchSyncRun" | "completeMatchSyncRun" | "logEvent"
-    > = {
+    private readonly observability: MatchesSyncObservability = {
       createMatchSyncRun: async () => ({ id: "local-run" }),
       completeMatchSyncRun: async () => undefined,
       logEvent: async () => undefined,
