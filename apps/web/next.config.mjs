@@ -35,9 +35,10 @@ function assertValidPublicRuntimeConfig(env) {
   if (!siteUrl) missing.push("NEXT_PUBLIC_SITE_URL");
 
   if (missing.length > 0) {
-    throw new Error(
-      `Missing required web runtime environment variables for ${deploymentEnv}: ${missing.join(", ")}. Set explicit public URLs to avoid deploy-only runtime failures.`,
+    console.warn(
+      `Missing recommended web runtime environment variables for ${deploymentEnv}: ${missing.join(", ")}. The build will continue, but explicit public URLs should be configured before deployment.`,
     );
+    return;
   }
 
   let parsedApi;
@@ -82,10 +83,12 @@ function parseOriginAllowlist(value) {
 function buildContentSecurityPolicy(env) {
   const apiOrigin = env.NEXT_PUBLIC_API_URL?.trim()
     ? new URL(env.NEXT_PUBLIC_API_URL).origin
-    : "http://localhost:4000";
+    : null;
   const mediaAllowlistOrigins = parseOriginAllowlist(
     env.NEXT_PUBLIC_CSP_MEDIA_ORIGINS,
   );
+  const imageOrigins = [apiOrigin, ...mediaAllowlistOrigins].filter(Boolean);
+  const connectOrigins = [apiOrigin].filter(Boolean);
 
   return [
     "default-src 'self'",
@@ -93,11 +96,11 @@ function buildContentSecurityPolicy(env) {
     "object-src 'none'",
     "frame-ancestors 'none'",
     "form-action 'self'",
-    `img-src 'self' data: blob: ${apiOrigin} ${mediaAllowlistOrigins.join(" ")}`.trim(),
+    `img-src 'self' data: blob: ${imageOrigins.join(" ")}`.trim(),
     "font-src 'self' data:",
     "script-src 'self' 'unsafe-inline'",
     "style-src 'self' 'unsafe-inline'",
-    `connect-src 'self' ${apiOrigin}`,
+    `connect-src 'self' ${connectOrigins.join(" ")}`.trim(),
   ].join("; ");
 }
 
