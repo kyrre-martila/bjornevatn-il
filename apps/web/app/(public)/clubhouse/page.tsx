@@ -5,6 +5,7 @@ import ClubhouseBookingForm from "../../../components/clubhouse/ClubhouseBooking
 import { getClubProfile } from "../../../lib/content";
 import { buildJsonLd, buildMetadata, getSeoSettings } from "../../../lib/seo";
 
+export const dynamic = "force-dynamic";
 
 export async function generateMetadata(): Promise<Metadata> {
   const club = await getClubProfile();

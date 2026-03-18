@@ -5,6 +5,8 @@ import { listPublicTicketSales } from "../../../lib/tickets";
 import { measureServerTiming } from "../../../lib/observability";
 import "./tickets.css";
 
+export const dynamic = "force-dynamic";
+
 function asText(value: unknown): string {
   return typeof value === "string" ? value : "";
 }

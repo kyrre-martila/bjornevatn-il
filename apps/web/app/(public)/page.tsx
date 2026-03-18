@@ -16,6 +16,8 @@ import { buildMetadata } from "../../lib/seo";
 import { measureServerTiming } from "../../lib/observability";
 import { getWeatherSnapshot } from "../../lib/services/weather";
 
+export const dynamic = "force-dynamic";
+
 function formatNorwegianDate(value: string): string {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) {

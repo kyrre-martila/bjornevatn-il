@@ -9,6 +9,8 @@ import { buildMetadata } from "../../../../lib/seo";
 import { renderBlock } from "./block-renderer";
 import { resolvePageTemplate } from "../../templates/template-registry";
 
+export const dynamic = "force-dynamic";
+
 function stripHtml(value: string): string {
   return value
     .replace(/<[^>]*>/g, " ")

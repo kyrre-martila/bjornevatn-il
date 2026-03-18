@@ -11,6 +11,8 @@ import {
   getTeams,
 } from "../lib/content";
 
+export const dynamic = "force-dynamic";
+
 function normalizeUrl(baseUrl: string, path: string) {
   return new URL(path, `${baseUrl}/`).toString();
 }

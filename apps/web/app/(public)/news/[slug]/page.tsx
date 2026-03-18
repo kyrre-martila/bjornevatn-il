@@ -5,6 +5,8 @@ import { getClubNewsBySlug } from "../../../../lib/content";
 import { buildJsonLd, buildMetadata } from "../../../../lib/seo";
 import { measureServerTiming } from "../../../../lib/observability";
 
+export const dynamic = "force-dynamic";
+
 export async function generateMetadata({
   params,
 }: {

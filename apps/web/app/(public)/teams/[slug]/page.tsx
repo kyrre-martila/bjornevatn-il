@@ -5,6 +5,8 @@ import { getTeamBySlug } from "../../../../lib/content";
 import { buildMetadata } from "../../../../lib/seo";
 import { measureServerTiming } from "../../../../lib/observability";
 
+export const dynamic = "force-dynamic";
+
 const socialIconByPlatform: Record<string, string> = {
   facebook: "📘",
   instagram: "📸",

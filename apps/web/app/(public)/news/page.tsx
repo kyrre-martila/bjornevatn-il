@@ -5,6 +5,8 @@ import { getClubNews } from "../../../lib/content";
 import { buildMetadata } from "../../../lib/seo";
 import { measureServerTiming } from "../../../lib/observability";
 
+export const dynamic = "force-dynamic";
+
 export async function generateMetadata(): Promise<Metadata> {
   return buildMetadata({
     pageTitle: "News | Bjørnevatn IL",

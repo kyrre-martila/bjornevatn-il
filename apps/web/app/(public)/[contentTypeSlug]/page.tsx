@@ -16,6 +16,8 @@ import {
   resolvePageTemplate,
 } from "../templates/template-registry";
 
+export const dynamic = "force-dynamic";
+
 export async function generateMetadata({
   params,
 }: {
