@@ -30,7 +30,7 @@ export default function BookingDetailClient({ booking }: { booking: AdminClubhou
       return;
     }
 
-    setStatus("Notes updated.");
+    setStatus("Admin notes saved.");
     setSaving(false);
     router.refresh();
   }
@@ -49,27 +49,48 @@ export default function BookingDetailClient({ booking }: { booking: AdminClubhou
       return;
     }
 
-    setStatus(`Booking ${next}d.`);
+    setStatus(
+      next === "approve"
+        ? "Booking approved."
+        : next === "reject"
+          ? "Booking rejected."
+          : "Booking cancelled.",
+    );
     setSaving(false);
     router.refresh();
   }
 
   return (
-    <div className="admin-booking-detail__actions">
-      <label className="admin-booking-detail__notes">
-        Admin notes
-        <textarea rows={4} value={notes} onChange={(event) => setNotes(event.target.value)} />
+    <div className="admin-form-panel">
+      <label className="admin-form-panel__field">
+        <span>Admin notes</span>
+        <textarea
+          rows={5}
+          value={notes}
+          onChange={(event) => setNotes(event.target.value)}
+        />
       </label>
-      <button type="button" className="button-primary" onClick={saveNotes} disabled={saving}>Save notes</button>
 
-      <div className="admin-booking-detail__status-actions">
-        <button type="button" onClick={() => changeStatus("approve")} disabled={saving}>Approve</button>
-        <button type="button" onClick={() => changeStatus("reject")} disabled={saving}>Reject</button>
-        <button type="button" onClick={() => changeStatus("cancel")} disabled={saving}>Cancel</button>
+      {error ? <p className="admin-form-feedback admin-form-feedback--error">{error}</p> : null}
+      {status ? <p className="admin-form-feedback admin-form-feedback--success">{status}</p> : null}
+
+      <div className="admin-form-actions">
+        <button type="button" className="button-primary" onClick={saveNotes} disabled={saving}>
+          {saving ? "Saving..." : "Save notes"}
+        </button>
       </div>
 
-      {error ? <p className="admin-booking-detail__error">{error}</p> : null}
-      {status ? <p className="admin-booking-detail__status">{status}</p> : null}
+      <div className="admin-form-actions admin-form-actions--destructive">
+        <button type="button" onClick={() => changeStatus("approve")} disabled={saving}>
+          Approve booking
+        </button>
+        <button type="button" onClick={() => changeStatus("reject")} disabled={saving}>
+          Reject booking
+        </button>
+        <button type="button" onClick={() => changeStatus("cancel")} disabled={saving}>
+          Cancel booking
+        </button>
+      </div>
     </div>
   );
 }

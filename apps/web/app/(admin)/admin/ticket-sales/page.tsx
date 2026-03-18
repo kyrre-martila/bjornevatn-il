@@ -1,8 +1,14 @@
 import { redirect } from "next/navigation";
+
 import { getMatches } from "../../../../lib/content";
 import { getMe } from "../../../../lib/me";
 import { canManageUsers } from "../../../../lib/roles";
 import { listAdminTicketSales } from "../../../../lib/admin/tickets";
+import { AdminEmptyState } from "../components/AdminEmptyState";
+import { AdminPageHeader } from "../components/AdminPageHeader";
+import { AdminPagination } from "../components/AdminPagination";
+import { AdminSectionCard } from "../components/AdminSectionCard";
+import { AdminStatusBadge } from "../components/AdminStatusBadge";
 import {
   createTicketSaleAction,
   updateTicketSaleStatusAction,
@@ -46,7 +52,10 @@ export default async function AdminTicketSalesPage({
   }
 
   const page = Math.max(1, Number(searchParams?.page ?? "1") || 1);
-  const pageSize = Math.min(100, Math.max(10, Number(searchParams?.pageSize ?? "25") || 25));
+  const pageSize = Math.min(
+    100,
+    Math.max(10, Number(searchParams?.pageSize ?? "25") || 25),
+  );
 
   const [matches, sales] = await Promise.all([
     getMatches(),
@@ -54,117 +63,129 @@ export default async function AdminTicketSalesPage({
   ]);
 
   return (
-    <section className="admin-bookings" aria-labelledby="ticket-sales-heading">
-      <div className="admin-bookings__header">
-        <h1 id="ticket-sales-heading" className="hero__title">
-          Ticket sales
-        </h1>
-      </div>
+    <section className="admin-list-page">
+      <AdminPageHeader
+        title="Ticket sales"
+        description="Create sales windows for matches and keep sale status changes aligned with the shared admin action pattern."
+      />
 
-      <form
-        action={createTicketSaleAction}
-        className="admin-bookings__filters"
-        style={{ display: "grid", gap: "8px" }}
-      >
-        <label>
-          Match
-          <select name="matchId" required>
-            <option value="">Select match</option>
-            {matches.map((match) => (
-              <option key={match.id} value={match.id}>
-                {match.homeTeam} vs {match.awayTeam}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label>
-          Title
-          <input name="title" required type="text" />
-        </label>
-        <label>
-          Description
-          <textarea name="description" rows={3} />
-        </label>
-        <label>
-          Sale starts
-          <input name="saleStartAt" required type="datetime-local" />
-        </label>
-        <label>
-          Sale ends
-          <input name="saleEndAt" required type="datetime-local" />
-        </label>
-        <label>
-          Max tickets
-          <input
-            name="maxTickets"
-            required
-            type="number"
-            min={1}
-            defaultValue={400}
-          />
-        </label>
-        <label>
-          Status
-          <select name="status" defaultValue="draft">
-            <option value="draft">Draft</option>
-            <option value="active">Active</option>
-            <option value="sold_out">Sold-out</option>
-            <option value="closed">Closed</option>
-          </select>
-        </label>
-        <label>
-          Ticket types (JSON)
-          <textarea
-            name="ticketTypes"
-            rows={10}
-            defaultValue={DEFAULT_TICKET_TYPES}
-          />
-        </label>
-        <button type="submit" className="button-primary">
-          Create ticket sale
-        </button>
-      </form>
-
-
-      <p>
-        Showing page {sales.pagination.page} of {sales.pagination.totalPages} ({sales.pagination.total} total)
-      </p>
-
-      <ul className="admin-bookings__list">
-        {sales.items.map((sale) => (
-          <li key={sale.id} className="admin-bookings__item">
-            <p>
-              <strong>
-                {asText(sale.match.data.homeTeam)} vs{" "}
-                {asText(sale.match.data.awayTeam)}
-              </strong>
-            </p>
-            <p>
-              {new Date(sale.saleStartAt).toLocaleString()} →{" "}
-              {new Date(sale.saleEndAt).toLocaleString()}
-            </p>
-            <p>Total sold: {sale.totalTicketsSold}</p>
-            <p>Status: {sale.status}</p>
-            <form action={updateTicketSaleStatusAction}>
-              <input type="hidden" name="id" value={sale.id} />
-              <select name="status" defaultValue={sale.status}>
-                <option value="draft">draft</option>
-                <option value="active">active</option>
-                <option value="sold_out">sold-out</option>
-                <option value="closed">closed</option>
+      <AdminSectionCard title="Create ticket sale" description="Use the existing match list and shared form actions to add a new sale.">
+        <form action={createTicketSaleAction} className="admin-form-panel">
+          <div className="admin-form-panel__grid">
+            <label className="admin-form-panel__field">
+              <span>Match</span>
+              <select name="matchId" required>
+                <option value="">Select match</option>
+                {matches.map((match) => (
+                  <option key={match.id} value={match.id}>
+                    {match.homeTeam} vs {match.awayTeam}
+                  </option>
+                ))}
               </select>
-              <button type="submit" className="button-primary">
-                Update
-              </button>
-            </form>
-          </li>
-        ))}
-      </ul>
+            </label>
+            <label className="admin-form-panel__field">
+              <span>Title</span>
+              <input name="title" required type="text" />
+            </label>
+            <label className="admin-form-panel__field admin-form-panel__field--full">
+              <span>Description</span>
+              <textarea name="description" rows={3} />
+            </label>
+            <label className="admin-form-panel__field">
+              <span>Sale starts</span>
+              <input name="saleStartAt" required type="datetime-local" />
+            </label>
+            <label className="admin-form-panel__field">
+              <span>Sale ends</span>
+              <input name="saleEndAt" required type="datetime-local" />
+            </label>
+            <label className="admin-form-panel__field">
+              <span>Max tickets</span>
+              <input name="maxTickets" required type="number" min={1} defaultValue={400} />
+            </label>
+            <label className="admin-form-panel__field">
+              <span>Status</span>
+              <select name="status" defaultValue="draft">
+                <option value="draft">Draft</option>
+                <option value="active">On sale</option>
+                <option value="sold_out">Sold out</option>
+                <option value="closed">Closed</option>
+              </select>
+            </label>
+            <label className="admin-form-panel__field admin-form-panel__field--full">
+              <span>Ticket types (JSON)</span>
+              <textarea name="ticketTypes" rows={10} defaultValue={DEFAULT_TICKET_TYPES} />
+            </label>
+          </div>
+          <div className="admin-form-actions">
+            <button type="submit" className="button-primary">
+              Create ticket sale
+            </button>
+          </div>
+        </form>
+      </AdminSectionCard>
 
-      <nav className="admin-bookings__pagination" aria-label="Ticket sales pages">
-        <a href={`/admin/ticket-sales?page=${Math.max(1, page - 1)}&pageSize=${pageSize}`} aria-disabled={page <= 1}>Previous</a>
-        <a href={`/admin/ticket-sales?page=${Math.min(sales.pagination.totalPages, page + 1)}&pageSize=${pageSize}`} aria-disabled={page >= sales.pagination.totalPages}>Next</a>
-      </nav>
+      <AdminSectionCard title="Current sales" description="Review active and historical sales using the same badge and card layout pattern as other operational modules.">
+        {sales.items.length === 0 ? (
+          <AdminEmptyState
+            title="No ticket sales yet"
+            description="Create the first sale above to make tickets available for an upcoming match."
+          />
+        ) : (
+          <ul className="admin-card-list" aria-label="Ticket sales">
+            {sales.items.map((sale) => (
+              <li key={sale.id} className="admin-card-list__item">
+                <div className="admin-card-list__row">
+                  <div>
+                    <h2 className="admin-card-list__title">
+                      {asText(sale.match.data.homeTeam)} vs {asText(sale.match.data.awayTeam)}
+                    </h2>
+                    <p className="admin-card-list__meta">{sale.title}</p>
+                  </div>
+                  <AdminStatusBadge context="ticketSale" value={sale.status} />
+                </div>
+                <dl className="admin-key-value-list">
+                  <div>
+                    <dt>Sale window</dt>
+                    <dd>
+                      {new Date(sale.saleStartAt).toLocaleString()} →{" "}
+                      {new Date(sale.saleEndAt).toLocaleString()}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>Total sold</dt>
+                    <dd>{sale.totalTicketsSold}</dd>
+                  </div>
+                </dl>
+                <form action={updateTicketSaleStatusAction} className="admin-inline-form">
+                  <input type="hidden" name="id" value={sale.id} />
+                  <label className="admin-inline-form__field">
+                    <span className="sr-only">Update sale status for {sale.title}</span>
+                    <select name="status" defaultValue={sale.status}>
+                      <option value="draft">Draft</option>
+                      <option value="active">On sale</option>
+                      <option value="sold_out">Sold out</option>
+                      <option value="closed">Closed</option>
+                    </select>
+                  </label>
+                  <button type="submit" className="button-primary">
+                    Save status
+                  </button>
+                </form>
+              </li>
+            ))}
+          </ul>
+        )}
+      </AdminSectionCard>
+
+      <AdminPagination
+        page={sales.pagination.page}
+        totalPages={sales.pagination.totalPages}
+        total={sales.pagination.total}
+        basePath="/admin/ticket-sales"
+        query={{ pageSize: String(pageSize) }}
+        ariaLabel="Ticket sale pages"
+      />
     </section>
   );
 }

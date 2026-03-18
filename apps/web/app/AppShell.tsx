@@ -19,22 +19,26 @@ function getInitialsFromUser(user: UserProfile): string {
     if (initials) return initials.toUpperCase();
   }
 
-  // fallback to email
   return user.email.charAt(0).toUpperCase();
 }
 
-type NavItem = {
+export type AppShellNavItem = {
   href: string;
   label: string;
 };
 
+export type AppShellNavSection = {
+  label: string;
+  items: AppShellNavItem[];
+};
+
 type AppShellProps = {
   children: React.ReactNode;
-  navItems: NavItem[];
+  navSections: AppShellNavSection[];
   user?: UserProfile | null;
 };
 
-export function AppShell({ children, navItems, user }: AppShellProps) {
+export function AppShell({ children, navSections, user }: AppShellProps) {
   const router = useRouter();
   const [isNavOpen, setIsNavOpen] = React.useState(false);
   const toggleNav = () => setIsNavOpen((open) => !open);
@@ -55,7 +59,7 @@ export function AppShell({ children, navItems, user }: AppShellProps) {
         method: "POST",
         credentials: "include",
       });
-    } catch (e) {
+    } catch {
       // best-effort; ignore errors
     } finally {
       closeAccountMenu();
@@ -148,7 +152,7 @@ export function AppShell({ children, navItems, user }: AppShellProps) {
             className={`app-header__nav${isNavOpen ? " app-header__nav--open" : ""}`}
           >
             <PrimaryNav
-              items={navItems}
+              sections={navSections}
               variant="header"
               onItemClick={handleNavItemClick}
             />
@@ -157,8 +161,8 @@ export function AppShell({ children, navItems, user }: AppShellProps) {
 
         <div className="app-layout">
           <nav className="app-sidebar" aria-label="Primary navigation">
-            <div className="app-sidebar__title">Navigation</div>
-            <PrimaryNav items={navItems} variant="sidebar" />
+            <div className="app-sidebar__title">Admin</div>
+            <PrimaryNav sections={navSections} variant="sidebar" />
           </nav>
 
           <main id="main-content" role="main" className="app-main">
