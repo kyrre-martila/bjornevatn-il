@@ -3,6 +3,7 @@ import { buildMetadata } from "../../../lib/seo";
 import MembershipApplicationForm from "../../../components/membership/MembershipApplicationForm";
 import { getMembershipSettings, listMembershipCategories } from "../../../lib/membership";
 
+export const dynamic = "force-dynamic";
 
 export async function generateMetadata(): Promise<Metadata> {
   const settings = await getMembershipSettings();

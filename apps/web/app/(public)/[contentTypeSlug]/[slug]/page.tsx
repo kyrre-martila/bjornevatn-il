@@ -11,6 +11,8 @@ import {
 import { buildJsonLd, buildMetadata } from "../../../../lib/seo";
 import { resolveContentTypeTemplate } from "../../templates/template-registry";
 
+export const dynamic = "force-dynamic";
+
 function asRecord(value: unknown): Record<string, unknown> {
   return typeof value === "object" && value !== null ? (value as Record<string, unknown>) : {};
 }

@@ -7,6 +7,8 @@ import type { ReactNode } from "react";
 import { getSeoSettings } from "../lib/seo";
 import { StagingBanner } from "./StagingBanner";
 
+export const dynamic = "force-dynamic";
+
 export async function generateMetadata(): Promise<Metadata> {
   const seo = await getSeoSettings();
 

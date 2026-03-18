@@ -543,7 +543,7 @@ async function fetchContent<T>(path: string): Promise<T | null> {
   try {
     const response = await fetch(resolveApiUrl(path), {
       method: "GET",
-      next: { revalidate: 60 },
+      cache: "no-store",
     });
 
     if (response.status === 404) {

@@ -1,5 +1,7 @@
 import { getPersonRoles } from "../../../../lib/content";
 
+export const dynamic = "force-dynamic";
+
 const categories = ["styret", "trenere", "andre-roller", "utvalg"] as const;
 
 export default async function AboutBoardPage() {

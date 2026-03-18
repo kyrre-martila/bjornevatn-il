@@ -10,6 +10,8 @@ import { submitTicketOrder } from "./actions";
 import TicketPurchaseForm from "./TicketPurchaseForm";
 import "../tickets.css";
 
+export const dynamic = "force-dynamic";
+
 function asText(value: unknown): string {
   return typeof value === "string" ? value : "";
 }
