@@ -1,4 +1,5 @@
 import { cookies } from "next/headers";
+import { getServerApiBaseUrl } from "../api-config";
 
 export type MatchSyncSettings = {
   enabled: boolean;
@@ -21,8 +22,17 @@ export type MatchSyncSummary = {
   failed: number;
 };
 
-export type AdminMatchPagination = { page: number; pageSize: number; total: number; totalPages: number };
-export type AdminMatchListResponse = { items: AdminMatchRow[]; pagination: AdminMatchPagination; filters?: Record<string, unknown> };
+export type AdminMatchPagination = {
+  page: number;
+  pageSize: number;
+  total: number;
+  totalPages: number;
+};
+export type AdminMatchListResponse = {
+  items: AdminMatchRow[];
+  pagination: AdminMatchPagination;
+  filters?: Record<string, unknown>;
+};
 
 export type AdminMatchRow = {
   id: string;
@@ -37,9 +47,7 @@ export type AdminMatchRow = {
 };
 
 function getApiBase() {
-  const api = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
-  const basePath = process.env.NEXT_PUBLIC_API_BASE_PATH ?? "/api/v1";
-  return `${api}${basePath.endsWith("/") ? basePath.slice(0, -1) : basePath}`;
+  return getServerApiBaseUrl();
 }
 
 function buildHeaders() {
@@ -104,6 +112,15 @@ export async function listAdminMatches(query: {
       headers: buildHeaders(),
     },
   );
-  if (!response.ok) return { items: [], pagination: { page: query.page ?? 1, pageSize: query.pageSize ?? 25, total: 0, totalPages: 1 } };
+  if (!response.ok)
+    return {
+      items: [],
+      pagination: {
+        page: query.page ?? 1,
+        pageSize: query.pageSize ?? 25,
+        total: 0,
+        totalPages: 1,
+      },
+    };
   return (await response.json()) as AdminMatchListResponse;
 }

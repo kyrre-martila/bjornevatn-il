@@ -1,7 +1,10 @@
-export const API_ORIGIN =
-  process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
+import {
+  getApiBasePath,
+  getApiBaseUrlForRuntime,
+  getPublicApiOrigin,
+} from "./api-config";
 
-export const API_BASE_PATH = process.env.NEXT_PUBLIC_API_BASE_PATH ?? "/api/v1";
+export const API_BASE_PATH = getApiBasePath();
 
 export const CSRF_COOKIE_NAME =
   process.env.NEXT_PUBLIC_CSRF_COOKIE_NAME ?? "XSRF-TOKEN";
@@ -12,12 +15,17 @@ function ensureAbsoluteUrl(path: string): string {
   if (/^https?:/i.test(path)) {
     return path;
   }
+
   const normalized = path.startsWith("/") ? path : `/${path}`;
+  const apiBaseUrl = getApiBaseUrlForRuntime();
+  const apiOrigin = new URL(apiBaseUrl).origin;
+
   if (normalized.startsWith(API_BASE_PATH)) {
-    return `${API_ORIGIN}${normalized}`;
+    return `${apiOrigin}${normalized}`;
   }
+
   const joined = `${API_BASE_PATH}${normalized}`.replace(/\/{2,}/g, "/");
-  return `${API_ORIGIN}${joined}`;
+  return `${apiOrigin}${joined}`;
 }
 
 export function parseCookieValue(
@@ -111,10 +119,11 @@ export function getCsrfTokenFromCookieHeader(
 }
 
 export function getApiBaseUrl(): string {
-  const normalizedBase = API_BASE_PATH.endsWith("/")
-    ? API_BASE_PATH.slice(0, -1)
-    : API_BASE_PATH;
-  return `${API_ORIGIN}${normalizedBase}`;
+  return getApiBaseUrlForRuntime();
+}
+
+export function getBrowserApiOrigin(): string {
+  return getPublicApiOrigin();
 }
 
 export function createHealthProbeUrl(): string {

@@ -1,4 +1,5 @@
 import { cookies } from "next/headers";
+import { getServerApiBaseUrl } from "./api-config";
 
 export type PublicTicketSale = {
   id: string;
@@ -63,12 +64,7 @@ export type ScanValidationResult = {
 };
 
 function getApiBase() {
-  const api = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
-  const basePath = process.env.NEXT_PUBLIC_API_BASE_PATH ?? "/api/v1";
-  const normalizedBase = basePath.endsWith("/")
-    ? basePath.slice(0, -1)
-    : basePath;
-  return `${api}${normalizedBase}`;
+  return getServerApiBaseUrl();
 }
 
 function buildHeaders() {
@@ -115,7 +111,9 @@ export async function getTicketOrderSummary(
   orderReference: string,
   orderToken?: string,
 ): Promise<TicketOrderSummary | null> {
-  const url = new URL(`${getApiBase()}/tickets/orders/${encodeURIComponent(orderReference)}`);
+  const url = new URL(
+    `${getApiBase()}/tickets/orders/${encodeURIComponent(orderReference)}`,
+  );
   if (orderToken) {
     url.searchParams.set("token", orderToken);
   }

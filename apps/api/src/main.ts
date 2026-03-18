@@ -84,6 +84,26 @@ function configureCors(app: INestApplication, allowedOrigins: string[]) {
   });
 }
 
+function resolveTrustProxyValue(): boolean | number | string {
+  const raw = (process.env.TRUST_PROXY ?? "1").trim();
+  const normalized = raw.toLowerCase();
+
+  if (normalized === "true") {
+    return true;
+  }
+
+  if (normalized === "false") {
+    return false;
+  }
+
+  const parsed = Number(raw);
+  if (Number.isFinite(parsed)) {
+    return parsed;
+  }
+
+  return raw;
+}
+
 function envInt(name: string, fallback: number): number {
   const raw = process.env[name];
   const parsed = Number(raw);
@@ -166,7 +186,7 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   const config = app.get(ConfigService);
   const expressApp = app.getHttpAdapter().getInstance() as express.Express;
-  expressApp.set("trust proxy", 1);
+  expressApp.set("trust proxy", resolveTrustProxyValue());
   const logger = app.get<Logger>(LOGGER_TOKEN);
   const httpLogger =
     app.get<(req: Request, res: Response, next: NextFunction) => void>(

@@ -1,4 +1,5 @@
 import { cookies } from "next/headers";
+import { getServerApiBaseUrl } from "./api-config";
 
 export type UserProfile = {
   id: string;
@@ -17,16 +18,12 @@ export type MeResponse = {
 } | null;
 
 export async function getMe(): Promise<MeResponse> {
-  const api = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
-  const basePath = process.env.NEXT_PUBLIC_API_BASE_PATH ?? "/api/v1";
-  const normalizedBase = basePath.endsWith("/")
-    ? basePath.slice(0, -1)
-    : basePath;
-
   const cookieHeader = cookies().toString();
-  const headers: Record<string, string> = cookieHeader ? { cookie: cookieHeader } : {};
+  const headers: Record<string, string> = cookieHeader
+    ? { cookie: cookieHeader }
+    : {};
 
-  const res = await fetch(`${api}${normalizedBase}/me`, {
+  const res = await fetch(`${getServerApiBaseUrl()}/me`, {
     headers,
     cache: "no-store",
   });

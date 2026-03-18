@@ -3,33 +3,47 @@ FROM node:20-bookworm-slim AS base
 WORKDIR /app
 ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
-RUN corepack enable
+RUN corepack enable \
+  && apt-get update \
+  && apt-get install -y --no-install-recommends openssl ca-certificates \
+  && rm -rf /var/lib/apt/lists/*
 
-FROM base AS builder
+FROM base AS workspace
 RUN apt-get update \
-  && apt-get install -y --no-install-recommends openssl python3 make g++ \
+  && apt-get install -y --no-install-recommends python3 make g++ \
   && rm -rf /var/lib/apt/lists/*
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json turbo.json ./
 COPY apps ./apps
 COPY packages ./packages
+COPY scripts ./scripts
 ENV NODE_ENV=development
-RUN pnpm install --filter api... --frozen-lockfile
-RUN pnpm --filter api prisma:generate
-RUN pnpm --filter api... build
-RUN pnpm prune --prod
+RUN pnpm install --frozen-lockfile
 
-FROM gcr.io/distroless/nodejs20-debian12:latest
-WORKDIR /app
+FROM workspace AS build
+RUN pnpm --filter api prisma:generate
+RUN pnpm --filter @org/domain build \
+  && pnpm --filter @org/domain-adapters-prisma build \
+  && pnpm --filter api build
+RUN pnpm prune --prod
+RUN mkdir -p /app/uploads/media \
+  && chown -R node:node /app/uploads
+
+FROM base AS runtime
 ENV NODE_ENV=production \
+    PORT=4000 \
     NODE_OPTIONS=--max-old-space-size=256
-USER 10001:10001
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/apps/api/dist ./dist
-COPY --from=builder /app/apps/api/package.json ./package.json
-COPY --from=builder /app/packages/domain/package.json ./packages/domain/package.json
-COPY --from=builder /app/packages/domain/dist ./packages/domain/dist
-COPY --from=builder /app/packages/domain-adapters-prisma/package.json ./packages/domain-adapters-prisma/package.json
-COPY --from=builder /app/packages/domain-adapters-prisma/dist ./packages/domain-adapters-prisma/dist
-EXPOSE 3000
-HEALTHCHECK --interval=10s --timeout=5s --start-period=10s --retries=3 CMD ["node", "-e", "fetch('http://127.0.0.1:3000/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
-CMD ["dist/src/main.js"]
+COPY --from=build --chown=node:node /app/node_modules ./node_modules
+COPY --from=build --chown=node:node /app/apps/api/package.json ./apps/api/package.json
+COPY --from=build --chown=node:node /app/apps/api/dist ./apps/api/dist
+COPY --from=build --chown=node:node /app/packages/domain/package.json ./packages/domain/package.json
+COPY --from=build --chown=node:node /app/packages/domain/dist ./packages/domain/dist
+COPY --from=build --chown=node:node /app/packages/domain-adapters-prisma/package.json ./packages/domain-adapters-prisma/package.json
+COPY --from=build --chown=node:node /app/packages/domain-adapters-prisma/dist ./packages/domain-adapters-prisma/dist
+COPY --from=build --chown=node:node /app/uploads ./uploads
+USER node
+EXPOSE 4000
+CMD ["node", "apps/api/dist/src/main.js"]
+
+FROM workspace AS migrate
+ENV NODE_ENV=production
+CMD ["pnpm", "db:migrate"]

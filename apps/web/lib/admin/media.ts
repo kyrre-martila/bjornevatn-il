@@ -1,7 +1,17 @@
 import { cookies } from "next/headers";
+import { getServerApiBaseUrl } from "../api-config";
 
-export type AdminMediaPagination = { page: number; pageSize: number; total: number; totalPages: number };
-export type AdminMediaListResponse = { items: AdminMedia[]; pagination: AdminMediaPagination; filters?: Record<string, unknown> };
+export type AdminMediaPagination = {
+  page: number;
+  pageSize: number;
+  total: number;
+  totalPages: number;
+};
+export type AdminMediaListResponse = {
+  items: AdminMedia[];
+  pagination: AdminMediaPagination;
+  filters?: Record<string, unknown>;
+};
 
 export type AdminMedia = {
   id: string;
@@ -22,12 +32,7 @@ export type AdminMedia = {
 };
 
 function getApiBase() {
-  const api = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
-  const basePath = process.env.NEXT_PUBLIC_API_BASE_PATH ?? "/api/v1";
-  const normalizedBase = basePath.endsWith("/")
-    ? basePath.slice(0, -1)
-    : basePath;
-  return `${api}${normalizedBase}`;
+  return getServerApiBaseUrl();
 }
 
 function buildHeaders() {
@@ -77,7 +82,15 @@ export async function listAdminMedia(pagination?: {
   });
 
   if (!response.ok) {
-    return { items: [], pagination: { page: pagination?.page ?? 1, pageSize: pagination?.pageSize ?? 50, total: 0, totalPages: 1 } };
+    return {
+      items: [],
+      pagination: {
+        page: pagination?.page ?? 1,
+        pageSize: pagination?.pageSize ?? 50,
+        total: 0,
+        totalPages: 1,
+      },
+    };
   }
 
   return (await response.json()) as AdminMediaListResponse;
