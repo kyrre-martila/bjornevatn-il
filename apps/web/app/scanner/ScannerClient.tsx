@@ -1,6 +1,7 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useState } from "react";
+import { useFormState } from "react-dom";
 import type { ScanValidationResult } from "../../lib/tickets";
 import { confirmScanAction, validateScanAction } from "./actions";
 
@@ -22,11 +23,11 @@ async function confirmState(_: ScannerState, formData: FormData) {
 
 export default function ScannerClient() {
   const [qrValue, setQrValue] = useState("");
-  const [validateData, validateFormAction, validatePending] = useActionState(
+  const [validateData, validateFormAction] = useFormState(
     validateState,
     initialState,
   );
-  const [confirmData, confirmFormAction, confirmPending] = useActionState(
+  const [confirmData, confirmFormAction] = useFormState(
     confirmState,
     initialState,
   );
@@ -53,8 +54,8 @@ export default function ScannerClient() {
           placeholder="bil.v1..."
           required
         />
-        <button type="submit" className="button-primary" disabled={validatePending}>
-          {validatePending ? "Validating..." : "Validate ticket"}
+        <button type="submit" className="button-primary">
+          Validate ticket
         </button>
       </form>
 
@@ -86,14 +87,13 @@ export default function ScannerClient() {
           {result.ticket ? (
             <form action={confirmFormAction} className="scanner-page__confirm cluster">
               <input type="hidden" name="qrCodeValue" value={qrValue} />
-              <button type="submit" className="button-primary" disabled={confirmPending}>
-                {confirmPending ? "Confirming..." : "Confirm entry"}
+              <button type="submit" className="button-primary">
+                Confirm entry
               </button>
               {result.reason === "already-used" ? (
                 <button
                   type="submit"
                   className="button-secondary"
-                  disabled={confirmPending}
                   name="allowOverride"
                   value="1"
                 >

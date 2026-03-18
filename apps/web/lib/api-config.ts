@@ -1,4 +1,4 @@
-const DEFAULT_PUBLIC_API_ORIGIN = "http://localhost:4000";
+const DEFAULT_PUBLIC_API_ORIGIN = "https://api.example.invalid";
 const DEFAULT_API_BASE_PATH = "/api/v1";
 
 type Env = Record<string, string | undefined>;
