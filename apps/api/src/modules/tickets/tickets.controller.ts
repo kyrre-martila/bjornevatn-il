@@ -1,6 +1,19 @@
-import { Body, Controller, Get, Param, Patch, Post, Query, Req } from "@nestjs/common";
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Patch,
+  Post,
+  Query,
+  Req,
+} from "@nestjs/common";
 import { ApiTags } from "@nestjs/swagger";
-import { TicketSaleStatus, TicketStatus } from "@prisma/client";
+import {
+  OperationalEventSeverity,
+  TicketSaleStatus,
+  TicketStatus,
+} from "@prisma/client";
 import {
   ArrayMinSize,
   IsArray,
@@ -22,6 +35,11 @@ import { AuthService } from "../auth/auth.service";
 import { TicketScanService } from "./ticket-scan.service";
 import { TicketTypeConfig } from "./ticket-availability.service";
 import { TicketsService } from "./tickets.service";
+import {
+  getActorFromRequest,
+  getContextFromRequest,
+} from "../observability/observability-request.util";
+import { ObservabilityService } from "../observability/observability.service";
 
 class TicketTypeDto {
   @IsString()
@@ -159,30 +177,141 @@ export class TicketsController {
     private readonly ticketsService: TicketsService,
     private readonly ticketScanService: TicketScanService,
     private readonly auth: AuthService,
+    private readonly observability: ObservabilityService,
   ) {}
 
   @Get("sales/public")
   listPublicSales() {
-    return this.ticketsService.listPublicTicketSales();
+    return this.observability.timeOperation(
+      {
+        flow: "ticket_listing_load",
+        actor: { type: "public" },
+        context: { module: "tickets", route: "sales/public" },
+      },
+      () => this.ticketsService.listPublicTicketSales(),
+    );
   }
 
   @Get("sales/public/match/:matchId")
   getPublicSale(@Param("matchId") matchId: string) {
-    return this.ticketsService.getPublicTicketSaleByMatchId(matchId);
+    return this.observability.timeOperation(
+      {
+        flow: "ticket_detail_load",
+        actor: { type: "public" },
+        context: { module: "tickets", route: "sales/public/match/:matchId" },
+        metadata: { matchId },
+      },
+      () => this.ticketsService.getPublicTicketSaleByMatchId(matchId),
+    );
   }
 
   @Post("orders")
-  createOrder(@Body() body: CreateTicketOrderDto) {
-    verifySubmissionChallenge(body.challengeToken);
-    return this.ticketsService.createTicketOrder(body);
+  async createOrder(@Req() req: Request, @Body() body: CreateTicketOrderDto) {
+    const context = getContextFromRequest(req, "tickets");
+
+    try {
+      verifySubmissionChallenge(body.challengeToken);
+    } catch (error) {
+      await this.observability.logEvent({
+        eventType: "challenge_verification_failed",
+        severity: OperationalEventSeverity.warn,
+        context,
+        metadata: {
+          endpointCategory: "ticket_order_creation",
+          submissionType: "ticket_order",
+          reason:
+            error instanceof Error
+              ? error.message
+              : "Submission challenge failed",
+        },
+      });
+      throw error;
+    }
+
+    try {
+      const order = await this.observability.timeOperation(
+        {
+          flow: "ticket_purchase_submission",
+          actor: { type: "public" },
+          context,
+          metadata: { submissionType: "ticket_order" },
+        },
+        () => this.ticketsService.createTicketOrder(body),
+      );
+
+      await this.observability.logEvent({
+        eventType: "public_submission_succeeded",
+        severity: OperationalEventSeverity.info,
+        actor: { type: "public" },
+        context,
+        metadata: {
+          submissionType: "ticket_order",
+          orderReference: order.orderReference,
+        },
+      });
+
+      return order;
+    } catch (error) {
+      await this.observability.logEvent({
+        eventType: "public_submission_failed",
+        severity: OperationalEventSeverity.warn,
+        actor: { type: "public" },
+        context,
+        metadata: {
+          submissionType: "ticket_order",
+          reason:
+            error instanceof Error ? error.message : "Ticket order failed",
+        },
+      });
+      throw error;
+    }
   }
 
   @Get("orders/:orderReference")
-  getOrder(
+  async getOrder(
+    @Req() req: Request,
     @Param("orderReference") orderReference: string,
     @Query("token") orderLookupToken?: string,
   ) {
-    return this.ticketsService.getPublicOrderByReference(orderReference, orderLookupToken);
+    const context = getContextFromRequest(req, "tickets");
+    try {
+      const order = await this.observability.timeOperation(
+        {
+          flow: "order_lookup",
+          actor: { type: "public" },
+          context,
+          metadata: { orderReference },
+        },
+        () =>
+          this.ticketsService.getPublicOrderByReference(
+            orderReference,
+            orderLookupToken,
+          ),
+      );
+
+      await this.observability.logEvent({
+        eventType: "order_lookup_succeeded",
+        severity: OperationalEventSeverity.info,
+        actor: { type: "public" },
+        context,
+        metadata: { orderReference },
+      });
+
+      return order;
+    } catch (error) {
+      await this.observability.logEvent({
+        eventType: "order_lookup_failed",
+        severity: OperationalEventSeverity.warn,
+        actor: { type: "public" },
+        context,
+        metadata: {
+          orderReference,
+          reason:
+            error instanceof Error ? error.message : "Order lookup failed",
+        },
+      });
+      throw error;
+    }
   }
 
   @Post("scanner/validate")
@@ -190,7 +319,8 @@ export class TicketsController {
     const role = await requireMinimumRole(req, this.auth, "editor");
     return this.ticketScanService.validateScan({
       qrCodeValue: body.qrCodeValue,
-      allowOverride: role === "admin" || role === "super_admin" ? body.allowOverride : false,
+      allowOverride:
+        role === "admin" || role === "super_admin" ? body.allowOverride : false,
       scannedBy: undefined,
     });
   }
@@ -200,7 +330,8 @@ export class TicketsController {
     const role = await requireMinimumRole(req, this.auth, "editor");
     return this.ticketScanService.confirmEntry({
       qrCodeValue: body.qrCodeValue,
-      allowOverride: role === "admin" || role === "super_admin" ? body.allowOverride : false,
+      allowOverride:
+        role === "admin" || role === "super_admin" ? body.allowOverride : false,
       scannedBy: undefined,
       notes: body.notes,
     });
@@ -209,10 +340,20 @@ export class TicketsController {
   @Get("admin/sales")
   async listAdminSales(@Req() req: Request, @Query() query: AdminListQueryDto) {
     await requireMinimumRole(req, this.auth, "admin");
-    return this.ticketsService.listAdminTicketSales({
-      page: query.page,
-      pageSize: query.pageSize,
-    });
+    return this.observability.timeOperation(
+      {
+        flow: "admin_ticket_sales_list",
+        actor: getActorFromRequest(req),
+        context: getContextFromRequest(req, "tickets"),
+        metadata: { page: query.page ?? 1, pageSize: query.pageSize ?? 25 },
+        slowThresholdMs: 750,
+      },
+      () =>
+        this.ticketsService.listAdminTicketSales({
+          page: query.page,
+          pageSize: query.pageSize,
+        }),
+    );
   }
 
   @Post("admin/sales")
@@ -235,12 +376,25 @@ export class TicketsController {
   }
 
   @Get("admin/orders")
-  async listAdminOrders(@Req() req: Request, @Query() query: AdminListQueryDto) {
+  async listAdminOrders(
+    @Req() req: Request,
+    @Query() query: AdminListQueryDto,
+  ) {
     await requireMinimumRole(req, this.auth, "admin");
-    return this.ticketsService.listAdminTicketOrders({
-      page: query.page,
-      pageSize: query.pageSize,
-    });
+    return this.observability.timeOperation(
+      {
+        flow: "admin_ticket_orders_list",
+        actor: getActorFromRequest(req),
+        context: getContextFromRequest(req, "tickets"),
+        metadata: { page: query.page ?? 1, pageSize: query.pageSize ?? 25 },
+        slowThresholdMs: 750,
+      },
+      () =>
+        this.ticketsService.listAdminTicketOrders({
+          page: query.page,
+          pageSize: query.pageSize,
+        }),
+    );
   }
 
   @Patch("admin/orders/:orderReference/status")

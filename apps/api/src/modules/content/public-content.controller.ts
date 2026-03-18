@@ -15,6 +15,7 @@ import type {
   TermsRepository,
   ContentItemTermsRepository,
 } from "@org/domain";
+import { ObservabilityService } from "../observability/observability.service";
 
 const PUBLIC_SITE_SETTING_KEYS = [
   "siteName",
@@ -244,6 +245,7 @@ export class PublicContentController {
     private readonly terms: TermsRepository,
     @Inject("ContentItemTermsRepository")
     private readonly contentItemTerms: ContentItemTermsRepository,
+    private readonly observability: ObservabilityService,
   ) {}
 
   @Get("sitemap")
@@ -274,11 +276,11 @@ export class PublicContentController {
         ...pageBatch
           .filter((page) => this.isCurrentlyPublished(page))
           .map((page) => ({
-          slug: page.slug,
-          canonicalUrl: page.canonicalUrl,
-          updatedAt: page.updatedAt,
-          noIndex: page.noIndex,
-        })),
+            slug: page.slug,
+            canonicalUrl: page.canonicalUrl,
+            updatedAt: page.updatedAt,
+            noIndex: page.noIndex,
+          })),
       );
 
       pageCursor = pageBatch[pageBatch.length - 1]?.id;
@@ -301,7 +303,9 @@ export class PublicContentController {
         break;
       }
 
-      for (const item of contentBatch.filter((entry) => this.isCurrentlyPublished(entry))) {
+      for (const item of contentBatch.filter((entry) =>
+        this.isCurrentlyPublished(entry),
+      )) {
         const contentTypeSlug = publicContentTypeById.get(item.contentTypeId);
         if (!contentTypeSlug) {
           continue;
@@ -334,12 +338,14 @@ export class PublicContentController {
       ...this.buildPagination(query),
     });
 
-    return pages.filter((page) => this.isCurrentlyPublished(page)).map((page) => ({
-      slug: page.slug,
-      canonicalUrl: page.canonicalUrl,
-      updatedAt: page.updatedAt,
-      noIndex: page.noIndex,
-    }));
+    return pages
+      .filter((page) => this.isCurrentlyPublished(page))
+      .map((page) => ({
+        slug: page.slug,
+        canonicalUrl: page.canonicalUrl,
+        updatedAt: page.updatedAt,
+        noIndex: page.noIndex,
+      }));
   }
 
   @Get("pages/slug/:slug")
@@ -379,25 +385,52 @@ export class PublicContentController {
     @Param("slug") slug: string,
     @Query() query: PublicListContentItemsQueryDto,
   ) {
-    const type = await this.contentTypes.findPublicBySlug(slug);
-    if (!type) {
-      return [];
-    }
+    const flow =
+      slug === "news"
+        ? "public_news_listing_load"
+        : slug === "team"
+          ? "teams_listing_load"
+          : null;
 
-    if (query.mode === "tree") {
-      const items = await this.contentItems.findTreeByContentTypeSlug(slug);
-      return this.filterPublishedContentItemTree(items).map((item) =>
-        this.mapPublicContentItemTree(item),
-      );
-    }
+    const runner = async () => {
+      const type = await this.contentTypes.findPublicBySlug(slug);
+      if (!type) {
+        return [];
+      }
 
-    const items = await this.contentItems.findManyByContentTypeSlug(slug, {
-      published: true,
-      ...this.buildPagination(query),
-    });
-    return items
-      .filter((item) => this.isCurrentlyPublished(item))
-      .map((item) => this.mapPublicContentItemArchive(item));
+      if (query.mode === "tree") {
+        const items = await this.contentItems.findTreeByContentTypeSlug(slug);
+        return this.filterPublishedContentItemTree(items).map((item) =>
+          this.mapPublicContentItemTree(item),
+        );
+      }
+
+      const items = await this.contentItems.findManyByContentTypeSlug(slug, {
+        published: true,
+        ...this.buildPagination(query),
+      });
+      return items
+        .filter((item) => this.isCurrentlyPublished(item))
+        .map((item) => this.mapPublicContentItemArchive(item));
+    };
+
+    return flow
+      ? this.observability.timeOperation(
+          {
+            flow,
+            actor: { type: "public" },
+            context: {
+              module: "public-content",
+              route: `items/type-slug/${slug}`,
+            },
+            metadata: {
+              mode: query.mode ?? "flat",
+              limit: query.limit ?? DEFAULT_LIST_LIMIT,
+            },
+          },
+          runner,
+        )
+      : runner();
   }
 
   @Get("items/type-slug/:contentTypeSlug/:slug")
@@ -407,31 +440,55 @@ export class PublicContentController {
   ): Promise<
     PublicContentItemDetailDto | { redirectTo: string; permanent: true } | null
   > {
-    const type = await this.contentTypes.findPublicBySlug(contentTypeSlug);
-    if (!type) {
-      return null;
-    }
+    const flow =
+      contentTypeSlug === "news"
+        ? "public_news_detail_load"
+        : contentTypeSlug === "team"
+          ? "teams_detail_load"
+          : null;
 
-    const result = await this.contentItems.findBySlugOrRedirect(
-      contentTypeSlug,
-      slug,
-    );
-    if (!result) {
-      return null;
-    }
+    const runner = async () => {
+      const type = await this.contentTypes.findPublicBySlug(contentTypeSlug);
+      if (!type) {
+        return null;
+      }
 
-    if (result.kind === "redirect") {
-      return {
-        redirectTo: `/${encodeURIComponent(contentTypeSlug)}/${encodeURIComponent(result.destinationSlug)}`,
-        permanent: true,
-      };
-    }
+      const result = await this.contentItems.findBySlugOrRedirect(
+        contentTypeSlug,
+        slug,
+      );
+      if (!result) {
+        return null;
+      }
 
-    if (!this.isCurrentlyPublished(result.entity)) {
-      return null;
-    }
+      if (result.kind === "redirect") {
+        return {
+          redirectTo: `/${encodeURIComponent(contentTypeSlug)}/${encodeURIComponent(result.destinationSlug)}`,
+          permanent: true as const,
+        };
+      }
 
-    return this.mapPublicContentItemDetail(result.entity);
+      if (!this.isCurrentlyPublished(result.entity)) {
+        return null;
+      }
+
+      return this.mapPublicContentItemDetail(result.entity);
+    };
+
+    return flow
+      ? this.observability.timeOperation(
+          {
+            flow,
+            actor: { type: "public" },
+            context: {
+              module: "public-content",
+              route: `items/type-slug/${contentTypeSlug}/:slug`,
+            },
+            metadata: { slug },
+          },
+          runner,
+        )
+      : runner();
   }
 
   @Get("items/:id/taxonomies/:taxonomySlug")
@@ -881,7 +938,6 @@ export class PublicContentController {
         children: this.filterPublishedContentItemTree(node.children),
       }));
   }
-
 
   private isCurrentlyPublished(entity: {
     published: boolean;

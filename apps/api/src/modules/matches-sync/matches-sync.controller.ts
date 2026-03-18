@@ -15,6 +15,11 @@ import { requireMinimumRole } from "../../common/auth/admin-access";
 import { AuthService } from "../auth/auth.service";
 import { MATCH_EXTERNAL_SOURCES } from "./matches-sync.types";
 import { MatchesSyncService } from "./matches-sync.service";
+import {
+  getActorFromRequest,
+  getContextFromRequest,
+} from "../observability/observability-request.util";
+import { ObservabilityService } from "../observability/observability.service";
 
 class UpdateFotballNoSettingsDto {
   @IsBoolean()
@@ -53,6 +58,7 @@ export class MatchesSyncController {
   constructor(
     private readonly service: MatchesSyncService,
     private readonly auth: AuthService,
+    private readonly observability: ObservabilityService,
   ) {}
 
   @Get("settings")
@@ -73,7 +79,10 @@ export class MatchesSyncController {
   @Post("sync")
   async runSync(@Req() req: Request) {
     await requireMinimumRole(req, this.auth, "admin");
-    return this.service.runSync();
+    return this.service.runSync({
+      actor: getActorFromRequest(req),
+      context: getContextFromRequest(req, "matches-sync"),
+    });
   }
 
   @Get()
@@ -89,24 +98,41 @@ export class MatchesSyncController {
     const page = Number(pageRaw);
     const pageSize = Number(pageSizeRaw);
 
-    return this.service.listMatches({
-      source: MATCH_EXTERNAL_SOURCES.includes(source as never)
-        ? source
-        : undefined,
-      upcoming:
-        upcoming === "upcoming"
-          ? true
-          : upcoming === "past"
-            ? false
+    return this.observability.timeOperation(
+      {
+        flow: "admin_matches_list",
+        actor: getActorFromRequest(req),
+        context: getContextFromRequest(req, "matches-sync"),
+        metadata: {
+          source: source ?? null,
+          upcoming: upcoming ?? null,
+          ticketSalesEnabled: ticketSalesEnabled ?? null,
+          page: Number.isFinite(page) && page > 0 ? page : 1,
+          pageSize: Number.isFinite(pageSize) && pageSize > 0 ? pageSize : 25,
+        },
+        slowThresholdMs: 750,
+      },
+      () =>
+        this.service.listMatches({
+          source: MATCH_EXTERNAL_SOURCES.includes(source as never)
+            ? source
             : undefined,
-      ticketSalesEnabled:
-        ticketSalesEnabled === "true"
-          ? true
-          : ticketSalesEnabled === "false"
-            ? false
-            : undefined,
-      page: Number.isFinite(page) && page > 0 ? page : undefined,
-      pageSize: Number.isFinite(pageSize) && pageSize > 0 ? pageSize : undefined,
-    });
+          upcoming:
+            upcoming === "upcoming"
+              ? true
+              : upcoming === "past"
+                ? false
+                : undefined,
+          ticketSalesEnabled:
+            ticketSalesEnabled === "true"
+              ? true
+              : ticketSalesEnabled === "false"
+                ? false
+                : undefined,
+          page: Number.isFinite(page) && page > 0 ? page : undefined,
+          pageSize:
+            Number.isFinite(pageSize) && pageSize > 0 ? pageSize : undefined,
+        }),
+    );
   }
 }

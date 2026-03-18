@@ -21,6 +21,7 @@ import type { Request, Response, NextFunction } from "express";
 import { createCsrfMiddleware } from "./middleware/csrf.middleware";
 import { DomainErrorInterceptor } from "./common/interceptors/domain-error.interceptor";
 import { SensitiveLoggingInterceptor } from "./common/interceptors/sensitive-logging.interceptor";
+import { AdminActionObservabilityInterceptor } from "./common/interceptors/admin-action-observability.interceptor";
 import {
   HTTP_LOGGER_TOKEN,
   LOGGER_TOKEN,
@@ -31,9 +32,11 @@ import { trace } from "@opentelemetry/api";
 import { randomUUID } from "node:crypto";
 import { join } from "node:path";
 import type { Logger } from "pino";
+import { OperationalEventSeverity } from "@prisma/client";
 import { startOtel, shutdownOtel } from "../otel";
 import { PrismaService } from "./prisma/prisma.service";
 import { API_PREFIX } from "./config/api-prefix";
+import { ObservabilityService } from "./modules/observability/observability.service";
 import {
   createOpenApiDocument,
   writeCanonicalOpenApiDocument,
@@ -81,7 +84,6 @@ function configureCors(app: INestApplication, allowedOrigins: string[]) {
   });
 }
 
-
 function envInt(name: string, fallback: number): number {
   const raw = process.env[name];
   const parsed = Number(raw);
@@ -92,6 +94,10 @@ function createRateLimiter(input: {
   windowMs: number;
   limit: number;
   message: string;
+  endpointCategory: string;
+  route: string;
+  logger: Logger;
+  observability: ObservabilityService;
 }) {
   return rateLimit({
     windowMs: input.windowMs,
@@ -100,6 +106,46 @@ function createRateLimiter(input: {
     legacyHeaders: false,
     keyGenerator: (req) => req.ip ?? req.socket.remoteAddress ?? "unknown",
     message: { error: input.message },
+    handler: (req, res, _next, options) => {
+      const requestIdHeader = req.headers["x-request-id"];
+      const requestId =
+        (req as Request & { id?: string }).id ||
+        (Array.isArray(requestIdHeader)
+          ? requestIdHeader[0]
+          : requestIdHeader) ||
+        null;
+
+      void input.observability.logEvent({
+        eventType: "rate_limit_triggered",
+        severity: OperationalEventSeverity.warn,
+        context: {
+          requestId,
+          route: input.route,
+          module: "security",
+        },
+        metadata: {
+          endpointCategory: input.endpointCategory,
+          method: req.method,
+          limit: options.limit,
+          windowMs: input.windowMs,
+          clientAddressCaptured: Boolean(req.ip ?? req.socket.remoteAddress),
+        },
+      });
+
+      input.logger.warn(
+        {
+          rateLimitEvent: {
+            endpointCategory: input.endpointCategory,
+            route: input.route,
+            method: req.method,
+            requestId,
+          },
+        },
+        "Rate limit triggered",
+      );
+
+      res.status(options.statusCode).json(options.message);
+    },
   });
 }
 
@@ -128,6 +174,7 @@ async function bootstrap() {
     );
   const metricsMiddleware = app.get(MetricsMiddleware);
   const metricsGuard = app.get(MetricsGuard);
+  const observability = app.get(ObservabilityService);
 
   const prisma = app.get(PrismaService);
   await assertMigrationsApplied(prisma);
@@ -201,31 +248,56 @@ async function bootstrap() {
       windowMs: envInt("RATE_LIMIT_AUTH_WINDOW_MS", 10 * 60 * 1000),
       limit: envInt("RATE_LIMIT_AUTH_LIMIT", 100),
       message: "Too many authentication attempts. Please try again later.",
+      endpointCategory: "auth",
+      route: `/${API_PREFIX}/auth`,
+      logger,
+      observability,
     }),
   );
 
   app.use(
     `/${API_PREFIX}/clubhouse/bookings`,
     createRateLimiter({
-      windowMs: envInt("RATE_LIMIT_PUBLIC_SUBMISSION_WINDOW_MS", 10 * 60 * 1000),
+      windowMs: envInt(
+        "RATE_LIMIT_PUBLIC_SUBMISSION_WINDOW_MS",
+        10 * 60 * 1000,
+      ),
       limit: envInt("RATE_LIMIT_CLUBHOUSE_BOOKINGS_LIMIT", 10),
       message: "Too many submissions. Please wait before trying again.",
+      endpointCategory: "clubhouse_booking",
+      route: `/${API_PREFIX}/clubhouse/bookings`,
+      logger,
+      observability,
     }),
   );
   app.use(
     `/${API_PREFIX}/membership/applications`,
     createRateLimiter({
-      windowMs: envInt("RATE_LIMIT_PUBLIC_SUBMISSION_WINDOW_MS", 10 * 60 * 1000),
+      windowMs: envInt(
+        "RATE_LIMIT_PUBLIC_SUBMISSION_WINDOW_MS",
+        10 * 60 * 1000,
+      ),
       limit: envInt("RATE_LIMIT_MEMBERSHIP_APPLICATIONS_LIMIT", 8),
       message: "Too many submissions. Please wait before trying again.",
+      endpointCategory: "membership_application",
+      route: `/${API_PREFIX}/membership/applications`,
+      logger,
+      observability,
     }),
   );
   app.use(
     `/${API_PREFIX}/tickets/orders`,
     createRateLimiter({
-      windowMs: envInt("RATE_LIMIT_PUBLIC_SUBMISSION_WINDOW_MS", 10 * 60 * 1000),
+      windowMs: envInt(
+        "RATE_LIMIT_PUBLIC_SUBMISSION_WINDOW_MS",
+        10 * 60 * 1000,
+      ),
       limit: envInt("RATE_LIMIT_TICKET_ORDER_CREATE_LIMIT", 20),
       message: "Too many ticket requests. Please try again in a few minutes.",
+      endpointCategory: "ticket_order_creation",
+      route: `/${API_PREFIX}/tickets/orders`,
+      logger,
+      observability,
     }),
   );
 
@@ -235,6 +307,10 @@ async function bootstrap() {
       windowMs: envInt("RATE_LIMIT_ORDER_LOOKUP_WINDOW_MS", 10 * 60 * 1000),
       limit: envInt("RATE_LIMIT_ORDER_LOOKUP_LIMIT", 40),
       message: "Too many order lookups. Please wait before trying again.",
+      endpointCategory: "public_order_lookup",
+      route: `/${API_PREFIX}/tickets/orders`,
+      logger,
+      observability,
     }),
   );
 
@@ -243,6 +319,10 @@ async function bootstrap() {
       windowMs: envInt("RATE_LIMIT_GLOBAL_WINDOW_MS", 15 * 60 * 1000),
       limit: envInt("RATE_LIMIT_GLOBAL_LIMIT", 1000),
       message: "Too many requests. Please try again later.",
+      endpointCategory: "global",
+      route: "global",
+      logger,
+      observability,
     }),
   );
 
@@ -257,6 +337,7 @@ async function bootstrap() {
   app.useGlobalInterceptors(
     new SensitiveLoggingInterceptor(),
     new DomainErrorInterceptor(),
+    new AdminActionObservabilityInterceptor(observability),
   );
 
   app.use(
