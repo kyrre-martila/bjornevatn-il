@@ -3,7 +3,7 @@ import Link from "next/link";
 
 import { getTeams } from "../../../lib/content";
 import { buildMetadata } from "../../../lib/seo";
-
+import { measureServerTiming } from "../../../lib/observability";
 
 export async function generateMetadata(): Promise<Metadata> {
   return buildMetadata({
@@ -14,11 +14,17 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function TeamsPage() {
-  const teams = await getTeams();
+  const teams = await measureServerTiming(
+    { flow: "teams_listing_load", route: "/teams", module: "teams" },
+    () => getTeams(),
+  );
 
   const youthTeams = teams
     .filter((team) => team.mainCategory === "aldersbestemt")
-    .sort((a, b) => (a.age ?? Number.MAX_SAFE_INTEGER) - (b.age ?? Number.MAX_SAFE_INTEGER));
+    .sort(
+      (a, b) =>
+        (a.age ?? Number.MAX_SAFE_INTEGER) - (b.age ?? Number.MAX_SAFE_INTEGER),
+    );
 
   const seniorTeams = teams
     .filter((team) => team.mainCategory === "senior")
@@ -29,9 +35,21 @@ export default async function TeamsPage() {
       <h2>{title}</h2>
       <div className="grid grid--2">
         {items.map((team) => (
-          <article key={team.id} className="public-block stack" style={{ border: "1px solid var(--color-border)", borderRadius: "8px", padding: "1rem" }}>
+          <article
+            key={team.id}
+            className="public-block stack"
+            style={{
+              border: "1px solid var(--color-border)",
+              borderRadius: "8px",
+              padding: "1rem",
+            }}
+          >
             {team.teamImage ? (
-              <img src={team.teamImage} alt={team.name} style={{ width: "100%", borderRadius: "6px" }} />
+              <img
+                src={team.teamImage}
+                alt={team.name}
+                style={{ width: "100%", borderRadius: "6px" }}
+              />
             ) : null}
             <h3>{team.name}</h3>
             <p>{team.shortDescription}</p>

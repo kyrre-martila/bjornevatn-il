@@ -13,6 +13,7 @@ import {
   getMatches,
 } from "../../lib/content";
 import { buildMetadata } from "../../lib/seo";
+import { measureServerTiming } from "../../lib/observability";
 import { getWeatherSnapshot } from "../../lib/services/weather";
 
 function formatNorwegianDate(value: string): string {
@@ -28,10 +29,16 @@ function formatNorwegianDate(value: string): string {
 }
 
 export async function generateMetadata(): Promise<Metadata> {
-  const [settings, club] = await Promise.all([getHomepageSettings(), getClubProfile()]);
+  const [settings, club] = await Promise.all([
+    getHomepageSettings(),
+    getClubProfile(),
+  ]);
   return buildMetadata({
     pageTitle: settings?.heroTitle || club?.name || "Bjørnevatn IL",
-    pageDescription: settings?.heroText || club?.description || "Official website of Bjørnevatn IL",
+    pageDescription:
+      settings?.heroText ||
+      club?.description ||
+      "Official website of Bjørnevatn IL",
     seoTitle: club?.seoTitle,
     seoDescription: club?.seoDescription,
     seoImage: club?.seoImage || club?.heroImage || club?.logo,
@@ -42,25 +49,33 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function HomePage() {
-  const [settings, club, matches, news, funding] = await Promise.all([
-    getHomepageSettings(),
-    getClubProfile(),
-    getMatches(30),
-    getClubNews(6),
-    getFundingGrants(30),
-  ]);
+  const [settings, club, matches, news, funding] = await measureServerTiming(
+    { flow: "homepage_data_loading", route: "/", module: "homepage" },
+    () =>
+      Promise.all([
+        getHomepageSettings(),
+        getClubProfile(),
+        getMatches(30),
+        getClubNews(6),
+        getFundingGrants(30),
+      ]),
+  );
 
   const upcomingHomeMatch = settings?.showNextMatchHero
-    ? matches
-        .filter((match) => match.isHomeMatch && new Date(match.matchDate) > new Date())
+    ? (matches
+        .filter(
+          (match) =>
+            match.isHomeMatch && new Date(match.matchDate) > new Date(),
+        )
         .sort(
           (a, b) =>
             new Date(a.matchDate).getTime() - new Date(b.matchDate).getTime(),
-        )[0] ?? null
+        )[0] ?? null)
     : null;
 
   const heroTitle =
-    settings?.heroTitle || (upcomingHomeMatch ? "Next Home Match" : club?.name || "Bjørnevatn IL");
+    settings?.heroTitle ||
+    (upcomingHomeMatch ? "Next Home Match" : club?.name || "Bjørnevatn IL");
   const heroText =
     settings?.heroText ||
     (upcomingHomeMatch
@@ -112,7 +127,9 @@ export default async function HomePage() {
         venue={upcomingHomeMatch?.venue || club?.name || "Bjørneparken"}
       />
 
-      {settings?.showWeatherSection && weather ? <WeatherSection weather={weather} /> : null}
+      {settings?.showWeatherSection && weather ? (
+        <WeatherSection weather={weather} />
+      ) : null}
 
       {settings?.showNewsSection ? (
         <LatestNewsSection

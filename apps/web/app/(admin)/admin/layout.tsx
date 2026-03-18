@@ -65,6 +65,11 @@ const adminNavSections = [
         visible: canManageUsers,
       },
       {
+        href: "/admin/observability",
+        label: "Observability",
+        visible: canManageUsers,
+      },
+      {
         href: "/admin/ticket-sales",
         label: "Ticket sales",
         visible: canManageUsers,

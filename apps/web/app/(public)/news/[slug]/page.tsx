@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 
 import { getClubNewsBySlug } from "../../../../lib/content";
 import { buildJsonLd, buildMetadata } from "../../../../lib/seo";
+import { measureServerTiming } from "../../../../lib/observability";
 
 export async function generateMetadata({
   params,
@@ -10,7 +11,15 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
   const { slug } = await params;
-  const news = await getClubNewsBySlug(slug);
+  const news = await measureServerTiming(
+    {
+      flow: "public_news_detail_load",
+      route: `/news/${slug}`,
+      module: "news",
+      metadata: { slug },
+    },
+    () => getClubNewsBySlug(slug),
+  );
   if (!news) return {};
 
   return buildMetadata({
@@ -32,7 +41,15 @@ export default async function NewsDetailPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const news = await getClubNewsBySlug(slug);
+  const news = await measureServerTiming(
+    {
+      flow: "public_news_detail_load",
+      route: `/news/${slug}`,
+      module: "news",
+      metadata: { slug },
+    },
+    () => getClubNewsBySlug(slug),
+  );
 
   if (!news) {
     notFound();
@@ -49,10 +66,17 @@ export default async function NewsDetailPage({
 
   return (
     <article className="stack">
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLd }} />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: jsonLd }}
+      />
       <h1>{news.title}</h1>
       {news.image ? (
-        <img src={news.image} alt={news.title} style={{ maxWidth: "820px", width: "100%", borderRadius: "8px" }} />
+        <img
+          src={news.image}
+          alt={news.title}
+          style={{ maxWidth: "820px", width: "100%", borderRadius: "8px" }}
+        />
       ) : null}
       <p>{news.publishedAt}</p>
       <p>{news.category}</p>

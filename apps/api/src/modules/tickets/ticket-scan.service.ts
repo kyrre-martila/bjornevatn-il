@@ -5,9 +5,11 @@ import {
   TicketScanResult,
   TicketStatus,
   TicketValidationStatus,
+  OperationalEventSeverity,
 } from "@prisma/client";
 import { PrismaService } from "../../prisma/prisma.service";
 import { TicketQrService } from "./ticket-qr.service";
+import { ObservabilityService } from "../observability/observability.service";
 
 type ScanReason =
   | "valid"
@@ -22,6 +24,9 @@ export class TicketScanService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly qrService: TicketQrService,
+    private readonly observability: Pick<ObservabilityService, "logEvent"> = {
+      logEvent: async () => undefined,
+    },
   ) {}
 
   private async writeLog(input: {
@@ -38,6 +43,36 @@ export class TicketScanService {
         action: input.action,
         result: input.result,
         notes: input.notes,
+      },
+    });
+  }
+
+  private async logScanEvent(input: {
+    eventType:
+      | "ticket_scan_success"
+      | "ticket_scan_conflict"
+      | "ticket_scan_override"
+      | "ticket_scan_invalid";
+    severity?: OperationalEventSeverity;
+    ticketId?: string | null;
+    orderReference?: string | null;
+    matchId?: string | null;
+    reason?: string;
+    scanCount?: number;
+    notes?: string;
+  }) {
+    await this.observability.logEvent({
+      eventType: input.eventType,
+      severity: input.severity ?? OperationalEventSeverity.info,
+      actor: input.notes?.includes("override") ? { type: "admin" } : undefined,
+      context: { module: "tickets", route: "scanner" },
+      metadata: {
+        ticketId: input.ticketId ?? null,
+        orderReference: input.orderReference ?? null,
+        matchId: input.matchId ?? null,
+        reason: input.reason ?? null,
+        scanCount: input.scanCount ?? 0,
+        notes: input.notes ?? null,
       },
     });
   }
@@ -60,29 +95,44 @@ export class TicketScanService {
     }
   }
 
-
-
-  private deriveScanReason(ticket: {
-    status: TicketStatus;
-    validationStatus: TicketValidationStatus;
-    isRevoked: boolean;
-  }, allowOverride?: boolean): ScanReason {
-    if (ticket.status === TicketStatus.cancelled || ticket.validationStatus === TicketValidationStatus.cancelled) {
+  private deriveScanReason(
+    ticket: {
+      status: TicketStatus;
+      validationStatus: TicketValidationStatus;
+      isRevoked: boolean;
+    },
+    allowOverride?: boolean,
+  ): ScanReason {
+    if (
+      ticket.status === TicketStatus.cancelled ||
+      ticket.validationStatus === TicketValidationStatus.cancelled
+    ) {
       return "cancelled";
     }
 
-    if (ticket.isRevoked || ticket.validationStatus === TicketValidationStatus.revoked) {
+    if (
+      ticket.isRevoked ||
+      ticket.validationStatus === TicketValidationStatus.revoked
+    ) {
       return "revoked";
     }
 
-    if (ticket.status === TicketStatus.used || ticket.validationStatus === TicketValidationStatus.used) {
+    if (
+      ticket.status === TicketStatus.used ||
+      ticket.validationStatus === TicketValidationStatus.used
+    ) {
       return allowOverride ? "valid" : "already-used";
     }
 
     return "valid";
   }
 
-  private buildResult(ticket: Prisma.TicketGetPayload<{ include: { ticketSale: { include: { match: true } } } }> | null, reason: ScanReason) {
+  private buildResult(
+    ticket: Prisma.TicketGetPayload<{
+      include: { ticketSale: { include: { match: true } } };
+    }> | null,
+    reason: ScanReason,
+  ) {
     return {
       isValid: reason === "valid",
       reason,
@@ -109,7 +159,11 @@ export class TicketScanService {
     };
   }
 
-  async validateScan(input: { qrCodeValue: string; scannedBy?: string; allowOverride?: boolean }) {
+  async validateScan(input: {
+    qrCodeValue: string;
+    scannedBy?: string;
+    allowOverride?: boolean;
+  }) {
     const qrCodeValue = input.qrCodeValue.trim();
     if (!this.qrService.isPayloadShapeValid(qrCodeValue)) {
       await this.writeLog({
@@ -117,6 +171,11 @@ export class TicketScanService {
         action: TicketScanAction.validate,
         result: TicketScanResult.invalid,
         notes: "Malformed QR payload",
+      });
+      await this.logScanEvent({
+        eventType: "ticket_scan_invalid",
+        severity: OperationalEventSeverity.warn,
+        reason: "invalid-qr",
       });
       return this.buildResult(null, "invalid-qr");
     }
@@ -132,6 +191,11 @@ export class TicketScanService {
         action: TicketScanAction.validate,
         result: TicketScanResult.not_found,
       });
+      await this.logScanEvent({
+        eventType: "ticket_scan_invalid",
+        severity: OperationalEventSeverity.warn,
+        reason: "not-found",
+      });
       return this.buildResult(null, "not-found");
     }
 
@@ -145,10 +209,27 @@ export class TicketScanService {
       notes: input.allowOverride ? "Manual override enabled" : undefined,
     });
 
+    if (reason === "already-used") {
+      await this.logScanEvent({
+        eventType: "ticket_scan_conflict",
+        severity: OperationalEventSeverity.warn,
+        ticketId: ticket.id,
+        orderReference: ticket.orderReference,
+        matchId: ticket.ticketSale.match.id,
+        reason,
+        scanCount: ticket.scanCount,
+      });
+    }
+
     return this.buildResult(ticket, reason);
   }
 
-  async confirmEntry(input: { qrCodeValue: string; scannedBy?: string; allowOverride?: boolean; notes?: string }) {
+  async confirmEntry(input: {
+    qrCodeValue: string;
+    scannedBy?: string;
+    allowOverride?: boolean;
+    notes?: string;
+  }) {
     const validation = await this.validateScan({
       qrCodeValue: input.qrCodeValue,
       scannedBy: input.scannedBy,
@@ -190,6 +271,17 @@ export class TicketScanService {
         result: TicketScanResult.already_used,
         notes: "Concurrent scan detected",
       });
+      await this.logScanEvent({
+        eventType: "ticket_scan_conflict",
+        severity: OperationalEventSeverity.warn,
+        ticketId: validation.ticket.id,
+        orderReference:
+          current?.orderReference ?? validation.ticket.orderReference,
+        matchId: current?.ticketSale.match.id ?? null,
+        reason: "already-used",
+        scanCount: current?.scanCount ?? validation.ticket.scanCount,
+        notes: "Concurrent scan detected",
+      });
       return this.buildResult(current, "already-used");
     }
 
@@ -201,8 +293,27 @@ export class TicketScanService {
     await this.writeLog({
       ticketId: updated.id,
       scannedBy: input.scannedBy,
-      action: input.allowOverride ? TicketScanAction.override_entry : TicketScanAction.confirm_entry,
-      result: input.allowOverride ? TicketScanResult.already_used : TicketScanResult.success,
+      action: input.allowOverride
+        ? TicketScanAction.override_entry
+        : TicketScanAction.confirm_entry,
+      result: input.allowOverride
+        ? TicketScanResult.already_used
+        : TicketScanResult.success,
+      notes: input.notes,
+    });
+
+    await this.logScanEvent({
+      eventType: input.allowOverride
+        ? "ticket_scan_override"
+        : "ticket_scan_success",
+      severity: input.allowOverride
+        ? OperationalEventSeverity.warn
+        : OperationalEventSeverity.info,
+      ticketId: updated.id,
+      orderReference: updated.orderReference,
+      matchId: updated.ticketSale.match.id,
+      reason: input.allowOverride ? "override" : "valid",
+      scanCount: updated.scanCount,
       notes: input.notes,
     });
 

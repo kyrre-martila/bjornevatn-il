@@ -95,6 +95,13 @@ enum MatchSyncSourceType {
   ical
 }
 
+
+enum OperationalEventSeverity {
+  info
+  warn
+  error
+}
+
 enum MatchSyncImportMode {
   create_only
   create_and_update
@@ -516,6 +523,47 @@ model FotballNoSettings {
   lastSyncMessage     String?
   createdAt           DateTime            @default(now())
   updatedAt           DateTime            @updatedAt
+}
+
+
+model OperationalEvent {
+  id        String                   @id @default(cuid())
+  eventType String                   @db.VarChar(100)
+  severity  OperationalEventSeverity @default(info)
+  actorId   String?                  @db.VarChar(255)
+  actorRole String?                  @db.VarChar(64)
+  actorType String?                  @db.VarChar(64)
+  requestId String?                  @db.VarChar(255)
+  route     String?                  @db.VarChar(255)
+  module    String?                  @db.VarChar(100)
+  metadata  Json?
+  createdAt DateTime                 @default(now())
+
+  @@index([createdAt])
+  @@index([eventType, createdAt])
+  @@index([severity, createdAt])
+  @@index([module, createdAt])
+}
+
+model MatchSyncRun {
+  id                String              @id @default(cuid())
+  provider          MatchSyncSourceType
+  status            String              @db.VarChar(32)
+  startedAt         DateTime            @default(now())
+  completedAt       DateTime?
+  durationMs        Int?
+  createdCount      Int                 @default(0)
+  updatedCount      Int                 @default(0)
+  skippedCount      Int                 @default(0)
+  failedCount       Int                 @default(0)
+  failureReason     String?             @db.VarChar(500)
+  triggeredByUserId String?
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+
+  @@index([provider, startedAt])
+  @@index([status, startedAt])
+  @@index([triggeredByUserId])
 }
 
 model SiteEnvironmentStatus {

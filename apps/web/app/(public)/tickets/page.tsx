@@ -2,12 +2,12 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { buildMetadata } from "../../../lib/seo";
 import { listPublicTicketSales } from "../../../lib/tickets";
+import { measureServerTiming } from "../../../lib/observability";
 import "./tickets.css";
 
 function asText(value: unknown): string {
   return typeof value === "string" ? value : "";
 }
-
 
 export async function generateMetadata(): Promise<Metadata> {
   return buildMetadata({
@@ -18,7 +18,10 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function TicketsPage() {
-  const sales = await listPublicTicketSales();
+  const sales = await measureServerTiming(
+    { flow: "ticket_listing_load", route: "/tickets", module: "tickets" },
+    () => listPublicTicketSales(),
+  );
 
   return (
     <section

@@ -4,6 +4,7 @@ import {
   MatchSyncSourceType,
   Prisma,
   WorkflowStatus,
+  OperationalEventSeverity,
 } from "@prisma/client";
 import { PrismaService } from "../../prisma/prisma.service";
 import {
@@ -13,6 +14,11 @@ import {
   ProviderMatch,
 } from "./matches-sync.types";
 import { ICalMatchProvider } from "./providers/ical-match.provider";
+import {
+  type ObservabilityActorContext,
+  type ObservabilityRouteContext,
+  ObservabilityService,
+} from "../observability/observability.service";
 
 function toArrayOfStrings(value: Prisma.JsonValue | null): string[] {
   if (!Array.isArray(value)) return [];
@@ -32,6 +38,14 @@ export class MatchesSyncService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly icalProvider: ICalMatchProvider,
+    private readonly observability: Pick<
+      ObservabilityService,
+      "createMatchSyncRun" | "completeMatchSyncRun" | "logEvent"
+    > = {
+      createMatchSyncRun: async () => ({ id: "local-run" }),
+      completeMatchSyncRun: async () => undefined,
+      logEvent: async () => undefined,
+    },
   ) {}
 
   async getSettings(): Promise<MatchSyncSettingsDto> {
@@ -102,9 +116,15 @@ export class MatchesSyncService {
     page?: number;
     pageSize?: number;
   }) {
-    const contentType = await this.prisma.contentType.findUnique({ where: { slug: "match" } });
+    const contentType = await this.prisma.contentType.findUnique({
+      where: { slug: "match" },
+    });
     if (!contentType) {
-      return { items: [], pagination: { page: 1, pageSize: 25, total: 0, totalPages: 1 }, filters: {} };
+      return {
+        items: [],
+        pagination: { page: 1, pageSize: 25, total: 0, totalPages: 1 },
+        filters: {},
+      };
     }
 
     const pageSize = Math.min(100, Math.max(1, filters.pageSize ?? 25));
@@ -120,7 +140,12 @@ export class MatchesSyncService {
           ? { data: { path: ["externalSource"], equals: filters.source } }
           : {},
         typeof filters.ticketSalesEnabled === "boolean"
-          ? { data: { path: ["ticketSalesEnabled"], equals: filters.ticketSalesEnabled } }
+          ? {
+              data: {
+                path: ["ticketSalesEnabled"],
+                equals: filters.ticketSalesEnabled,
+              },
+            }
           : {},
         filters.upcoming === true
           ? { data: { path: ["matchDate"], gte: nowIso } }
@@ -156,11 +181,24 @@ export class MatchesSyncService {
           lastSyncedAt: data.lastSyncedAt ? String(data.lastSyncedAt) : null,
         };
       }),
-      pagination: { page, pageSize, total, totalPages: Math.max(1, Math.ceil(total / pageSize)) },
+      pagination: {
+        page,
+        pageSize,
+        total,
+        totalPages: Math.max(1, Math.ceil(total / pageSize)),
+      },
       filters: {
         source: filters.source ?? null,
-        upcoming: typeof filters.upcoming === "boolean" ? (filters.upcoming ? "upcoming" : "past") : null,
-        ticketSalesEnabled: typeof filters.ticketSalesEnabled === "boolean" ? filters.ticketSalesEnabled : null,
+        upcoming:
+          typeof filters.upcoming === "boolean"
+            ? filters.upcoming
+              ? "upcoming"
+              : "past"
+            : null,
+        ticketSalesEnabled:
+          typeof filters.ticketSalesEnabled === "boolean"
+            ? filters.ticketSalesEnabled
+            : null,
       },
     };
   }
@@ -173,7 +211,10 @@ export class MatchesSyncService {
     return this.icalProvider;
   }
 
-  async runSync(): Promise<MatchSyncSummary> {
+  async runSync(input?: {
+    actor?: ObservabilityActorContext;
+    context?: ObservabilityRouteContext;
+  }): Promise<MatchSyncSummary> {
     const settings = await this.prisma.fotballNoSettings.findUnique({
       where: { id: "fotball-no-settings" },
     });
@@ -182,6 +223,25 @@ export class MatchesSyncService {
     }
 
     const provider = await this.getProvider(settings.sourceType);
+    const startedAt = Date.now();
+    const run = await this.observability.createMatchSyncRun({
+      provider: settings.sourceType,
+      actor: input?.actor,
+    });
+
+    await this.observability.logEvent({
+      eventType: "match_sync_started",
+      severity: OperationalEventSeverity.info,
+      actor: input?.actor,
+      context: input?.context ?? {
+        module: "matches-sync",
+        route: "admin/sync",
+      },
+      metadata: {
+        provider: settings.sourceType,
+        importMode: settings.importMode,
+      },
+    });
 
     try {
       const providerMatches = await provider.fetchMatches({
@@ -287,6 +347,43 @@ export class MatchesSyncService {
         },
       });
 
+      const durationMs = Date.now() - startedAt;
+      await this.observability.completeMatchSyncRun({
+        runId: run.id,
+        status: summary.failed > 0 ? "failed" : "succeeded",
+        counts: summary,
+        durationMs,
+        failureReason:
+          summary.failed > 0
+            ? "One or more provider rows failed validation or persistence."
+            : null,
+      });
+      await this.observability.logEvent({
+        eventType:
+          summary.failed > 0 ? "match_sync_failed" : "match_sync_succeeded",
+        severity:
+          summary.failed > 0
+            ? OperationalEventSeverity.warn
+            : OperationalEventSeverity.info,
+        actor: input?.actor,
+        context: input?.context ?? {
+          module: "matches-sync",
+          route: "admin/sync",
+        },
+        metadata: {
+          provider: settings.sourceType,
+          created: summary.created,
+          updated: summary.updated,
+          skipped: summary.skipped,
+          failed: summary.failed,
+          durationMs,
+          failureReason:
+            summary.failed > 0
+              ? "One or more provider rows failed validation or persistence."
+              : null,
+        },
+      });
+
       return summary;
     } catch (error) {
       const message =
@@ -297,6 +394,33 @@ export class MatchesSyncService {
           lastSyncAt: new Date(),
           lastSyncStatus: "error",
           lastSyncMessage: message,
+        },
+      });
+
+      const durationMs = Date.now() - startedAt;
+      await this.observability.completeMatchSyncRun({
+        runId: run.id,
+        status: "failed",
+        counts: { created: 0, updated: 0, skipped: 0, failed: 1 },
+        durationMs,
+        failureReason: message,
+      });
+      await this.observability.logEvent({
+        eventType: "match_sync_failed",
+        severity: OperationalEventSeverity.error,
+        actor: input?.actor,
+        context: input?.context ?? {
+          module: "matches-sync",
+          route: "admin/sync",
+        },
+        metadata: {
+          provider: settings.sourceType,
+          created: 0,
+          updated: 0,
+          skipped: 0,
+          failed: 1,
+          durationMs,
+          failureReason: message,
         },
       });
 

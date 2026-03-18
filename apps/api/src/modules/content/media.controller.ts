@@ -22,6 +22,12 @@ import { AuthService } from "../auth/auth.service";
 import { requireMinimumRole } from "../../common/auth/admin-access";
 import type { Request } from "express";
 import { PrismaService } from "../../prisma/prisma.service";
+import { OperationalEventSeverity } from "@prisma/client";
+import {
+  getActorFromRequest,
+  getContextFromRequest,
+} from "../observability/observability-request.util";
+import { ObservabilityService } from "../observability/observability.service";
 
 const MEDIA_UPLOAD_LIMITS = {
   fileSizeBytes: 10 * 1024 * 1024,
@@ -104,13 +110,17 @@ export class MediaController {
     private readonly mediaUsageService: MediaUsageService,
     private readonly auth: AuthService,
     private readonly prisma: PrismaService,
+    private readonly observability: ObservabilityService,
   ) {}
 
   @Get()
   async listMedia(@Req() req: Request, @Query() query: ListMediaQueryDto) {
     await requireMinimumRole(req, this.auth, "editor");
 
-    const pageSize = Math.min(200, Math.max(1, query.pageSize ?? query.limit ?? 50));
+    const pageSize = Math.min(
+      200,
+      Math.max(1, query.pageSize ?? query.limit ?? 50),
+    );
     const page = Math.max(1, query.page ?? 1);
     const skip = (page - 1) * pageSize;
 
@@ -119,36 +129,72 @@ export class MediaController {
       ...(query.uploadedAfter || query.uploadedBefore
         ? {
             createdAt: {
-              ...(query.uploadedAfter ? { gte: new Date(query.uploadedAfter) } : {}),
-              ...(query.uploadedBefore ? { lte: new Date(query.uploadedBefore) } : {}),
+              ...(query.uploadedAfter
+                ? { gte: new Date(query.uploadedAfter) }
+                : {}),
+              ...(query.uploadedBefore
+                ? { lte: new Date(query.uploadedBefore) }
+                : {}),
             },
           }
         : {}),
       ...(query.search
         ? {
             OR: [
-              { fileName: { contains: query.search, mode: "insensitive" as const } },
-              { originalName: { contains: query.search, mode: "insensitive" as const } },
+              {
+                fileName: {
+                  contains: query.search,
+                  mode: "insensitive" as const,
+                },
+              },
+              {
+                originalName: {
+                  contains: query.search,
+                  mode: "insensitive" as const,
+                },
+              },
             ],
           }
         : {}),
     };
 
-    const [items, total] = await Promise.all([
-      this.prisma.media.findMany({
-        where,
-        orderBy: { createdAt: "desc" },
-        skip,
-        take: pageSize,
-      }),
-      this.prisma.media.count({ where }),
-    ]);
+    const [items, total] = await this.observability.timeOperation(
+      {
+        flow: "admin_media_list",
+        actor: getActorFromRequest(req),
+        context: getContextFromRequest(req, "media"),
+        metadata: {
+          page,
+          pageSize,
+          mimeType: query.mimeType ?? null,
+          search: query.search ?? null,
+        },
+        slowThresholdMs: 750,
+      },
+      () =>
+        Promise.all([
+          this.prisma.media.findMany({
+            where,
+            orderBy: { createdAt: "desc" },
+            skip,
+            take: pageSize,
+          }),
+          this.prisma.media.count({ where }),
+        ]),
+    );
 
-    const usedUrls = await this.mediaUsageService.getUsedUrls(items.map((item) => item.url));
+    const usedUrls = await this.mediaUsageService.getUsedUrls(
+      items.map((item) => item.url),
+    );
 
     return {
       items: items.map((item) => ({ ...item, isUsed: usedUrls.has(item.url) })),
-      pagination: { page, pageSize, total, totalPages: Math.max(1, Math.ceil(total / pageSize)) },
+      pagination: {
+        page,
+        pageSize,
+        total,
+        totalPages: Math.max(1, Math.ceil(total / pageSize)),
+      },
       filters: {
         mimeType: query.mimeType ?? null,
         uploadedAfter: query.uploadedAfter ?? null,
@@ -198,29 +244,59 @@ export class MediaController {
       throw new BadRequestException("Alt text is required.");
     }
 
-    const asset = await this.mediaService.upload({
-      fileBuffer: file.buffer,
-      fileName: file.originalname,
-      mimeType: file.mimetype,
-      altText,
-      caption: body.caption?.trim() || undefined,
-      uploadedBy: undefined,
-    });
+    const context = getContextFromRequest(req, "media");
 
-    return {
-      ...asset,
-      metadata: {
-        fileName: asset.fileName,
-        originalName: asset.originalName,
-        mimeType: asset.mimeType,
-        fileSize: asset.fileSize,
-        width: asset.width,
-        height: asset.height,
-        altText: asset.altText,
-        caption: asset.caption,
-        uploadedBy: asset.uploadedBy,
-      },
-    };
+    try {
+      const asset = await this.mediaService.upload({
+        fileBuffer: file.buffer,
+        fileName: file.originalname,
+        mimeType: file.mimetype,
+        altText,
+        caption: body.caption?.trim() || undefined,
+        uploadedBy: undefined,
+      });
+
+      await this.observability.logEvent({
+        eventType: "media_upload_succeeded",
+        severity: OperationalEventSeverity.info,
+        actor: getActorFromRequest(req),
+        context,
+        metadata: {
+          mediaId: asset.id,
+          mimeType: asset.mimeType ?? null,
+          fileSize: asset.fileSize ?? null,
+        },
+      });
+
+      return {
+        ...asset,
+        metadata: {
+          fileName: asset.fileName,
+          originalName: asset.originalName,
+          mimeType: asset.mimeType,
+          fileSize: asset.fileSize,
+          width: asset.width,
+          height: asset.height,
+          altText: asset.altText,
+          caption: asset.caption,
+          uploadedBy: asset.uploadedBy,
+        },
+      };
+    } catch (error) {
+      await this.observability.logEvent({
+        eventType: "media_upload_failed",
+        severity: OperationalEventSeverity.warn,
+        actor: getActorFromRequest(req),
+        context,
+        metadata: {
+          fileName: file.originalname,
+          mimeType: file.mimetype,
+          reason:
+            error instanceof Error ? error.message : "Media upload failed",
+        },
+      });
+      throw error;
+    }
   }
 
   @Delete(":id")
@@ -237,7 +313,8 @@ export class MediaController {
     @Body() body: UpdateMediaDto,
   ) {
     await requireMinimumRole(req, this.auth, "editor");
-    const nextAltText = body.altText === undefined ? undefined : body.altText.trim();
+    const nextAltText =
+      body.altText === undefined ? undefined : body.altText.trim();
 
     if (nextAltText !== undefined && !nextAltText) {
       const existing = await this.mediaService.findById(id);

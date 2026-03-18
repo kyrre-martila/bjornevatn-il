@@ -1,0 +1,127 @@
+.admin-observability {
+  gap: var(--space-6);
+}
+
+.admin-observability__range-switcher {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.admin-observability__range-link {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  color: var(--color-text);
+  padding: var(--space-2) var(--space-3);
+  text-decoration: none;
+}
+
+.admin-observability__range-link--active {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+  color: var(--color-surface);
+}
+
+.admin-observability__stats-grid,
+.admin-observability__grid {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.admin-observability__stats-grid {
+  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+}
+
+.admin-observability__stat-card,
+.admin-observability__trend-card {
+  background: var(--color-surface-muted);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-4);
+}
+
+.admin-observability__stat-label,
+.admin-observability__event-meta {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+
+.admin-observability__stat-value {
+  font-size: var(--font-size-3xl);
+  line-height: var(--line-height-tight);
+}
+
+.admin-observability__event-card {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.admin-observability__event-header {
+  align-items: center;
+  display: flex;
+  gap: var(--space-2);
+  justify-content: space-between;
+}
+
+.admin-observability__event-copy {
+  margin: 0;
+}
+
+.admin-observability__badge {
+  border-radius: var(--radius-full);
+  display: inline-flex;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  padding: var(--space-1) var(--space-2);
+  text-transform: uppercase;
+}
+
+.admin-observability__badge--info {
+  background: color-mix(in srgb, var(--color-accent) 14%, var(--color-surface));
+  color: var(--color-accent);
+}
+
+.admin-observability__badge--warn {
+  background: color-mix(
+    in srgb,
+    var(--color-warning, #b7791f) 12%,
+    var(--color-surface)
+  );
+  color: var(--color-warning, #b7791f);
+}
+
+.admin-observability__badge--error {
+  background: color-mix(
+    in srgb,
+    var(--color-danger, #c53030) 12%,
+    var(--color-surface)
+  );
+  color: var(--color-danger, #c53030);
+}
+
+.admin-observability__trend-list {
+  display: grid;
+  gap: var(--space-2);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.admin-observability__trend-list li {
+  align-items: center;
+  display: flex;
+  gap: var(--space-3);
+  justify-content: space-between;
+}
+
+@media (min-width: 64rem) {
+  .admin-observability__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .admin-observability__grid--compact {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
