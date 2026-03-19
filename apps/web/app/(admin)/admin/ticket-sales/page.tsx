@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 
-import { getMatches } from "../../../../lib/content";
+import { getDynamicMatches } from "../../../../lib/content";
 import { getMe } from "../../../../lib/me";
 import { canManageUsers } from "../../../../lib/roles";
 import { listAdminTicketSales } from "../../../../lib/admin/tickets";
@@ -58,7 +58,7 @@ export default async function AdminTicketSalesPage({
   );
 
   const [matches, sales] = await Promise.all([
-    getMatches(),
+    getDynamicMatches(),
     listAdminTicketSales({ page, pageSize }),
   ]);
 
