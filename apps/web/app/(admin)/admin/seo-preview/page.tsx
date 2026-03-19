@@ -1,11 +1,15 @@
-import { getClubNews, getClubProfile, getTeams } from "../../../../lib/content";
+import {
+  getDynamicClubNews,
+  getDynamicClubProfile,
+  getDynamicTeams,
+} from "../../../../lib/content";
 import { buildMetadata } from "../../../../lib/seo";
 
 export default async function SeoPreviewPage() {
   const [news, teams, club] = await Promise.all([
-    getClubNews(),
-    getTeams(),
-    getClubProfile(),
+    getDynamicClubNews(),
+    getDynamicTeams(),
+    getDynamicClubProfile(),
   ]);
 
   const sample = {

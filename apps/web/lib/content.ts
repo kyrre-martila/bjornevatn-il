@@ -543,6 +543,30 @@ async function fetchContent<T>(path: string): Promise<T | null> {
   try {
     const response = await fetch(resolveApiUrl(path), {
       method: "GET",
+      next: { revalidate: 60 },
+    });
+
+    if (response.status === 404) {
+      return null;
+    }
+
+    if (!response.ok) {
+      throw new Error(
+        `Content request failed (${response.status}) for ${path}`,
+      );
+    }
+
+    return (await response.json()) as T;
+  } catch (error) {
+    console.error(`Content request failed for ${path}`, error);
+    return null;
+  }
+}
+
+async function fetchDynamicContent<T>(path: string): Promise<T | null> {
+  try {
+    const response = await fetch(resolveApiUrl(path), {
+      method: "GET",
       cache: "no-store",
     });
 
@@ -563,7 +587,10 @@ async function fetchContent<T>(path: string): Promise<T | null> {
   }
 }
 
-async function fetchAllContentItemsByTypeSlug(
+type ContentFetcher = <T>(path: string) => Promise<T | null>;
+
+async function fetchAllContentItemsByTypeSlugWithFetcher(
+  fetcher: ContentFetcher,
   contentTypeSlug: string,
   pageSize: number,
 ): Promise<ApiContentItemArchive[]> {
@@ -571,7 +598,7 @@ async function fetchAllContentItemsByTypeSlug(
   let offset = 0;
 
   while (true) {
-    const page = await fetchContent<ApiContentItemArchive[]>(
+    const page = await fetcher<ApiContentItemArchive[]>(
       `/public/content/items/type-slug/${encodeURIComponent(contentTypeSlug)}?offset=${offset}&limit=${pageSize}`,
     );
 
@@ -591,16 +618,38 @@ async function fetchAllContentItemsByTypeSlug(
   return items;
 }
 
+async function fetchAllContentItemsByTypeSlug(
+  contentTypeSlug: string,
+  pageSize: number,
+): Promise<ApiContentItemArchive[]> {
+  return fetchAllContentItemsByTypeSlugWithFetcher(
+    fetchContent,
+    contentTypeSlug,
+    pageSize,
+  );
+}
+
+async function fetchContentItemsByTypeSlugLimitedWithFetcher(
+  fetcher: ContentFetcher,
+  contentTypeSlug: string,
+  limit: number,
+): Promise<ApiContentItemArchive[]> {
+  const safeLimit = Math.max(1, Math.min(limit, DEFAULT_ARCHIVE_PAGE_SIZE));
+  const items = await fetcher<ApiContentItemArchive[]>(
+    `/public/content/items/type-slug/${encodeURIComponent(contentTypeSlug)}?offset=0&limit=${safeLimit}`,
+  );
+  return items ?? [];
+}
 
 async function fetchContentItemsByTypeSlugLimited(
   contentTypeSlug: string,
   limit: number,
 ): Promise<ApiContentItemArchive[]> {
-  const safeLimit = Math.max(1, Math.min(limit, DEFAULT_ARCHIVE_PAGE_SIZE));
-  const items = await fetchContent<ApiContentItemArchive[]>(
-    `/public/content/items/type-slug/${encodeURIComponent(contentTypeSlug)}?offset=0&limit=${safeLimit}`,
+  return fetchContentItemsByTypeSlugLimitedWithFetcher(
+    fetchContent,
+    contentTypeSlug,
+    limit,
   );
-  return items ?? [];
 }
 
 function mapApiPageBlock(block: ApiPageBlock): ContentBlock | null {
@@ -1456,8 +1505,9 @@ function mapSocialLinks(value: unknown): SocialLink[] {
     .sort((a, b) => a.sortOrder - b.sortOrder);
 }
 
-export async function getTeams(): Promise<TeamItem[]> {
-  const items = await fetchAllContentItemsByTypeSlug(
+async function getTeamsWithFetcher(fetcher: ContentFetcher): Promise<TeamItem[]> {
+  const items = await fetchAllContentItemsByTypeSlugWithFetcher(
+    fetcher,
     "team",
     DEFAULT_ARCHIVE_PAGE_SIZE,
   );
@@ -1508,6 +1558,14 @@ export async function getTeams(): Promise<TeamItem[]> {
       seoNoIndex: Boolean(item.noIndex),
     };
   });
+}
+
+export async function getTeams(): Promise<TeamItem[]> {
+  return getTeamsWithFetcher(fetchContent);
+}
+
+export async function getDynamicTeams(): Promise<TeamItem[]> {
+  return getTeamsWithFetcher(fetchDynamicContent);
 }
 
 export async function getTeamBySlug(slug: string): Promise<TeamItem | null> {
@@ -1571,11 +1629,18 @@ export async function getSponsors(): Promise<SponsorItem[]> {
   });
 }
 
-export async function getClubNews(limit = DEFAULT_ARCHIVE_PAGE_SIZE): Promise<ClubNewsItem[]> {
+async function getClubNewsWithFetcher(
+  fetcher: ContentFetcher,
+  limit = DEFAULT_ARCHIVE_PAGE_SIZE,
+): Promise<ClubNewsItem[]> {
   const items =
     limit < DEFAULT_ARCHIVE_PAGE_SIZE
-      ? await fetchContentItemsByTypeSlugLimited("news", limit)
-      : await fetchAllContentItemsByTypeSlug("news", DEFAULT_ARCHIVE_PAGE_SIZE);
+      ? await fetchContentItemsByTypeSlugLimitedWithFetcher(fetcher, "news", limit)
+      : await fetchAllContentItemsByTypeSlugWithFetcher(
+          fetcher,
+          "news",
+          DEFAULT_ARCHIVE_PAGE_SIZE,
+        );
 
   return items.map((item) => {
     const data = asRecord(item.data);
@@ -1598,6 +1663,18 @@ export async function getClubNews(limit = DEFAULT_ARCHIVE_PAGE_SIZE): Promise<Cl
   });
 }
 
+export async function getClubNews(
+  limit = DEFAULT_ARCHIVE_PAGE_SIZE,
+): Promise<ClubNewsItem[]> {
+  return getClubNewsWithFetcher(fetchContent, limit);
+}
+
+export async function getDynamicClubNews(
+  limit = DEFAULT_ARCHIVE_PAGE_SIZE,
+): Promise<ClubNewsItem[]> {
+  return getClubNewsWithFetcher(fetchDynamicContent, limit);
+}
+
 export async function getClubNewsBySlug(
   slug: string,
 ): Promise<ClubNewsItem | null> {
@@ -1605,8 +1682,10 @@ export async function getClubNewsBySlug(
   return items.find((item) => item.slug === slug) ?? null;
 }
 
-export async function getClubProfile(): Promise<ClubProfile | null> {
-  const [item] = await fetchAllContentItemsByTypeSlug("club", 1);
+async function getClubProfileWithFetcher(
+  fetcher: ContentFetcher,
+): Promise<ClubProfile | null> {
+  const [item] = await fetchAllContentItemsByTypeSlugWithFetcher(fetcher, "club", 1);
 
   if (!item) {
     return null;
@@ -1634,6 +1713,14 @@ export async function getClubProfile(): Promise<ClubProfile | null> {
     seoCanonicalUrl: item.canonicalUrl ?? null,
     seoNoIndex: Boolean(item.noIndex),
   };
+}
+
+export async function getClubProfile(): Promise<ClubProfile | null> {
+  return getClubProfileWithFetcher(fetchContent);
+}
+
+export async function getDynamicClubProfile(): Promise<ClubProfile | null> {
+  return getClubProfileWithFetcher(fetchDynamicContent);
 }
 
 export async function getHomepageSettings(): Promise<HomepageSettings | null> {
@@ -1664,11 +1751,18 @@ export async function getHomepageSettings(): Promise<HomepageSettings | null> {
   };
 }
 
-export async function getMatches(limit = DEFAULT_ARCHIVE_PAGE_SIZE): Promise<MatchItem[]> {
+async function getMatchesWithFetcher(
+  fetcher: ContentFetcher,
+  limit = DEFAULT_ARCHIVE_PAGE_SIZE,
+): Promise<MatchItem[]> {
   const items =
     limit < DEFAULT_ARCHIVE_PAGE_SIZE
-      ? await fetchContentItemsByTypeSlugLimited("match", limit)
-      : await fetchAllContentItemsByTypeSlug("match", DEFAULT_ARCHIVE_PAGE_SIZE);
+      ? await fetchContentItemsByTypeSlugLimitedWithFetcher(fetcher, "match", limit)
+      : await fetchAllContentItemsByTypeSlugWithFetcher(
+          fetcher,
+          "match",
+          DEFAULT_ARCHIVE_PAGE_SIZE,
+        );
 
   return items.map((item) => {
     const data = asRecord(item.data);
@@ -1701,6 +1795,18 @@ export async function getMatches(limit = DEFAULT_ARCHIVE_PAGE_SIZE): Promise<Mat
       seoNoIndex: Boolean(item.noIndex),
     };
   });
+}
+
+export async function getMatches(
+  limit = DEFAULT_ARCHIVE_PAGE_SIZE,
+): Promise<MatchItem[]> {
+  return getMatchesWithFetcher(fetchContent, limit);
+}
+
+export async function getDynamicMatches(
+  limit = DEFAULT_ARCHIVE_PAGE_SIZE,
+): Promise<MatchItem[]> {
+  return getMatchesWithFetcher(fetchDynamicContent, limit);
 }
 
 export async function getFundingGrants(limit = DEFAULT_ARCHIVE_PAGE_SIZE): Promise<FundingGrantItem[]> {
