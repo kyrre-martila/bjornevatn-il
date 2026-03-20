@@ -26,6 +26,7 @@ RUN pnpm --filter api prisma:generate
 RUN pnpm --filter @org/domain build \
   && pnpm --filter @org/domain-adapters-prisma build \
   && pnpm --filter api build
+RUN pnpm --filter api --prod deploy --legacy /app/deploy
 RUN mkdir -p /app/uploads/media \
   && chown -R node:node /app/uploads
 
@@ -33,23 +34,11 @@ FROM base AS runtime
 ENV NODE_ENV=production \
     PORT=4000 \
     NODE_OPTIONS=--max-old-space-size=256
-COPY --from=build --chown=node:node /app/node_modules ./node_modules
-COPY --from=build --chown=node:node /app/apps/api/node_modules ./apps/api/node_modules
-COPY --from=build --chown=node:node /app/apps/api/package.json ./apps/api/package.json
-COPY --from=build --chown=node:node /app/apps/api/dist ./apps/api/dist
-COPY --from=build --chown=node:node /app/packages/domain/package.json ./packages/domain/package.json
-COPY --from=build --chown=node:node /app/packages/domain/dist ./packages/domain/dist
-COPY --from=build --chown=node:node /app/packages/domain-adapters-prisma/package.json ./packages/domain-adapters-prisma/package.json
-COPY --from=build --chown=node:node /app/packages/domain-adapters-prisma/dist ./packages/domain-adapters-prisma/dist
+COPY --from=build --chown=node:node /app/deploy ./
 COPY --from=build --chown=node:node /app/uploads ./uploads
-RUN mkdir -p ./node_modules/@org ./node_modules/@prisma ./node_modules/.prisma \
-  && cp -RL ./packages/domain ./node_modules/@org/domain \
-  && cp -RL ./packages/domain-adapters-prisma ./node_modules/@org/domain-adapters-prisma \
-  && cp -RL ./apps/api/node_modules/@prisma/client ./node_modules/@prisma/client \
-  && cp -RL ./node_modules/.pnpm/@prisma+client@*/node_modules/.prisma/client ./node_modules/.prisma/client
 USER node
 EXPOSE 4000
-CMD ["node", "apps/api/dist/src/main.js"]
+CMD ["node", "dist/src/main.js"]
 
 FROM workspace AS migrate
 ENV NODE_ENV=production
