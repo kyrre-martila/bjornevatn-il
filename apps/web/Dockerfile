@@ -12,7 +12,6 @@ FROM base AS workspace
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json turbo.json ./
 COPY apps ./apps
 COPY packages ./packages
-ENV NODE_ENV=development
 RUN pnpm install --frozen-lockfile
 
 FROM workspace AS build
@@ -29,8 +28,7 @@ ENV NEXT_TELEMETRY_DISABLED=1 \
 RUN pnpm --filter web build
 
 FROM base AS runtime
-ENV NODE_ENV=production \
-    PORT=3000 \
+ENV PORT=3000 \
     NEXT_TELEMETRY_DISABLED=1 \
     NODE_OPTIONS=--max-old-space-size=256
 COPY --from=build --chown=node:node /app/apps/web/.next/standalone ./

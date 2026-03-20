@@ -30,7 +30,7 @@ export default function RootLayout({
   children: ReactNode;
 }) {
   return (
-    <html lang="en">
+    <html lang="no">
       <body className="app-root">
         <StagingBanner />
         {children}
