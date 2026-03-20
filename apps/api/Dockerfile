@@ -42,7 +42,9 @@ COPY --from=build --chown=node:node /app/packages/domain/dist ./packages/domain/
 COPY --from=build --chown=node:node /app/packages/domain-adapters-prisma/package.json ./packages/domain-adapters-prisma/package.json
 COPY --from=build --chown=node:node /app/packages/domain-adapters-prisma/dist ./packages/domain-adapters-prisma/dist
 COPY --from=build --chown=node:node /app/uploads ./uploads
-RUN mkdir -p ./node_modules/@prisma ./node_modules/.prisma \
+RUN mkdir -p ./node_modules/@org ./node_modules/@prisma ./node_modules/.prisma \
+  && cp -RL ./packages/domain ./node_modules/@org/domain \
+  && cp -RL ./packages/domain-adapters-prisma ./node_modules/@org/domain-adapters-prisma \
   && cp -RL ./apps/api/node_modules/@prisma/client ./node_modules/@prisma/client \
   && cp -RL ./node_modules/.pnpm/@prisma+client@*/node_modules/.prisma/client ./node_modules/.prisma/client
 USER node
