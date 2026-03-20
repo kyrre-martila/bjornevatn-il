@@ -24,7 +24,6 @@ RUN pnpm --filter api prisma:generate
 RUN pnpm --filter @org/domain build \
   && pnpm --filter @org/domain-adapters-prisma build \
   && pnpm --filter api build
-RUN pnpm prune --prod
 RUN mkdir -p /app/uploads/media \
   && chown -R node:node /app/uploads
 
@@ -33,6 +32,7 @@ ENV NODE_ENV=production \
     PORT=4000 \
     NODE_OPTIONS=--max-old-space-size=256
 COPY --from=build --chown=node:node /app/node_modules ./node_modules
+COPY --from=build --chown=node:node /app/apps/api/node_modules ./apps/api/node_modules
 COPY --from=build --chown=node:node /app/apps/api/package.json ./apps/api/package.json
 COPY --from=build --chown=node:node /app/apps/api/dist ./apps/api/dist
 COPY --from=build --chown=node:node /app/packages/domain/package.json ./packages/domain/package.json
