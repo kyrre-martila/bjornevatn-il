@@ -4,6 +4,8 @@ import Link from "next/link";
 import Logo from "../Logo";
 import PublicNav from "./PublicNav";
 
+export const dynamic = "force-dynamic";
+
 export default function PublicLayout({
   children,
 }: {
