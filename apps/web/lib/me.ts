@@ -23,10 +23,15 @@ export async function getMe(): Promise<MeResponse> {
     ? { cookie: cookieHeader }
     : {};
 
-  const res = await fetch(`${getServerApiBaseUrl()}/me`, {
-    headers,
-    cache: "no-store",
-  });
+  let res: Response;
+  try {
+    res = await fetch(`${getServerApiBaseUrl()}/me`, {
+      headers,
+      cache: "no-store",
+    });
+  } catch {
+    return null;
+  }
 
   if (!res.ok) return null;
 

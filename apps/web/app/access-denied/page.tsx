@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 export default function AdminAccessDeniedPage() {
   return (
     <section className="hero" aria-labelledby="access-denied-heading">

@@ -14,10 +14,18 @@ function buildHeaders() {
 export async function GET() {
   const headers = buildHeaders();
 
-  const res = await fetch(`${getServerApiBaseUrl()}/me`, {
-    headers,
-    cache: "no-store",
-  });
+  let res: Response;
+  try {
+    res = await fetch(`${getServerApiBaseUrl()}/me`, {
+      headers,
+      cache: "no-store",
+    });
+  } catch {
+    return NextResponse.json(
+      { error: "Failed to load profile" },
+      { status: 502 },
+    );
+  }
 
   if (!res.ok) {
     return NextResponse.json(
