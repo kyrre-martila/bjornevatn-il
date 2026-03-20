@@ -20,6 +20,8 @@ ENV NODE_ENV=development
 RUN pnpm install --frozen-lockfile
 
 FROM workspace AS build
+RUN cd "$(node -p "require(\"path\").dirname(require.resolve(\"bcrypt/package.json\", { paths: [\"./apps/api\"] }))")" \
+  && npm run install
 RUN pnpm --filter api prisma:generate
 RUN pnpm --filter @org/domain build \
   && pnpm --filter @org/domain-adapters-prisma build \
