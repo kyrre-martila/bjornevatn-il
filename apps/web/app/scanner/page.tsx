@@ -4,6 +4,8 @@ import { canManageUsers } from "../../lib/roles";
 import ScannerClient from "./ScannerClient";
 import "./scanner.css";
 
+export const dynamic = "force-dynamic";
+
 export default async function ScannerPage() {
   const me = await getMe();
   if (!canManageUsers(me?.user?.role)) {

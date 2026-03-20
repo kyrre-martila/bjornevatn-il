@@ -540,6 +540,10 @@ function asRecord(value: unknown): Record<string, unknown> {
 }
 
 async function fetchContent<T>(path: string): Promise<T | null> {
+  if (shouldSkipApiDuringBuild()) {
+    return null;
+  }
+
   try {
     const response = await fetch(resolveApiUrl(path), {
       method: "GET",
@@ -564,6 +568,10 @@ async function fetchContent<T>(path: string): Promise<T | null> {
 }
 
 async function fetchDynamicContent<T>(path: string): Promise<T | null> {
+  if (shouldSkipApiDuringBuild()) {
+    return null;
+  }
+
   try {
     const response = await fetch(resolveApiUrl(path), {
       method: "GET",
@@ -588,6 +596,11 @@ async function fetchDynamicContent<T>(path: string): Promise<T | null> {
 }
 
 type ContentFetcher = <T>(path: string) => Promise<T | null>;
+
+function shouldSkipApiDuringBuild(): boolean {
+  const value = process.env.SKIP_API_DURING_BUILD?.trim().toLowerCase();
+  return value === "1" || value === "true" || value === "yes";
+}
 
 async function fetchAllContentItemsByTypeSlugWithFetcher(
   fetcher: ContentFetcher,

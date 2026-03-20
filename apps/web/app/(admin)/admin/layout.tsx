@@ -11,6 +11,8 @@ import {
 } from "../../../lib/roles";
 import { hasMinimumRole } from "../../../lib/rbac";
 
+export const dynamic = "force-dynamic";
+
 const adminNavSections = [
   {
     label: "Content",
