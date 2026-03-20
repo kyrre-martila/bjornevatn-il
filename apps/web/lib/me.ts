@@ -18,15 +18,24 @@ export type MeResponse = {
 } | null;
 
 export async function getMe(): Promise<MeResponse> {
+  if (process.env.SKIP_API_DURING_BUILD?.trim().toLowerCase() === "1") {
+    return null;
+  }
+
   const cookieHeader = cookies().toString();
   const headers: Record<string, string> = cookieHeader
     ? { cookie: cookieHeader }
     : {};
 
-  const res = await fetch(`${getServerApiBaseUrl()}/me`, {
-    headers,
-    cache: "no-store",
-  });
+  let res: Response;
+  try {
+    res = await fetch(`${getServerApiBaseUrl()}/me`, {
+      headers,
+      cache: "no-store",
+    });
+  } catch {
+    return null;
+  }
 
   if (!res.ok) return null;
 
