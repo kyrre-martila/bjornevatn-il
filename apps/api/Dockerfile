@@ -26,7 +26,12 @@ RUN pnpm --filter api prisma:generate
 RUN pnpm --filter @org/domain build \
   && pnpm --filter @org/domain-adapters-prisma build \
   && pnpm --filter api build
-RUN pnpm --filter api --prod deploy --legacy /app/deploy
+RUN pnpm --filter api --prod deploy --legacy /app/deploy \
+  && src_prisma_dir="$(node -p "const path=require('path'); const pkg=require.resolve('@prisma/client/package.json', { paths: ['./apps/api'] }); path.resolve(path.dirname(pkg), '..', '..', '.prisma')")" \
+  && dst_prisma_dir="$(cd /app/deploy && node -p "const path=require('path'); const pkg=require.resolve('@prisma/client/package.json'); path.resolve(path.dirname(pkg), '..', '..', '.prisma')")" \
+  && rm -rf "$dst_prisma_dir/client" \
+  && mkdir -p "$dst_prisma_dir" \
+  && cp -R "$src_prisma_dir/client" "$dst_prisma_dir/client"
 RUN mkdir -p /app/uploads/media \
   && chown -R node:node /app/uploads
 
