@@ -35,7 +35,10 @@ RUN pnpm --filter api --prod deploy --legacy /app/deploy \
         mkdir -p "$(dirname "$dst_prisma_client_dir")"; \
         cp -a "$src_prisma_client_dir" "$dst_prisma_client_dir"; \
       done \
-  && test -f /app/deploy/node_modules/.pnpm/@prisma+client@*/node_modules/.prisma/client/default.js
+  && test -f /app/deploy/node_modules/.pnpm/@prisma+client@*/node_modules/.prisma/client/default.js \
+  && cd /app/deploy \
+  && npm rebuild bcrypt --build-from-source \
+  && test -f /app/deploy/node_modules/.pnpm/bcrypt@*/node_modules/bcrypt/lib/binding/napi-v3/bcrypt_lib.node
 RUN mkdir -p /app/uploads/media \
   && chown -R node:node /app/uploads
 
