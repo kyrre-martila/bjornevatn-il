@@ -27,11 +27,15 @@ RUN pnpm --filter @org/domain build \
   && pnpm --filter @org/domain-adapters-prisma build \
   && pnpm --filter api build
 RUN pnpm --filter api --prod deploy --legacy /app/deploy \
-  && src_prisma_dir="$(node -p "const path=require('path'); const pkg=require.resolve('@prisma/client/package.json', { paths: ['./apps/api'] }); path.resolve(path.dirname(pkg), '..', '..', '.prisma')")" \
-  && dst_prisma_dir="$(cd /app/deploy && node -p "const path=require('path'); const pkg=require.resolve('@prisma/client/package.json'); path.resolve(path.dirname(pkg), '..', '..', '.prisma')")" \
-  && rm -rf "$dst_prisma_dir/client" \
-  && mkdir -p "$dst_prisma_dir" \
-  && cp -R "$src_prisma_dir/client" "$dst_prisma_dir/client"
+  && src_prisma_client_dir="$(node -p "const path=require('path'); const pkg=require.resolve('@prisma/client/package.json', { paths: ['./apps/api'] }); path.resolve(path.dirname(pkg), '..', '..', '.prisma', 'client')")" \
+  && find /app/deploy/node_modules/.pnpm -path '*/node_modules/@prisma/client' -type d -print \
+    | while read -r prisma_client_dir; do \
+        dst_prisma_client_dir="$(node -p "const path=require('path'); path.resolve(process.argv[1], '..', '..', '.prisma', 'client')" "$prisma_client_dir")"; \
+        rm -rf "$dst_prisma_client_dir"; \
+        mkdir -p "$(dirname "$dst_prisma_client_dir")"; \
+        cp -a "$src_prisma_client_dir" "$dst_prisma_client_dir"; \
+      done \
+  && test -f /app/deploy/node_modules/.pnpm/@prisma+client@*/node_modules/.prisma/client/default.js
 RUN mkdir -p /app/uploads/media \
   && chown -R node:node /app/uploads
 
