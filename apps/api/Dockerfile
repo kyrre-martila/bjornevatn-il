@@ -27,6 +27,8 @@ RUN pnpm --filter @org/domain build \
   && pnpm --filter @org/domain-adapters-prisma build \
   && pnpm --filter api build
 RUN pnpm --filter api --prod deploy --legacy /app/deploy \
+  && node -e "const fs=require('fs'); const path=require('path'); const root='/app/deploy/node_modules'; const hoist=path.join(root, '.pnpm', 'node_modules'); for (const entry of fs.readdirSync(hoist)) { if (entry.startsWith('.')) continue; const src=path.join(hoist, entry); const dst=path.join(root, entry); if (entry.startsWith('@')) { fs.mkdirSync(dst, { recursive: true }); for (const scoped of fs.readdirSync(src)) { const scopedSrc=path.join(src, scoped); const scopedDst=path.join(dst, scoped); if (!fs.existsSync(scopedDst)) fs.symlinkSync(path.relative(path.dirname(scopedDst), scopedSrc), scopedDst, 'dir'); } } else if (!fs.existsSync(dst)) { fs.symlinkSync(path.relative(path.dirname(dst), src), dst, 'dir'); } }" \
+  && node -p "require.resolve('express/package.json', { paths: ['/app/deploy'] })" \
   && src_prisma_client_dir="$(node -p "const path=require('path'); const pkg=require.resolve('@prisma/client/package.json', { paths: ['./apps/api'] }); path.resolve(path.dirname(pkg), '..', '..', '.prisma', 'client')")" \
   && find /app/deploy/node_modules/.pnpm -path '*/node_modules/@prisma/client' -type d -print \
     | while read -r prisma_client_dir; do \
