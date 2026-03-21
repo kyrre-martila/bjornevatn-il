@@ -58,7 +58,7 @@ export function resolveCorsOrigins(env: Env = process.env): string[] {
 
 export async function assertMigrationsApplied(prisma: PrismaService) {
   const tableRows = (await prisma.$queryRawUnsafe(
-    `SELECT to_regclass('public."_prisma_migrations"') AS migration_table`,
+    `SELECT to_regclass('public."_prisma_migrations"')::text AS migration_table`,
   )) as Array<{ migration_table: string | null }>;
 
   if (!tableRows[0]?.migration_table) {
