@@ -1,4 +1,4 @@
-import { Injectable } from "@nestjs/common";
+import { Inject, Injectable, Optional } from "@nestjs/common";
 import {
   MatchSyncImportMode,
   MatchSyncSourceType,
@@ -18,6 +18,7 @@ import {
   type ObservabilityActorContext,
   type ObservabilityRouteContext,
   type OperationalEventInput,
+  ObservabilityService,
 } from "../observability/observability.service";
 
 function toArrayOfStrings(value: Prisma.JsonValue | null): string[] {
@@ -53,6 +54,8 @@ export class MatchesSyncService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly icalProvider: ICalMatchProvider,
+    @Optional()
+    @Inject(ObservabilityService)
     private readonly observability: MatchesSyncObservability = {
       createMatchSyncRun: async () => ({ id: "local-run" }),
       completeMatchSyncRun: async () => undefined,
