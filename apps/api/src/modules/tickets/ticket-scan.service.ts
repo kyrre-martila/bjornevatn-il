@@ -1,4 +1,4 @@
-import { Injectable } from "@nestjs/common";
+import { Inject, Injectable, Optional } from "@nestjs/common";
 import {
   Prisma,
   TicketScanAction,
@@ -24,6 +24,8 @@ export class TicketScanService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly qrService: TicketQrService,
+    @Optional()
+    @Inject(ObservabilityService)
     private readonly observability: Pick<ObservabilityService, "logEvent"> = {
       logEvent: async () => undefined,
     },
