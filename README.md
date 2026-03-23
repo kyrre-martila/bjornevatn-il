@@ -52,16 +52,24 @@ These features are planned and described here for project direction; they are no
    ```
 
 3. Open the web app (default):
-
    - `http://localhost:3000`
 
-## Deployment overview
+## Production operations quick start
 
-The project includes deployment scaffolding for containerized environments:
+The production Docker Compose flow is now organized around:
 
-- Docker Compose definitions for local and production-like setups
-- CI workflows for build and validation
-- Helm chart base for Kubernetes deployments
-- Operational and security guidance in `docs/`
+- `infra/.env.example` — tracked, non-secret configuration template
+- `infra/.env.server.example` — tracked secret-variable template for the untracked `infra/.env.server`
+- `.github/workflows/deploy-production.yml` — manual GitHub Actions deploy over SSH
+- `pnpm admin:bootstrap` / `pnpm admin:reset-password` — admin account utilities
 
-As the Bjørnevatn IL Website evolves, environment configuration, secrets, and deployment topology should be finalized per target hosting platform.
+Recommended production bootstrap on the server:
+
+```bash
+cp infra/.env.example .env
+cp infra/.env.server.example infra/.env.server
+```
+
+Then fill in real values on the server only, run migrations, bootstrap the first super admin, and start the stack.
+
+See the full production guide in [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) and the secret handling notes in [docs/SECURITY.md](docs/SECURITY.md).

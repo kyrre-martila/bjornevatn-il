@@ -7,6 +7,8 @@ dist
 .env.*
 !.env.prod.example
 !.env.example
+!infra/.env.example
+!infra/.env.server.example
 coverage
 .prisma
 .turbo
