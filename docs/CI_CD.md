@@ -1,30 +1,48 @@
 # CI/CD Workflows
 
-The repository enforces pull request quality gates with GitHub Actions workflows in `.github/workflows/`.
+GitHub Actions workflows in `.github/workflows/` are intentionally manual by design so the repository does not spend Actions minutes on every push or pull request.
 
-## PR-Enforced Workflows
+## Manual-only workflows
 
-- **Tools** (`.github/workflows/tools.yml`)
-  - Trigger: `pull_request`, `workflow_dispatch`, `workflow_call`.
+- **Manual Quality Checks** (`.github/workflows/tools.yml`)
+  - Trigger: `workflow_dispatch`, `workflow_call`.
   - Runs setup + quality checks:
     - OpenAPI contract drift check (`openapi-contract-sync`)
     - Lint
     - Typecheck
     - Unit tests
     - Prettier check
-- **CI - PR** (`.github/workflows/ci-pr.yml`)
-  - Trigger: `pull_request`, `workflow_dispatch`, `workflow_call`.
-  - Runs `Tools` as a gate and then executes web E2E tests.
-- **Build** (`.github/workflows/build.yml`)
-  - Trigger: `pull_request`, `workflow_dispatch`, `workflow_call`.
-  - Runs `Tools` as a gate and then builds web/API artifacts.
+- **Manual E2E Tests** (`.github/workflows/ci-pr.yml`)
+  - Trigger: `workflow_dispatch`, `workflow_call`.
+  - Runs `Manual Quality Checks` as a gate and then executes web E2E tests.
+- **Manual Build** (`.github/workflows/build.yml`)
+  - Trigger: `workflow_dispatch`, `workflow_call`.
+  - Runs `Manual Quality Checks` as a gate and then builds web/API artifacts.
+- **Manual Docker Image Build** (`.github/workflows/infra-build-images.yml`)
+  - Trigger: `workflow_dispatch`.
+  - Builds and pushes the API and web Docker images when requested.
+- **Manual Publish API Contracts** (`.github/workflows/release-contracts.yml`)
+  - Trigger: `workflow_dispatch`.
+  - Publishes the contracts package only when maintainers explicitly start the workflow.
+- **Manual Production Deploy** (`.github/workflows/deploy-production.yml`)
+  - Trigger: `workflow_dispatch`.
+  - Deploys the production stack over SSH only when a maintainer starts it.
+- **Stack Init / Local Env** (`.github/workflows/infra-stack-init.yml`)
+  - Trigger: `workflow_dispatch`.
+- **Update Lockfile & ESLint Deps (manual)** (`.github/workflows/tool-update-lock.yml`)
+  - Trigger: `workflow_dispatch`.
 
-## Branch Protection (recommended)
+## Why this is manual
 
-For `main`, require these checks before merge:
+- No workflow runs automatically on `pull_request`, `push`, or tag events.
+- Maintainers choose when to spend Actions minutes for validation, packaging, publishing, or production deployment.
+- `workflow_call` is retained only for manual workflow composition inside GitHub Actions.
 
-- `Tools`
-- `CI - PR`
-- `Build`
+## Recommended usage
 
-This ensures OpenAPI drift, lint/typecheck/unit/prettier, E2E, and build validation all run on pull requests.
+Before merging or deploying, run the manual workflows you need from the GitHub Actions UI:
+
+1. `Manual Quality Checks`
+2. `Manual E2E Tests` when browser coverage is needed
+3. `Manual Build` when you want build artifacts or optional Docker pushes
+4. `Manual Production Deploy` when you are ready to release

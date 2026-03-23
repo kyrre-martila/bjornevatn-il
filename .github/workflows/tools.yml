@@ -1,12 +1,6 @@
-name: Tools
+name: Manual Quality Checks
 
 on:
-  pull_request:
-    paths:
-      - "apps/**"
-      - "packages/**"
-      - "pnpm-lock.yaml"
-      - ".github/workflows/tools.yml"
   workflow_call:
   workflow_dispatch:
 

@@ -54,6 +54,10 @@ These features are planned and described here for project direction; they are no
 3. Open the web app (default):
    - `http://localhost:3000`
 
+## GitHub Actions policy
+
+GitHub Actions workflows in this repo are manual by design to reduce GitHub Actions minute usage. Validation, builds, image publishing, contracts publishing, and production deploys are started from the Actions UI with `workflow_dispatch` instead of running automatically on every push or pull request. See [docs/CI_CD.md](docs/CI_CD.md) for the current workflow list.
+
 ## Production operations quick start
 
 The production Docker Compose flow is now organized around:

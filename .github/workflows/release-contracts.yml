@@ -1,11 +1,7 @@
-name: Publish API Contracts
+name: Manual Publish API Contracts
 
 on:
-  push:
-    paths:
-      - 'packages/contracts/openapi.v1.json'
-      - 'packages/contracts/scripts/**'
-      - 'packages/contracts/package.json'
+  workflow_dispatch:
 
 jobs:
   publish:

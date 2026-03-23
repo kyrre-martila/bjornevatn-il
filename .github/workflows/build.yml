@@ -1,13 +1,6 @@
-name: Build
+name: Manual Build
 
 on:
-  pull_request:
-    paths:
-      - "apps/**"
-      - "packages/**"
-      - "pnpm-lock.yaml"
-      - ".github/workflows/build.yml"
-      - ".github/workflows/tools.yml"
   workflow_call:
   workflow_dispatch:
 
