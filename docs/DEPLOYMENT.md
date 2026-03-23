@@ -6,7 +6,7 @@ This guide prepares the Bjørnevatn IL monorepo for a single-server Docker deplo
 - `apps/api` — NestJS API
 - PostgreSQL — containerized database
 
-It is intentionally practical for a homelab MVP and can be moved to a VPS later with minimal changes.
+It is intentionally practical for a single production server and keeps the deployment flow close to the current stack.
 
 ## 1. What this deployment stack does
 
@@ -16,7 +16,7 @@ Production deployment uses `infra/docker-compose.prod.yml` with three always-on 
 - `api` — NestJS production runtime
 - `web` — Next.js production runtime
 
-There is also one **manual ops-only** service:
+There is also one manual ops-only service:
 
 - `migrate` — runs Prisma `migrate deploy` intentionally, on demand
 
@@ -43,55 +43,62 @@ From the repo root, create persistent directories:
 mkdir -p data/postgres data/uploads
 ```
 
-## 3. Environment file
+## 3. Environment strategy: config vs secrets
 
-Copy the production example and fill in real values:
+Production now uses two untracked runtime files on the server:
+
+1. `.env` at the repo root for non-secret runtime configuration
+2. `infra/.env.server` for secret-only values
+
+The tracked templates are:
+
+- `infra/.env.example` — non-secret config template
+- `infra/.env.server.example` — secret-only template
+
+### Step A — create the non-secret config file
 
 ```bash
-cp .env.example .env.prod
+cp infra/.env.example .env
 ```
 
-### Mandatory variables
+This file should contain safe values such as URLs, ports, flags, logging, and other non-secret runtime configuration.
 
-These **must** be set before going live:
+### Step B — create the secret-only file
 
-#### Public URLs
+```bash
+cp infra/.env.server.example infra/.env.server
+chmod 600 infra/.env.server
+```
 
-- `APP_URL` — public web origin, used by API-generated links such as password reset links
-- `NEXT_PUBLIC_SITE_URL` — public web origin used by Next.js SEO/runtime config
-- `NEXT_PUBLIC_API_URL` — public API origin used by browsers, for example `https://api.example.com`
-- `NEXT_PUBLIC_API_BASE_PATH` — normally `/api/v1`
-- `INTERNAL_API_URL` — internal Docker URL used by the web container, normally `http://api:4000`
+This file should contain credentials, secrets, and bootstrap passwords only.
 
-#### Database
+### What belongs where
 
-- `POSTGRES_DB`
-- `POSTGRES_USER`
-- `POSTGRES_PASSWORD`
+| Location            | Purpose                    | Variables                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| ------------------- | -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `.env`              | Non-secret runtime config  | `NODE_ENV`, `DEPLOY_ENV`, `APP_URL`, `NEXT_PUBLIC_SITE_URL`, `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_API_BASE_PATH`, `INTERNAL_API_URL`, `WEB_PORT`, `API_PORT`, `POSTGRES_DB`, `POSTGRES_USER`, `API_CORS_ORIGINS`, `TRUST_PROXY`, `NEXT_PUBLIC_CSRF_COOKIE_NAME`, `REGISTRATION_ENABLED`, `NEXT_PUBLIC_REGISTRATION_ENABLED`, `MEDIA_STORAGE_PROVIDER`, `NEXT_PUBLIC_CSP_MEDIA_ORIGINS`, `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_FROM`, `LOG_LEVEL`, `METRICS_ALLOWLIST`, `OTEL_EXPORTER_OTLP_ENDPOINT`, `OTEL_SERVICE_NAME`, `OTEL_SERVICE_NAMESPACE`, `PUBLIC_SUBMISSION_CHALLENGE_TOKEN`, `TICKET_ORDER_LOOKUP_TOKEN_TTL_MS`, `LIVE_UPLOADS_PATH`, `STAGING_UPLOADS_PATH`, `STAGING_SYNC_SCRIPT_PATH` |
+| `infra/.env.server` | Secret-only runtime values | `POSTGRES_PASSWORD`, `DATABASE_URL`, `JWT_SECRET`, `COOKIE_SECRET`, `BOOTSTRAP_ADMIN_EMAIL`, `BOOTSTRAP_ADMIN_NAME`, `BOOTSTRAP_ADMIN_PASSWORD`, `SMTP_PASS`, `TICKET_QR_SECRET`, `TICKET_ORDER_LOOKUP_SECRET`, `LIVE_DATABASE_URL`, `STAGING_DATABASE_URL`, `STAGING_PUSH_CONFIRMATION_TOKEN`                                                                                                                                                                                                                                                                                                                                                                                                              |
+
+### Secret classification
+
+These values are secrets and must exist only on the server, in a proper server-side secret store, or in GitHub environment secrets where explicitly noted:
+
 - `DATABASE_URL`
-
-#### Auth / security
-
 - `JWT_SECRET`
 - `COOKIE_SECRET`
-- `API_CORS_ORIGINS`
+- `BOOTSTRAP_ADMIN_PASSWORD`
+- `SMTP_PASS` (this repo's SMTP password variable; treat it as the `SMTP_PASSWORD` equivalent)
+- `POSTGRES_PASSWORD`
+- deploy SSH credentials
 
-### Recommended variables
+### GitHub environment secrets for manual deploy
 
-- `TRUST_PROXY=1` for Cloudflare Tunnel / reverse-proxy style forwarding
-- `MEDIA_STORAGE_PROVIDER=local`
-- `LOG_LEVEL=info`
-- `METRICS_ALLOWLIST=127.0.0.1/32,::1/128`
+The manual production deploy workflow requires these GitHub **environment** secrets:
 
-### Optional variables
-
-Use only if the corresponding feature is needed:
-
-- `SMTP_*` for outbound email / password reset mail
-- `PUBLIC_SUBMISSION_CHALLENGE_TOKEN`
-- `TICKET_QR_SECRET`
-- `TICKET_ORDER_LOOKUP_SECRET`
-- `LIVE_DATABASE_URL`, `STAGING_DATABASE_URL`, `LIVE_UPLOADS_PATH`, `STAGING_UPLOADS_PATH`, `STAGING_*` for the staging sync feature set
+- `SSH_HOST`
+- `SSH_PORT`
+- `SSH_USER`
+- `SSH_PRIVATE_KEY`
 
 ## 4. Persistent storage on the VM
 
@@ -110,27 +117,28 @@ Because these are bind-mounted, data survives container rebuilds and restarts.
 
 1. Start PostgreSQL.
 2. Run migrations intentionally.
-3. Start the API.
-4. Start the web app.
-5. Attach Cloudflare Tunnel routes.
-6. Verify health endpoints.
+3. Bootstrap the first admin.
+4. Start the API.
+5. Start the web app.
+6. Attach Cloudflare Tunnel routes.
+7. Verify health endpoints.
 
 ### Step A — build images
 
 ```bash
-docker compose -f infra/docker-compose.prod.yml --env-file .env.prod build
+docker compose -f infra/docker-compose.prod.yml build
 ```
 
 ### Step B — run database only
 
 ```bash
-docker compose -f infra/docker-compose.prod.yml --env-file .env.prod up -d db
+docker compose -f infra/docker-compose.prod.yml up -d db
 ```
 
 Wait until the database health check is healthy:
 
 ```bash
-docker compose -f infra/docker-compose.prod.yml --env-file .env.prod ps
+docker compose -f infra/docker-compose.prod.yml ps
 ```
 
 ### Step C — apply Prisma migrations safely
@@ -138,24 +146,60 @@ docker compose -f infra/docker-compose.prod.yml --env-file .env.prod ps
 Run migrations manually and intentionally:
 
 ```bash
-docker compose -f infra/docker-compose.prod.yml --env-file .env.prod --profile ops run --rm migrate
+docker compose -f infra/docker-compose.prod.yml --profile ops run --rm migrate
 ```
 
 Notes:
 
 - This uses the existing Prisma migration workflow from the monorepo.
-- The API **does not** auto-run destructive seeding on startup.
+- The API does not auto-run destructive seeding on startup.
 - The API already fails fast if migrations are missing.
 
-### Step D — start application services
+### Step D — bootstrap the first super admin
+
+Set these values in `infra/.env.server`:
+
+- `BOOTSTRAP_ADMIN_EMAIL`
+- `BOOTSTRAP_ADMIN_NAME`
+- `BOOTSTRAP_ADMIN_PASSWORD`
+
+Then run:
 
 ```bash
-docker compose -f infra/docker-compose.prod.yml --env-file .env.prod up -d api web
+docker compose -f infra/docker-compose.prod.yml run --rm --entrypoint node api dist/src/ops/admin-bootstrap.js
 ```
+
+Behavior:
+
+- creates the first `super_admin` only if none exists
+- securely hashes `BOOTSTRAP_ADMIN_PASSWORD`
+- does nothing if a `super_admin` already exists
+- does not overwrite an existing admin/editor account
+- is safe to run more than once
+
+### Step E — start application services
+
+```bash
+docker compose -f infra/docker-compose.prod.yml up -d api web
+```
+
+### Optional admin password reset utility
+
+If an existing admin or super admin needs a password reset, run:
+
+```bash
+ADMIN_RESET_EMAIL=admin@example.com ADMIN_RESET_PASSWORD='replace-with-a-new-strong-password' docker compose -f infra/docker-compose.prod.yml run --rm -e ADMIN_RESET_EMAIL -e ADMIN_RESET_PASSWORD --entrypoint node api dist/src/ops/admin-reset-password.js
+```
+
+Behavior:
+
+- only works for `admin` or `super_admin` accounts
+- securely hashes the new password
+- revokes active sessions for that account after updating the password
 
 ### Optional seed flow
 
-Seeding is **not automatic** in production. If you truly need it for a new environment, run it manually and only when you understand what the seed does:
+Seeding is not automatic in production. If you truly need it for a new environment, run it manually and only when you understand what the seed does:
 
 ```bash
 pnpm db:seed
@@ -195,7 +239,7 @@ The web readiness endpoint verifies that the Next.js container can also reach th
 
 ### Recommended routing
 
-Because browsers still need to reach the API origin defined by `NEXT_PUBLIC_API_URL`, the simplest production setup is to publish **two hostnames** through Cloudflare Tunnel:
+Because browsers still need to reach the API origin defined by `NEXT_PUBLIC_API_URL`, the simplest production setup is to publish two hostnames through Cloudflare Tunnel:
 
 - `www.example.com` -> `http://localhost:3000`
 - `api.example.com` -> `http://localhost:4000`
@@ -222,24 +266,39 @@ ingress:
 
 After startup, verify:
 
-- `docker compose ... ps` shows `db`, `api`, and `web` healthy
-- Web homepage loads through the tunnel
+- `docker compose -f infra/docker-compose.prod.yml ps` shows `db`, `api`, and `web` healthy
+- web homepage loads through the tunnel
 - API health endpoints load through the API hostname
-- Media uploads persist under `data/uploads/`
-- Password reset links use `APP_URL`
-- Canonical URLs and sitemap use `NEXT_PUBLIC_SITE_URL`
+- media uploads persist under `data/uploads/`
+- canonical URLs and sitemap use `NEXT_PUBLIC_SITE_URL`
+- login works with the bootstrapped admin account
 
 ## 9. Redeploy / update flow
 
-### Standard redeploy
+### Standard redeploy from the server
 
 ```bash
-git pull
-docker compose -f infra/docker-compose.prod.yml --env-file .env.prod build
-docker compose -f infra/docker-compose.prod.yml --env-file .env.prod up -d db
-docker compose -f infra/docker-compose.prod.yml --env-file .env.prod --profile ops run --rm migrate
-docker compose -f infra/docker-compose.prod.yml --env-file .env.prod up -d api web
+git pull --ff-only
+docker compose -f infra/docker-compose.prod.yml up -d --build
+docker compose -f infra/docker-compose.prod.yml ps
 ```
+
+### Manual production deploy from GitHub Actions
+
+Workflow file:
+
+- `.github/workflows/deploy-production.yml`
+
+The workflow SSHes into the production server and runs:
+
+```bash
+cd ~/apps/bjornevatn-il
+git pull --ff-only
+docker compose -f infra/docker-compose.prod.yml up -d --build
+docker compose -f infra/docker-compose.prod.yml ps
+```
+
+This keeps SSH credentials in GitHub environment secrets instead of in the repository and removes routine manual SSH work from normal deploys.
 
 ### Rollback basics
 
@@ -254,15 +313,15 @@ docker compose -f infra/docker-compose.prod.yml --env-file .env.prod up -d api w
 
 - Package manager: `pnpm`
 - Workspace orchestration: Turborepo
-- API production runtime: `node apps/api/dist/src/main.js`
-- Web production runtime: `node server.js` from Next.js standalone output
+- API production runtime: `node dist/src/main.js`
+- Web production runtime: `node apps/web/server.js` from Next.js standalone output
 - Prisma schema location: `packages/db/prisma/schema.prisma`
 
 ### Remaining manual steps before go-live
 
-- Choose your real public domains
-- Generate strong secrets for `JWT_SECRET` and `COOKIE_SECRET`
-- Set real SMTP credentials if email flows are needed
-- Confirm Cloudflare Tunnel ingress rules
-- Back up `data/postgres/` and `data/uploads/`
-- Run a final smoke test after DNS / tunnel cutover
+- choose your real public domains
+- generate strong secrets for `JWT_SECRET` and `COOKIE_SECRET`
+- set real SMTP credentials if email flows are needed later
+- confirm Cloudflare Tunnel ingress rules
+- back up `data/postgres/` and `data/uploads/`
+- run a final smoke test after deploy

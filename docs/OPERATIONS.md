@@ -29,7 +29,7 @@ If needed, run DB commands separately:
 ## Secret Rotation
 
 1. Generate new values for all secrets stored in platform secret manager.
-2. Update `.env` (local) or secrets store (CI/CD, runtime).
+2. Update `.env` for non-secret config only and `infra/.env.server` (or the platform secret store) for secret values.
 3. Redeploy API/web containers to pick up new values.
 4. Validate by signing in and confirming cookies/tokens reissued.
 5. Record rotation in [docs/RUNBOOKS/rotate-secrets.md](RUNBOOKS/rotate-secrets.md).

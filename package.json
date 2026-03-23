@@ -36,6 +36,8 @@
     "db:seed": "pnpm db:generate && ts-node --transpile-only --compiler-options '{\"module\":\"CommonJS\",\"moduleResolution\":\"node\"}' scripts/seed.ts",
     "db:setup": "pnpm db:migrate && pnpm db:seed",
     "seed": "pnpm db:seed",
+    "admin:bootstrap": "pnpm db:generate && pnpm --filter api exec ts-node --transpile-only --project tsconfig.json src/ops/admin-bootstrap.ts",
+    "admin:reset-password": "pnpm db:generate && pnpm --filter api exec ts-node --transpile-only --project tsconfig.json src/ops/admin-reset-password.ts",
     "generate:openapi": "pnpm --filter api generate:openapi",
     "revisions:prune": "ts-node --transpile-only --compiler-options {\"module\":\"CommonJS\",\"moduleResolution\":\"node\"} scripts/revisions-prune.ts",
     "check:openapi:drift": "pnpm generate:openapi && node packages/contracts/scripts/validate-openapi.mjs && git diff --exit-code -- packages/contracts/openapi.v1.json"

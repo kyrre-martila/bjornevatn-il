@@ -6,9 +6,23 @@ Security guidance for the content website blueprint (public site + admin/editor 
 
 - `JWT_SECRET`: HMAC signing key for access tokens. Must be 32+ characters, include at least 10 unique characters, and mix at least three character classes (lower/upper/number/symbol).
 - `COOKIE_SECRET`: Signature key for cookies/CSRF derivation. Must be 32+ characters, include at least 10 unique characters, and mix at least three character classes (lower/upper/number/symbol).
+- `DATABASE_URL`: production database connection string; keep this only in `infra/.env.server` or another server-side secret store.
+- `BOOTSTRAP_ADMIN_PASSWORD`: one-time bootstrap credential for the first super admin; set server-side only and rotate/remove after bootstrap if desired.
+- `SMTP_PASS`: SMTP password secret if outbound mail is enabled later.
+- `POSTGRES_PASSWORD`: PostgreSQL container password for the production database service.
 - `COOKIE_DOMAIN`: Shared domain for web cookies (prod uses apex domain).
 - `API_CORS_ORIGINS`: Comma-separated list of allowed origins (required in hardened envs: production and staging).
 - `ENCRYPTION_KEY` is no longer startup-required because field-level encryption is not wired in this blueprint yet; add and enforce it only when encrypted-at-rest fields are implemented.
+
+## Secret storage locations
+
+- `infra/.env.example` documents non-secret runtime config.
+- `infra/.env.server` is the server-only secret file used by Docker Compose in production.
+- GitHub deploy credentials must be stored as GitHub environment secrets, not in the repository:
+  - `SSH_HOST`
+  - `SSH_PORT`
+  - `SSH_USER`
+  - `SSH_PRIVATE_KEY`
 
 ## Cookie Policy
 
@@ -49,13 +63,12 @@ Security guidance for the content website blueprint (public site + admin/editor 
 3. Revoke active tokens and invalidate caches.
 4. Update `API_CORS_ORIGINS` if origin compromise suspected.
 5. Redeploy services with new secrets.
-6. Document incident and follow [docs/RUNBOOKS/incident-response.md](RUNBOOKS/incident-response.md).
+6. Document incident and follow [docs/RUNBOOKS/incident-response.md](docs/RUNBOOKS/incident-response.md).
 
 ## Reverse Proxy / Tunnel Notes
 
 - API enables `trust proxy` so secure-cookie handling works correctly behind ingress/load balancers.
 - In hardened environments (staging + production), CSRF cookies are always marked `Secure`.
-
 
 ## Environment parity matrix
 

@@ -2,10 +2,11 @@ services:
   db:
     image: postgres:16-bookworm
     restart: unless-stopped
+    env_file:
+      - ./.env.server
     environment:
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
       - ../data/postgres:/var/lib/postgresql/data
     expose:
@@ -31,10 +32,11 @@ services:
     image: bjornevatn-il-api-migrate:prod
     profiles: ["ops"]
     restart: "no"
+    env_file:
+      - ./.env.server
     environment:
       NODE_ENV: production
       DEPLOY_ENV: ${DEPLOY_ENV:-production}
-      DATABASE_URL: ${DATABASE_URL}
     depends_on:
       db:
         condition: service_healthy
@@ -48,14 +50,13 @@ services:
       target: runtime
     image: bjornevatn-il-api:prod
     restart: unless-stopped
+    env_file:
+      - ./.env.server
     environment:
       NODE_ENV: production
       DEPLOY_ENV: ${DEPLOY_ENV:-production}
       PORT: 4000
       APP_URL: ${APP_URL}
-      DATABASE_URL: ${DATABASE_URL}
-      JWT_SECRET: ${JWT_SECRET}
-      COOKIE_SECRET: ${COOKIE_SECRET}
       API_CORS_ORIGINS: ${API_CORS_ORIGINS}
       MEDIA_STORAGE_PROVIDER: ${MEDIA_STORAGE_PROVIDER:-local}
       METRICS_ALLOWLIST: ${METRICS_ALLOWLIST:-127.0.0.1/32,::1/128}
@@ -64,22 +65,16 @@ services:
       SMTP_HOST: ${SMTP_HOST:-}
       SMTP_PORT: ${SMTP_PORT:-}
       SMTP_USER: ${SMTP_USER:-}
-      SMTP_PASS: ${SMTP_PASS:-}
       SMTP_FROM: ${SMTP_FROM:-}
       PUBLIC_SUBMISSION_CHALLENGE_TOKEN: ${PUBLIC_SUBMISSION_CHALLENGE_TOKEN:-}
       REGISTRATION_ENABLED: ${REGISTRATION_ENABLED:-false}
       NEXT_PUBLIC_REGISTRATION_ENABLED: ${NEXT_PUBLIC_REGISTRATION_ENABLED:-false}
-      TICKET_QR_SECRET: ${TICKET_QR_SECRET:-}
-      TICKET_ORDER_LOOKUP_SECRET: ${TICKET_ORDER_LOOKUP_SECRET:-}
       TICKET_ORDER_LOOKUP_TOKEN_TTL_MS: ${TICKET_ORDER_LOOKUP_TOKEN_TTL_MS:-}
       OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
       OTEL_SERVICE_NAME: ${OTEL_SERVICE_NAME:-bjornevatn-il-api}
       OTEL_SERVICE_NAMESPACE: ${OTEL_SERVICE_NAMESPACE:-production}
-      LIVE_DATABASE_URL: ${LIVE_DATABASE_URL:-}
-      STAGING_DATABASE_URL: ${STAGING_DATABASE_URL:-}
       LIVE_UPLOADS_PATH: ${LIVE_UPLOADS_PATH:-}
       STAGING_UPLOADS_PATH: ${STAGING_UPLOADS_PATH:-}
-      STAGING_PUSH_CONFIRMATION_TOKEN: ${STAGING_PUSH_CONFIRMATION_TOKEN:-}
       STAGING_SYNC_SCRIPT_PATH: ${STAGING_SYNC_SCRIPT_PATH:-}
     volumes:
       - ../data/uploads:/app/uploads
@@ -144,7 +139,7 @@ services:
       test:
         [
           "CMD-SHELL",
-          "node -e \"fetch('http://$${HOSTNAME}:3000').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\"",
+          'node -e "fetch(''http://$${HOSTNAME}:3000'').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"',
         ]
       interval: 15s
       timeout: 5s
