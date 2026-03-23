@@ -1,13 +1,6 @@
-name: CI - PR
+name: Manual E2E Tests
 
 on:
-  pull_request:
-    types: [opened, synchronize, reopened, ready_for_review]
-    paths:
-      - "apps/**"
-      - "packages/**"
-      - "pnpm-lock.yaml"
-      - ".github/workflows/**"
   workflow_dispatch:
   workflow_call:
 

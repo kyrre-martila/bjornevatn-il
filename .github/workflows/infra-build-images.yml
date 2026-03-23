@@ -1,10 +1,7 @@
-name: Build Docker Images
+name: Manual Docker Image Build
 
 on:
   workflow_dispatch:
-  push:
-    tags:
-      - 'v*.*.*'
 
 jobs:
   build:
